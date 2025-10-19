@@ -1,0 +1,724 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model User {
+  id               String             @id @default(cuid())
+  name             String?
+  email            String             @unique
+  emailVerified    DateTime?
+  image            String?
+  accounts         Account[]
+  sessions         Session[]
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  
+  // Multi-tenant: связь с организациями
+  organizationId   String?
+  organization     Organization?      @relation(fields: [organizationId], references: [id])
+  role             String?            @default("user") // admin, manager, user
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model Client {
+  id              Int      @id @default(autoincrement())
+  type            String   @default("individual") // individual, company
+  firstName       String?  // Имя (для физлиц)
+  lastName        String?  // Фамилия (для физлиц)
+  companyName     String?  // Название компании (для юрлиц)
+  phone           String
+  email           String?
+  address         String?
+  
+  // Реквизиты (для юрлиц)
+  codiceFiscale   String?
+  partitaIVA      String?
+  legalAddress    String?
+  contactPerson   String?
+  
+  // Дополнительно
+  source          String?
+  notes           String?  @db.Text
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  orders          Order[]
+  proposals       ProposalDocument[]
+  
+  @@index([phone])
+  @@index([email])
+}
+
+model Supplier {
+  id              Int      @id @default(autoincrement())
+  name            String
+  phone           String
+  email           String?
+  contactPerson   String?
+  address         String?
+  
+  // Реквизиты
+  codiceFiscale   String?
+  partitaIVA      String?
+  legalAddress    String?
+  
+  // Условия работы
+  paymentTerms    String?
+  deliveryDays    Int?
+  minOrderAmount  Decimal? @db.Decimal(10, 2)
+  
+  // Метаданные
+  rating          Int      @default(5)
+  status          String   @default("active") // active, inactive
+  notes           String?  @db.Text
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  // Связи
+  productCategories SupplierProductCategory[]
+  parameterOverrides SupplierParameterOverride[]
+  
+  @@unique([name])
+  @@index([status])
+}
+
+model Partner {
+  id              Int      @id @default(autoincrement())
+  name            String
+  phone           String
+  email           String?
+  contactPerson   String?
+  address         String?
+  
+  // Тип партнерства
+  type            String?  // architect, agent, engineer, designer, dealer, distributor, other
+  region          String?
+  commission      Decimal? @db.Decimal(5, 2) // процент комиссии
+  
+  // Реквизиты
+  codiceFiscale   String?
+  partitaIVA      String?
+  legalAddress    String?
+  
+  // Метаданные
+  status          String   @default("active") // active, inactive
+  notes           String?  @db.Text
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@index([name])
+  @@index([type])
+  @@index([status])
+}
+
+model Installer {
+  id              Int      @id @default(autoincrement())
+  type            String   @default("individual") // individual, ip, company
+  name            String
+  phone           String
+  email           String?
+  
+  // Профессиональные данные
+  specialization  String?  // windows, doors, balconies, all
+  experience      Int?     // лет
+  hasTools        Boolean  @default(true)
+  hasTransport    Boolean  @default(true)
+  
+  // Условия работы
+  rateType        String?  // per-unit, per-hour, per-project
+  ratePrice       Decimal? @db.Decimal(10, 2)
+  schedule        String?
+  
+  // Статус
+  availability    String   @default("available") // available, busy, vacation
+  rating          Int      @default(5)
+  status          String   @default("active") // active, inactive
+  
+  notes           String?  @db.Text
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@index([name])
+  @@index([availability])
+  @@index([status])
+}
+
+model Dictionary {
+  id              Int      @id @default(autoincrement())
+  type            String   // sources, partnerTypes, specializations
+  name            String
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@index([type])
+  @@index([isActive])
+}
+
+model Category {
+  id          Int      @id @default(autoincrement())
+  name        String
+  description String?
+  parentId    Int?
+  parent      Category? @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  children    Category[] @relation("CategoryHierarchy")
+  products    Product[]
+  createdAt   DateTime @default(now())
+}
+
+model Product {
+  id             Int      @id @default(autoincrement())
+  name           String
+  description    String?
+  categoryId     Int
+  category       Category @relation(fields: [categoryId], references: [id])
+  basePrice      Decimal  @db.Decimal(10, 2)
+  specifications Json?    // характеристики как JSON
+  images         String[] // массив URL изображений
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  
+  orderItems     OrderItem[]
+}
+
+model Order {
+  id           Int      @id @default(autoincrement())
+  orderNumber  String   @unique @default(cuid())
+  clientId     Int
+  client       Client   @relation(fields: [clientId], references: [id])
+  status       String   @default("draft") // draft, sent, approved, in_production, completed
+  totalAmount  Decimal  @db.Decimal(10, 2)
+  notes        String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  
+  orderItems   OrderItem[]
+  proposals    Proposal[]
+}
+
+model OrderItem {
+  id             Int      @id @default(autoincrement())
+  orderId        Int
+  order          Order    @relation(fields: [orderId], references: [id])
+  productId      Int
+  product        Product  @relation(fields: [productId], references: [id])
+  quantity       Int      @default(1)
+  unitPrice      Decimal  @db.Decimal(10, 2)
+  totalPrice     Decimal  @db.Decimal(10, 2)
+  specifications Json?    // индивидуальные характеристики
+  notes          String?
+}
+
+model Proposal {
+  id         Int      @id @default(autoincrement())
+  orderId    Int
+  order      Order    @relation(fields: [orderId], references: [id])
+  filePath   String
+  generatedAt DateTime @default(now())
+  expiresAt  DateTime?
+}
+
+// ============================================
+// НОВАЯ СИСТЕМА ПРЕДЛОЖЕНИЙ И КОНФИГУРАТОРА
+// ============================================
+
+model ProductCategory {
+  id          String @id @default(cuid())
+  name        String
+  icon        String  // Emoji или SVG
+  description String?
+  isActive    Boolean @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Связи
+  supplierCategories SupplierProductCategory[]
+  proposalPositions  ProposalPosition[]
+  categoryParameters CategoryParameter[]
+  
+  @@unique([name])
+  @@index([isActive])
+}
+
+model SupplierProductCategory {
+  id          String @id @default(cuid())
+  supplierId  Int
+  supplier    Supplier @relation(fields: [supplierId], references: [id])
+  categoryId  String
+  category    ProductCategory @relation(fields: [categoryId], references: [id])
+  parameters  Json    // Гибкая структура параметров
+  isActive    Boolean @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Связи
+  proposalPositions ProposalPosition[]
+  
+  @@unique([supplierId, categoryId])
+  @@index([supplierId])
+  @@index([categoryId])
+}
+
+model ProposalDocument {
+  id          String @id @default(cuid())
+  number      String @unique  // PROP-001
+  
+  // Основная информация
+  proposalDate DateTime @default(now()) // Дата предложения
+  validUntil   DateTime? // Срок действия предложения
+  clientId    Int
+  client      Client @relation(fields: [clientId], references: [id])
+  responsibleManager String? // ФИО ответственного менеджера
+  
+  status      String @default("draft") // draft, sent, confirmed, expired
+  type        String @default("proposal") // proposal, order
+  
+  // Дополнительные поля для заказов
+  signedAt    DateTime?
+  deliveryDate DateTime?
+  
+  // Итоги
+  subtotal    Decimal @db.Decimal(10, 2) @default(0)
+  discount    Decimal @db.Decimal(10, 2) @default(0)
+  vatRate     Decimal @db.Decimal(5, 2) @default(22.00)
+  vatAmount   Decimal @db.Decimal(10, 2) @default(0)
+  total       Decimal @db.Decimal(10, 2) @default(0)
+  
+  notes       String? @db.Text
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Связи
+  groups      ProposalGroup[]
+  templates   ProposalTemplateLink[] // Связь с шаблонами документов
+  orderId     Int? // Ссылка на заказ, если предложение стало заказом
+  
+  @@index([clientId])
+  @@index([status])
+  @@index([type])
+  @@index([number])
+  @@index([proposalDate])
+}
+
+model ProposalGroup {
+  id          String @id @default(cuid())
+  proposalId  String
+  proposal    ProposalDocument @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  name        String  // "Окна из алюминия", "Двери из ПВХ"
+  description String?
+  sortOrder   Int @default(0)
+  
+  // Итоги группы
+  subtotal    Decimal @db.Decimal(10, 2) @default(0)
+  discount    Decimal @db.Decimal(10, 2) @default(0)
+  total       Decimal @db.Decimal(10, 2) @default(0)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Связи
+  positions   ProposalPosition[]
+  
+  @@index([proposalId])
+  @@index([sortOrder])
+}
+
+model ProposalPosition {
+  id          String @id @default(cuid())
+  groupId     String
+  group       ProposalGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  
+  // Конфигурация продукта
+  categoryId  String
+  category    ProductCategory @relation(fields: [categoryId], references: [id])
+  supplierCategoryId String
+  supplierCategory SupplierProductCategory @relation(fields: [supplierCategoryId], references: [id])
+  
+  // Параметры конфигурации
+  configuration Json  // Все выбранные параметры
+  
+  // Ценообразование
+  unitPrice   Decimal @db.Decimal(10, 2)
+  quantity    Decimal @db.Decimal(10, 2) @default(1)
+  discount    Decimal @db.Decimal(5, 2) @default(0) // процент скидки
+  discountAmount Decimal @db.Decimal(10, 2) @default(0) // сумма скидки
+  vatRate     Decimal @db.Decimal(5, 2) @default(22.00) // НДС для этой позиции
+  vatAmount   Decimal @db.Decimal(10, 2) @default(0) // сумма НДС
+  total       Decimal @db.Decimal(10, 2)
+  
+  // Описание для печати
+  description String? @db.Text // Генерируется из конфигурации
+  
+  sortOrder   Int @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([groupId])
+  @@index([categoryId])
+  @@index([sortOrder])
+}
+
+model VATRate {
+  id          String @id @default(cuid())
+  name        String  // "IVA 22%", "IVA 10%", "IVA 4%"
+  percentage  Decimal @db.Decimal(5, 2) // 22.00, 10.00, 4.00
+  description String?
+  isDefault   Boolean @default(false)
+  isActive    Boolean @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@unique([name])
+  @@index([percentage])
+  @@index([isDefault])
+  @@index([isActive])
+}
+
+// ============================================
+// ШАБЛОНЫ ДОКУМЕНТОВ
+// ============================================
+
+model DocumentTemplate {
+  id          String @id @default(cuid())
+  name        String // "Privacy Policy GDPR 2025", "Условия продажи"
+  type        String // "privacy_policy", "sales_terms", "warranty"
+  
+  // Мультиязычный контент
+  contentRu   String? @db.Text
+  contentIt   String? @db.Text
+  
+  // Флаги
+  isDefault   Boolean @default(false) // По умолчанию для этого типа
+  isActive    Boolean @default(true)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Связи Many-to-Many с предложениями
+  proposals   ProposalTemplateLink[]
+  
+  @@index([type])
+  @@index([isDefault])
+  @@index([isActive])
+}
+
+// Промежуточная таблица для связи Предложение <-> Шаблоны
+model ProposalTemplateLink {
+  id          String @id @default(cuid())
+  proposalId  String
+  proposal    ProposalDocument @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  templateId  String
+  template    DocumentTemplate @relation(fields: [templateId], references: [id])
+  
+  createdAt   DateTime @default(now())
+  
+  @@unique([proposalId, templateId])
+  @@index([proposalId])
+  @@index([templateId])
+}
+
+// ============================================
+// MULTI-TENANT SUPPORT
+// ============================================
+
+model Organization {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique // для URL: punto-infissi.crm.com
+  domain      String?  @unique // кастомный домен: punto-infissi.com
+  
+  // Брендинг
+  faviconUrl  String?  // URL фавикона организации
+  logoUrl     String?  // URL логотипа
+  primaryColor String? @default("#dc2626") // Основной цвет бренда
+  
+  // Настройки
+  currency    String   @default("EUR")
+  timezone    String   @default("Europe/Rome")
+  language    String   @default("it")
+  
+  // Подписка
+  plan        String   @default("free") // free, basic, pro, enterprise
+  maxUsers    Int      @default(5)
+  maxStorage  Int      @default(1073741824) // 1GB в байтах
+  
+  // Метаданные
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Связи
+  users       User[]
+  settings    OrganizationSettings?
+  
+  @@index([slug])
+  @@index([domain])
+}
+
+model OrganizationSettings {
+  id              String       @id @default(cuid())
+  organizationId  String       @unique
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  
+  // Настройки фавикона
+  faviconFileHash   String?      // MD5 хеш файла
+  faviconFileName   String?      // Имя файла: favicon-{hash}.png
+  faviconSize       Int?         // Размер в байтах
+  faviconWidth      Int?         // Ширина в пикселях
+  faviconHeight     Int?         // Высота в пикселях
+  faviconUpdatedAt  DateTime?    // Когда обновлен
+  faviconUpdatedBy  String?      // Кто обновил (userId)
+  
+  // Дополнительные настройки
+  emailNotifications Boolean   @default(true)
+  autoSave           Boolean   @default(true)
+  invoicePrefix      String?   @default("PI") // префикс счетов
+  invoiceCounter     Int       @default(1000)
+  
+  // Метаданные
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([organizationId])
+  @@index([faviconFileHash])
+}
+
+// ============================================================
+// СИСТЕМА ПАРАМЕТРОВ ПРОДУКТОВ (Advanced Parameters System)
+// ============================================================
+
+// Глобальные шаблоны параметров
+model ParameterTemplate {
+  id          String        @id @default(cuid())
+  name        String        // "Материал", "Цвет", "Размер", "Тип открытия"
+  nameIt      String?       // Итальянское название
+  type        ParameterType // Тип параметра
+  description String?       // Описание параметра
+  unit        String?       // Единица измерения (мм, см, кг)
+  isGlobal    Boolean       @default(true) // Глобальный или специфичный
+  isActive    Boolean       @default(true) // Активен ли параметр
+  
+  // Валидация для числовых параметров
+  minValue    Float?
+  maxValue    Float?
+  step        Float?
+  
+  // Метаданные
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdBy   String?  // userId создателя или 'admin'
+  
+  // Система согласования
+  approvalStatus  String   @default("approved") // approved, pending, rejected
+  approvedBy      String?
+  approvedAt      DateTime?
+  rejectedBy      String?
+  rejectedAt      DateTime?
+  rejectionReason String?
+  
+  // Связи
+  values              ParameterValue[]
+  categoryParameters  CategoryParameter[]
+  supplierOverrides   SupplierParameterOverride[]
+  userSuggestions     UserSuggestion[]
+  
+  @@unique([name])
+  @@index([type])
+  @@index([isActive])
+  @@index([approvalStatus])
+}
+
+// Возможные значения для параметров типа SELECT
+model ParameterValue {
+  id          String   @id @default(cuid())
+  parameterId String
+  parameter   ParameterTemplate @relation(fields: [parameterId], references: [id], onDelete: Cascade)
+  
+  value       String   // "Дуб", "Сосна", "Белый", "RAL 9010"
+  valueIt     String?  // Итальянский перевод
+  displayName String?  // Отображаемое название
+  hexColor    String?  // Для цветов: #FFFFFF
+  ralCode     String?  // Для цветов: RAL 9010
+  icon        String?  // SVG иконка или emoji
+  
+  order       Int      @default(0) // Порядок отображения
+  isActive    Boolean  @default(true)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdBy   String?  // userId создателя или 'admin'
+  
+  // Система согласования
+  approvalStatus  String   @default("approved") // approved, pending, rejected
+  approvedBy      String?
+  approvedAt      DateTime?
+  rejectedBy      String?
+  rejectedAt      DateTime?
+  rejectionReason String?
+  
+  @@index([parameterId])
+  @@index([isActive])
+  @@index([approvalStatus])
+}
+
+// Привязка параметров к категориям продуктов
+model CategoryParameter {
+  id           String   @id @default(cuid())
+  categoryId   String
+  category     ProductCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  parameterId  String
+  parameter    ParameterTemplate @relation(fields: [parameterId], references: [id], onDelete: Cascade)
+  
+  // Настройки для категории
+  isRequired   Boolean  @default(false) // Обязательный параметр?
+  isVisible    Boolean  @default(true)  // Показывать в UI?
+  order        Int      @default(0)     // Порядок отображения
+  displayName  String?  // Переопределение названия
+  displayNameIt String? // Итальянское название
+  defaultValue String?  // Значение по умолчанию
+  helpText     String?  // Подсказка пользователю
+  
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  
+  @@unique([categoryId, parameterId])
+  @@index([categoryId])
+  @@index([parameterId])
+}
+
+// Переопределения параметров для конкретных поставщиков
+model SupplierParameterOverride {
+  id           String   @id @default(cuid())
+  supplierId   Int
+  supplier     Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  parameterId  String
+  parameter    ParameterTemplate @relation(fields: [parameterId], references: [id], onDelete: Cascade)
+  
+  // Переопределенные значения
+  customValues Json?    // Специфичные для поставщика значения ["Значение1", "Значение2"]
+  minValue     Float?   // Переопределение мин. значения
+  maxValue     Float?   // Переопределение макс. значения
+  defaultValue String?  // Значение по умолчанию от поставщика
+  
+  isAvailable  Boolean  @default(true) // Доступен ли параметр для этого поставщика
+  priceImpact  Float?   // Влияние на цену (%)
+  notes        String?  // Заметки о параметре
+  
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  
+  @@unique([supplierId, parameterId])
+  @@index([supplierId])
+  @@index([parameterId])
+}
+
+// Предложения пользователей для новых значений или параметров
+model UserSuggestion {
+  id             String   @id @default(cuid())
+  userId         String?  // Авторизованный пользователь
+  sessionId      String?  // Анонимный пользователь
+  
+  // Тип предложения
+  type           SuggestionType
+  
+  // Контекст предложения
+  categoryId     String?
+  parameterId    String?
+  parameter      ParameterTemplate? @relation(fields: [parameterId], references: [id])
+  supplierId     Int?
+  
+  // Данные предложения
+  suggestedValue   String   // Предлагаемое значение
+  suggestedValueIt String?  // Итальянский перевод
+  suggestedName    String?  // Предлагаемое название (для нового параметра)
+  description      String?  // Описание/обоснование
+  metadata         Json?    // Дополнительные данные
+  
+  // Статус и модерация
+  status           SuggestionStatus @default(PENDING)
+  adminNotes       String?
+  rejectionReason  String?  // Причина отклонения
+  reviewedAt       DateTime?
+  reviewedBy       String?
+  
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  
+  @@index([status])
+  @@index([type])
+  @@index([parameterId])
+  @@index([createdAt])
+}
+
+// Типы параметров
+enum ParameterType {
+  TEXT          // Текстовое поле
+  NUMBER        // Числовое поле
+  SELECT        // Выпадающий список
+  MULTI_SELECT  // Множественный выбор
+  COLOR         // Цветовой селектор
+  BOOLEAN       // Да/Нет
+  DATE          // Дата
+  RANGE         // Диапазон значений
+}
+
+// Типы предложений
+enum SuggestionType {
+  PARAMETER_VALUE    // Новое значение для существующего параметра
+  NEW_PARAMETER      // Совершенно новый параметр
+  PARAMETER_EDIT     // Редактирование существующего параметра
+}
+
+// Статусы предложений
+enum SuggestionStatus {
+  PENDING   // Ожидает рассмотрения
+  APPROVED  // Одобрено
+  REJECTED  // Отклонено
+  APPLIED   // Применено к системе
+}

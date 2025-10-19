@@ -1,0 +1,567 @@
+/* Стикер-дизайн v2 - улучшенная версия */
+
+/* Основная цветовая схема */
+:root {
+	--sticker-v2-bg: #f8fafc; /* Очень светло-серый фон */
+	--sticker-v2-card: #ffffff; /* Белые карточки */
+	--sticker-v2-border: #e2e8f0; /* Тонкие разделители */
+	--sticker-v2-border-light: #f1f5f9; /* Очень светлые разделители */
+	/* Акцентные цвета - только красный и зеленый */
+	--sticker-v2-accent-primary: #ef4444; /* Красный для важных элементов */
+	--sticker-v2-accent-success: #10b981; /* Зеленый для успеха/позитивных действий */
+	--sticker-v2-accent-neutral: #6b7280; /* Серый для нейтральных элементов */
+
+	/* Старые цвета для совместимости - переназначаем на красный/зеленый */
+	--sticker-v2-accent-red: #ef4444;
+	--sticker-v2-accent-green: #10b981;
+	--sticker-v2-accent-blue: #6b7280; /* Синий → серый */
+	--sticker-v2-accent-orange: #ef4444; /* Оранжевый → красный */
+	--sticker-v2-accent-purple: #6b7280; /* Фиолетовый → серый */
+	--sticker-v2-text-primary: #1f2937; /* Основной текст */
+	--sticker-v2-text-secondary: #6b7280; /* Вторичный текст */
+	--sticker-v2-text-muted: #9ca3af; /* Приглушенный текст */
+	--sticker-v2-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1),
+		0 1px 2px 0 rgba(0, 0, 0, 0.06);
+	--sticker-v2-shadow-lg: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
+		0 2px 4px -1px rgba(0, 0, 0, 0.06);
+	--sticker-v2-shadow-xl: 0 10px 15px -3px rgba(0, 0, 0, 0.1),
+		0 4px 6px -2px rgba(0, 0, 0, 0.05);
+}
+
+/* Применяем стикер-дизайн v2 только когда активен */
+[data-design='sticker-v2'] {
+	background-color: var(--sticker-v2-bg);
+}
+
+/* Улучшенная сетка и отступы */
+[data-design='sticker-v2'] .container {
+	max-width: 1200px;
+	margin: 0 auto;
+	padding: 0 16px;
+}
+
+/* Обертка для всего layout */
+[data-design='sticker-v2'] .layout-wrapper {
+	min-height: 100vh;
+	display: flex;
+	flex-direction: column;
+}
+
+/* Хедер на всю ширину */
+[data-design='sticker-v2'] .header-full {
+	width: 100%;
+	padding: 16px;
+}
+
+/* Основная сетка (сайдбар + контент) */
+[data-design='sticker-v2'] .layout-grid {
+	display: flex;
+	flex: 1;
+	gap: 16px; /* Добавляем gap для отступа между сайдбаром и контентом */
+	padding: 0 16px 16px 16px; /* Отступы по краям */
+}
+
+[data-design='sticker-v2'] .layout-grid .sidebar {
+	width: 80px;
+	flex-shrink: 0;
+}
+
+/* Стилизация сайдбара как стикер-блок */
+[data-design='sticker-v2'] .sidebar > div {
+	background: var(--sticker-v2-card);
+	border-radius: 16px;
+	box-shadow: var(--sticker-v2-shadow);
+	border: 1px solid var(--sticker-v2-border-light);
+	height: 100%;
+}
+
+[data-design='sticker-v2'] .layout-grid .main-content {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	gap: 0;
+	padding: 0 16px 16px 16px; /* Отступы слева, справа и снизу */
+}
+
+[data-design='sticker-v2'] .layout-grid .top-nav {
+	margin-bottom: 16px;
+}
+
+[data-design='sticker-v2'] .layout-grid .main {
+	flex: 1;
+}
+
+/* Стикер-карточки v2 */
+[data-design='sticker-v2'] .sticker-card-v2 {
+	background: var(--sticker-v2-card);
+	border-radius: 16px;
+	box-shadow: var(--sticker-v2-shadow);
+	border: 1px solid var(--sticker-v2-border-light);
+	position: relative;
+	overflow: hidden;
+}
+
+/* Акцентные метки/наклейки */
+[data-design='sticker-v2'] .accent-label {
+	position: absolute;
+	top: -1px;
+	right: 12px;
+	background: linear-gradient(135deg, var(--sticker-v2-accent-green), #059669);
+	color: white;
+	padding: 4px 12px;
+	border-radius: 0 0 8px 8px;
+	font-size: 0.75rem;
+	font-weight: 600;
+	box-shadow: var(--sticker-v2-shadow);
+	z-index: 10;
+}
+
+[data-design='sticker-v2'] .accent-label.blue {
+	background: linear-gradient(135deg, var(--sticker-v2-accent-blue), #2563eb);
+}
+
+[data-design='sticker-v2'] .accent-label.red {
+	background: linear-gradient(135deg, var(--sticker-v2-accent-red), #dc2626);
+}
+
+[data-design='sticker-v2'] .accent-label.orange {
+	background: linear-gradient(135deg, var(--sticker-v2-accent-orange), #d97706);
+}
+
+[data-design='sticker-v2'] .accent-label.purple {
+	background: linear-gradient(135deg, var(--sticker-v2-accent-purple), #7c3aed);
+}
+
+/* Статистические блоки v2 */
+[data-design='sticker-v2'] .stat-sticker-v2 {
+	background: var(--sticker-v2-card);
+	border-radius: 16px;
+	box-shadow: var(--sticker-v2-shadow);
+	border: 1px solid var(--sticker-v2-border-light);
+	padding: 20px;
+	transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+	position: relative;
+	overflow: hidden;
+	height: 140px; /* Фиксированная высота для симметрии */
+	display: flex;
+	flex-direction: column;
+	justify-content: space-between;
+}
+
+[data-design='sticker-v2'] .stat-sticker-v2::before {
+	content: '';
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	height: 4px;
+	background: linear-gradient(
+		90deg,
+		var(--sticker-v2-accent-blue),
+		var(--sticker-v2-accent-green),
+		var(--sticker-v2-accent-purple)
+	);
+}
+
+[data-design='sticker-v2'] .stat-sticker-v2:hover {
+	box-shadow: var(--sticker-v2-shadow-lg);
+	transform: translateY(-3px);
+}
+
+/* Хедер с логотипом v2 - компактный */
+[data-design='sticker-v2'] .sticker-header-with-logo-v2 {
+	background: var(--sticker-v2-card);
+	box-shadow: var(--sticker-v2-shadow);
+	border-radius: 16px;
+	margin-bottom: 0;
+	/* Убираем все разделительные линии */
+	border: none;
+	padding: 12px 24px !important; /* Уменьшаем вертикальные отступы */
+}
+
+/* Хедер v2 (старый) */
+[data-design='sticker-v2'] .sticker-header-v2 {
+	background: var(--sticker-v2-card);
+	box-shadow: var(--sticker-v2-shadow);
+	border-radius: 16px;
+	margin-bottom: 0;
+	/* Убираем все разделительные линии */
+	border: none;
+}
+
+/* Объединенная навигация v2 - компактная панель с табами и кнопкой */
+[data-design='sticker-v2'] .unified-nav-v2 {
+	background: var(--sticker-v2-card);
+	box-shadow: var(--sticker-v2-shadow);
+	border-radius: 12px;
+	margin-bottom: 16px;
+	padding: 8px 16px;
+	border: 1px solid var(--sticker-v2-border-light);
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 16px;
+}
+
+[data-design='sticker-v2'] .unified-nav-items {
+	display: flex;
+	align-items: center;
+	flex: 1;
+}
+
+[data-design='sticker-v2'] .nav-item-unified {
+	position: relative;
+	padding: 8px 16px;
+	border-radius: 8px;
+	font-size: 0.875rem;
+	font-weight: 500;
+	color: var(--sticker-v2-text-secondary);
+	text-decoration: none;
+	transition: all 0.2s ease;
+	white-space: nowrap;
+}
+
+[data-design='sticker-v2'] .nav-item-unified:hover {
+	background: var(--sticker-v2-bg);
+	color: var(--sticker-v2-text-primary);
+}
+
+[data-design='sticker-v2'] .nav-item-unified.active {
+	background: linear-gradient(135deg, #e5e7eb, #d1d5db);
+	color: var(--sticker-v2-text-primary);
+	font-weight: 600;
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+[data-design='sticker-v2'] .nav-count {
+	font-size: 0.75rem;
+	opacity: 0.9;
+}
+
+[data-design='sticker-v2'] .nav-divider {
+	width: 1px;
+	height: 20px;
+	background: var(--sticker-v2-border-light);
+	margin: 0 4px;
+}
+
+/* Верхняя навигация v2 - компактная (старая версия) */
+[data-design='sticker-v2'] .sticker-top-nav-v2 {
+	background: var(--sticker-v2-card);
+	box-shadow: var(--sticker-v2-shadow);
+	border-radius: 12px;
+	margin-bottom: 16px;
+	padding: 6px 12px;
+	border: none;
+}
+
+[data-design='sticker-v2'] .sticker-top-nav-v2 .nav-item-v2 {
+	position: relative;
+	transition: all 0.3s ease;
+	border-radius: 8px;
+	padding: 8px 16px;
+	font-size: 0.875rem;
+}
+
+[data-design='sticker-v2'] .sticker-top-nav-v2 .nav-item-v2.active {
+	background: var(--sticker-v2-bg);
+}
+
+[data-design='sticker-v2'] .sticker-top-nav-v2 .nav-item-v2.active::after {
+	content: '';
+	position: absolute;
+	bottom: 0;
+	left: 0;
+	right: 0;
+	height: 2px;
+	background: linear-gradient(
+		90deg,
+		var(--sticker-v2-accent-green),
+		var(--sticker-v2-accent-blue)
+	);
+	border-radius: 2px 2px 0 0;
+}
+
+/* Контентные блоки v2 - компактные */
+[data-design='sticker-v2'] .content-sticker-v2 {
+	background: var(--sticker-v2-card);
+	border-radius: 16px;
+	box-shadow: var(--sticker-v2-shadow);
+	border: 1px solid var(--sticker-v2-border-light);
+	padding: 16px 24px; /* Уменьшаем вертикальные отступы с 24px до 16px */
+	margin-bottom: 20px;
+}
+
+/* Улучшенная сетка для статистики */
+[data-design='sticker-v2'] .stats-grid-v2 {
+	display: grid;
+	grid-template-columns: repeat(4, 1fr);
+	gap: 16px;
+	margin-bottom: 24px;
+}
+
+/* Разделители v2 */
+[data-design='sticker-v2'] .sticker-divider-v2 {
+	height: 1px;
+	background: linear-gradient(
+		90deg,
+		transparent,
+		var(--sticker-v2-border),
+		transparent
+	);
+	margin: 20px 0;
+}
+
+/* Кнопки v2 */
+[data-design='sticker-v2'] .sticker-btn-primary-v2 {
+	background: linear-gradient(135deg, var(--sticker-v2-accent-green), #059669);
+	color: white;
+	border: none;
+	border-radius: 16px;
+	padding: 14px 28px;
+	font-weight: 600;
+	font-size: 0.875rem;
+	transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+	box-shadow: var(--sticker-v2-shadow);
+	position: relative;
+	overflow: hidden;
+}
+
+[data-design='sticker-v2'] .sticker-btn-primary-v2::before {
+	content: '';
+	position: absolute;
+	top: 0;
+	left: -100%;
+	width: 100%;
+	height: 100%;
+	background: linear-gradient(
+		90deg,
+		transparent,
+		rgba(255, 255, 255, 0.2),
+		transparent
+	);
+	transition: left 0.5s;
+}
+
+[data-design='sticker-v2'] .sticker-btn-primary-v2:hover::before {
+	left: 100%;
+}
+
+[data-design='sticker-v2'] .sticker-btn-primary-v2:hover {
+	transform: translateY(-2px);
+	box-shadow: var(--sticker-v2-shadow-lg);
+}
+
+/* Breadcrumbs - тонкая навигационная панель */
+[data-design='sticker-v2'] .breadcrumbs-wrapper-v2 {
+	background: var(--sticker-v2-card);
+	border-radius: 12px;
+	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+	border: 1px solid var(--sticker-v2-border-light);
+	padding: 8px 16px;
+	margin-bottom: 16px;
+}
+
+[data-design='sticker-v2'] .breadcrumbs-v2 {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+[data-design='sticker-v2'] .breadcrumbs-items {
+	display: flex;
+	align-items: center;
+}
+
+[data-design='sticker-v2'] .breadcrumb-item {
+	display: flex;
+	align-items: center;
+}
+
+[data-design='sticker-v2'] .breadcrumb-link {
+	color: var(--sticker-v2-text-secondary);
+	font-size: 0.875rem;
+	font-weight: 400;
+	text-decoration: none;
+	transition: color 0.2s;
+}
+
+[data-design='sticker-v2'] .breadcrumb-link:hover {
+	color: var(--sticker-v2-accent-blue);
+}
+
+[data-design='sticker-v2'] .breadcrumb-current {
+	color: var(--sticker-v2-text-primary);
+	font-size: 0.875rem;
+	font-weight: 500;
+}
+
+/* Акцентный текст v2 - компактный */
+[data-design='sticker-v2'] .accent-text-v2 {
+	color: var(--sticker-v2-text-primary);
+	font-weight: 700;
+	font-size: 1.5rem; /* 24px вместо 30px */
+	line-height: 1.2;
+	letter-spacing: -0.025em;
+	margin-bottom: 4px; /* Уменьшаем отступ снизу */
+}
+
+[data-design='sticker-v2'] .accent-subtitle-v2 {
+	color: var(--sticker-v2-text-secondary);
+	font-size: 0.875rem; /* 14px вместо 16px */
+	margin-top: 4px; /* Уменьшаем отступ сверху */
+	font-weight: 400;
+}
+
+/* Иконки v2 */
+[data-design='sticker-v2'] .icon-blue-v2 {
+	color: var(--sticker-v2-accent-blue);
+}
+
+[data-design='sticker-v2'] .icon-green-v2 {
+	color: var(--sticker-v2-accent-green);
+}
+
+[data-design='sticker-v2'] .icon-red-v2 {
+	color: var(--sticker-v2-accent-red);
+}
+
+[data-design='sticker-v2'] .icon-orange-v2 {
+	color: var(--sticker-v2-accent-orange);
+}
+
+[data-design='sticker-v2'] .icon-purple-v2 {
+	color: var(--sticker-v2-accent-purple);
+}
+
+/* Отступы v2 */
+[data-design='sticker-v2'] .sticker-spacing-v2 {
+	gap: 20px;
+}
+
+[data-design='sticker-v2'] .sticker-spacing-lg-v2 {
+	gap: 32px;
+}
+
+/* Статусы v2 */
+[data-design='sticker-v2'] .status-dot-v2 {
+	width: 10px;
+	height: 10px;
+	border-radius: 50%;
+	display: inline-block;
+	margin-right: 12px;
+	box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.8);
+}
+
+[data-design='sticker-v2'] .status-dot-v2.production {
+	background: var(--sticker-v2-accent-blue);
+}
+
+[data-design='sticker-v2'] .status-dot-v2.sent {
+	background: var(--sticker-v2-accent-green);
+}
+
+[data-design='sticker-v2'] .status-dot-v2.draft {
+	background: var(--sticker-v2-accent-orange);
+}
+
+/* Улучшенные анимации */
+@keyframes stickerFloatV2 {
+	0%,
+	100% {
+		transform: translateY(0px) rotate(0deg);
+	}
+	33% {
+		transform: translateY(-2px) rotate(0.5deg);
+	}
+	66% {
+		transform: translateY(-1px) rotate(-0.5deg);
+	}
+}
+
+@keyframes shimmerV2 {
+	0% {
+		transform: translateX(-100%);
+	}
+	100% {
+		transform: translateX(100%);
+	}
+}
+
+/* Микро-взаимодействия */
+[data-design='sticker-v2'] .interactive-element {
+	transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+[data-design='sticker-v2'] .interactive-element:hover {
+	transform: scale(1.02);
+}
+
+/* Улучшенная типографика */
+[data-design='sticker-v2'] .text-hierarchy-v2 {
+	font-family: system-ui, -apple-system, sans-serif;
+}
+
+[data-design='sticker-v2'] .text-hierarchy-v2 h1 {
+	font-size: 2.25rem;
+	font-weight: 800;
+	letter-spacing: -0.025em;
+	line-height: 1.1;
+}
+
+[data-design='sticker-v2'] .text-hierarchy-v2 h2 {
+	font-size: 1.875rem;
+	font-weight: 700;
+	letter-spacing: -0.025em;
+	line-height: 1.2;
+}
+
+[data-design='sticker-v2'] .text-hierarchy-v2 h3 {
+	font-size: 1.5rem;
+	font-weight: 600;
+	line-height: 1.3;
+}
+
+[data-design='sticker-v2'] .text-hierarchy-v2 p {
+	font-size: 1rem;
+	font-weight: 400;
+	line-height: 1.6;
+	color: var(--sticker-v2-text-secondary);
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+	[data-design='sticker-v2'] .layout-grid {
+		flex-direction: column;
+		gap: 8px;
+	}
+
+	[data-design='sticker-v2'] .layout-grid .sidebar {
+		display: none;
+	}
+
+	[data-design='sticker-v2'] .stats-grid-v2 {
+		grid-template-columns: repeat(2, 1fr);
+		gap: 12px;
+	}
+
+	[data-design='sticker-v2'] .stat-sticker-v2 {
+		height: 120px;
+		padding: 16px;
+	}
+
+	[data-design='sticker-v2'] .content-sticker-v2 {
+		padding: 20px;
+	}
+}
+
+@media (max-width: 480px) {
+	[data-design='sticker-v2'] .stats-grid-v2 {
+		grid-template-columns: 1fr;
+		gap: 12px;
+	}
+
+	[data-design='sticker-v2'] .container {
+		padding: 0 12px;
+	}
+}

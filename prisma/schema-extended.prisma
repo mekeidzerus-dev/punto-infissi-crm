@@ -1,0 +1,99 @@
+// Расширенная схема для новой системы параметров
+// Этот файл будет использоваться только если FEATURE_FLAGS.ADVANCED_PARAMETERS = true
+
+model ParameterTemplate {
+  id          String @id @default(cuid())
+  name        String // "Материал", "Цвет", "Размер"
+  type        ParameterType // "select", "number", "text", "boolean", "color"
+  description String?
+  validation  Json? // Правила валидации
+  isGlobal    Boolean @default(true)
+  isActive    Boolean @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Связи
+  categoryAssignments CategoryParameter[]
+  supplierOverrides   SupplierParameterOverride[]
+  userSuggestions     UserSuggestion[]
+  
+  @@unique([name])
+}
+
+model CategoryParameter {
+  id           String @id @default(cuid())
+  categoryId   String
+  category     ProductCategory @relation(fields: [categoryId], references: [id])
+  templateId   String
+  template     ParameterTemplate @relation(fields: [templateId], references: [id])
+  
+  // Настройки для категории
+  isRequired   Boolean @default(false)
+  defaultValue String?
+  order        Int @default(0)
+  displayName  String? // Переопределение названия для категории
+  
+  @@unique([categoryId, templateId])
+}
+
+model SupplierParameterOverride {
+  id           String @id @default(cuid())
+  supplierId   Int
+  supplier     Supplier @relation(fields: [supplierId], references: [id])
+  templateId   String
+  template     ParameterTemplate @relation(fields: [templateId], references: [id])
+  
+  // Специфичные для поставщика значения
+  customOptions Json? // ["Дуб", "Сосна"] вместо ["Дерево", "Металл"]
+  customValidation Json?
+  isAvailable  Boolean @default(true) // Поставщик может отключить параметр
+  
+  @@unique([supplierId, templateId])
+}
+
+model UserSuggestion {
+  id          String @id @default(cuid())
+  userId      String? // Если пользователь авторизован
+  sessionId   String? // Для анонимных пользователей
+  
+  // Что предлагается добавить
+  type        SuggestionType // "parameter_value", "new_parameter", "category_parameter"
+  categoryId  String?
+  parameterId String?
+  supplierId  Int?
+  templateId  String?
+  template    ParameterTemplate? @relation(fields: [templateId], references: [id])
+  
+  // Данные предложения
+  suggestionData Json // { value: "Новый цвет", description: "Описание" }
+  
+  // Статус
+  status      SuggestionStatus @default("pending") // "pending", "approved", "rejected"
+  adminNotes  String?
+  
+  // Метаданные
+  createdAt   DateTime @default(now())
+  reviewedAt  DateTime?
+  reviewedBy  String?
+}
+
+enum ParameterType {
+  SELECT
+  NUMBER
+  TEXT
+  BOOLEAN
+  COLOR
+  MULTI_SELECT
+}
+
+enum SuggestionType {
+  PARAMETER_VALUE    // Новое значение параметра
+  NEW_PARAMETER      // Новый параметр
+  CATEGORY_PARAMETER // Назначение параметра категории
+}
+
+enum SuggestionStatus {
+  PENDING   // Ожидает рассмотрения
+  APPROVED  // Одобрено
+  REJECTED  // Отклонено
+}

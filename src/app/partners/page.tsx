@@ -1,0 +1,262 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+import { DashboardLayoutStickerV2 } from '@/components/dashboard-layout-sticker-v2'
+import { UnifiedNavV2 } from '@/components/unified-nav-v2'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Handshake } from 'lucide-react'
+import {
+	Card,
+	CardContent,
+	CardDescription,
+	CardHeader,
+	CardTitle,
+} from '@/components/ui/card'
+import {
+	Table,
+	TableBody,
+	TableCell,
+	TableHead,
+	TableHeader,
+	TableRow,
+} from '@/components/ui/table'
+import { Badge } from '@/components/ui/badge'
+import { Plus, Pencil, Trash2, Search, Edit } from 'lucide-react'
+import { highlightText } from '@/lib/highlight-text'
+import { useSorting } from '@/hooks/use-sorting'
+import { multiSearch } from '@/lib/multi-search'
+import { PartnerFormModal } from '@/components/partner-form-modal'
+import { useLanguage } from '@/contexts/LanguageContext'
+
+// Типы партнеров для отображения
+const getPartnerTypes = (t: any) => ({
+	architect: t('architect'),
+	engineer: t('engineer'),
+	designer: t('designer'),
+	dealer: t('dealer'),
+	distributor: t('distributor'),
+	agent: t('agent'),
+	other: t('other'),
+})
+
+export default function PartnersPage() {
+	const { t } = useLanguage()
+	const partnerTypes = getPartnerTypes(t)
+	const [searchTerm, setSearchTerm] = useState('')
+	const [isFormOpen, setIsFormOpen] = useState(false)
+	const [editingPartner, setEditingPartner] = useState<any>(null)
+
+	const [partners, setPartners] = useState<any[]>([])
+	const [isLoading, setIsLoading] = useState(true)
+
+	useEffect(() => {
+		fetchPartners()
+	}, [])
+
+	const fetchPartners = async () => {
+		try {
+			setIsLoading(true)
+			const response = await fetch('/api/partners')
+			if (response.ok) {
+				setPartners(await response.json())
+			}
+		} catch (error) {
+			console.error('Error fetching partners:', error)
+		} finally {
+			setIsLoading(false)
+		}
+	}
+
+	const getTypeLabel = (type: string) => {
+		const types: Record<string, string> = {
+			dealer: 'Дилер',
+			distributor: 'Дистрибьютор',
+			agent: 'Агент',
+		}
+		return types[type] || type
+	}
+
+	// Множественная фильтрация
+	const filteredPartners = multiSearch(partners, searchTerm, [
+		'name',
+		'contact',
+		'phone',
+		'email',
+		'type',
+	])
+
+	// Сортировка
+	const { sortedItems, requestSort, getSortIcon } = useSorting(
+		filteredPartners,
+		'name'
+	)
+
+	const handleSavePartner = async (formData: any) => {
+		try {
+			if (editingPartner) {
+				await fetch('/api/partners', {
+					method: 'PUT',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ id: editingPartner.id, ...formData }),
+				})
+			} else {
+				await fetch('/api/partners', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify(formData),
+				})
+			}
+			await fetchPartners()
+			setEditingPartner(null)
+		} catch (error) {
+			console.error('Error saving partner:', error)
+			alert(t('errorSaving'))
+		}
+	}
+
+	const handleEdit = (partner: any) => {
+		setEditingPartner(partner)
+		setIsFormOpen(true)
+	}
+
+	const handleDelete = async (id: number) => {
+		if (!confirm(t('confirmDeletePartner'))) return
+
+		try {
+			await fetch(`/api/partners?id=${id}`, { method: 'DELETE' })
+			await fetchPartners()
+		} catch (error) {
+			console.error('Error deleting partner:', error)
+			alert(t('errorDeleting'))
+		}
+	}
+
+	return (
+		<DashboardLayoutStickerV2 hideTopNav={true}>
+			<div className='space-y-4'>
+				<UnifiedNavV2
+					items={[
+						{ id: 'clients', name: t('clients'), href: '/clients' },
+						{ id: 'suppliers', name: t('suppliers'), href: '/suppliers' },
+						{
+							id: 'partners',
+							name: t('partners'),
+							href: '/partners',
+							icon: Handshake,
+							count: partners.length,
+						},
+						{ id: 'installers', name: t('installers'), href: '/installers' },
+					]}
+					onAddClick={() => {
+						setEditingPartner(null)
+						setIsFormOpen(true)
+					}}
+					addButtonText={t('add')}
+				/>
+
+				<PartnerFormModal
+					isOpen={isFormOpen}
+					onClose={() => {
+						setIsFormOpen(false)
+						setEditingPartner(null)
+					}}
+					onSave={handleSavePartner}
+					initialData={editingPartner}
+				/>
+				<div className='content-sticker-v2'>
+					{/* Поиск */}
+					<div className='mb-4'>
+						<div className='relative'>
+							<Search className='absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400' />
+							<Input
+								placeholder={t('searchPartners')}
+								value={searchTerm}
+								onChange={e => setSearchTerm(e.target.value)}
+								className='pl-10 bg-gray-50 border-gray-200 rounded-xl'
+							/>
+						</div>
+					</div>
+
+					<Table>
+						<TableHeader>
+							<TableRow>
+								<TableHead
+									className='text-xs cursor-pointer hover:bg-gray-50'
+									onClick={() => requestSort('name')}
+								>
+									<div className='flex items-center gap-1'>
+										{t('name')} {getSortIcon('name')}
+									</div>
+								</TableHead>
+								<TableHead
+									className='text-xs cursor-pointer hover:bg-gray-50'
+									onClick={() => requestSort('contact')}
+								>
+									<div className='flex items-center gap-1'>
+										{t('contactPerson')} {getSortIcon('contact')}
+									</div>
+								</TableHead>
+								<TableHead className='text-xs'>{t('phone')}</TableHead>
+								<TableHead className='text-xs'>{t('email')}</TableHead>
+								<TableHead
+									className='text-xs cursor-pointer hover:bg-gray-50'
+									onClick={() => requestSort('type')}
+								>
+									<div className='flex items-center gap-1'>
+										{t('type')} {getSortIcon('type')}
+									</div>
+								</TableHead>
+								<TableHead className='text-right text-xs'>
+									{t('actions')}
+								</TableHead>
+							</TableRow>
+						</TableHeader>
+						<TableBody>
+							{sortedItems.map(partner => (
+								<TableRow key={partner.id} className='hover:bg-gray-50'>
+									<TableCell className='font-medium text-sm'>
+										{highlightText(partner.name, searchTerm)}
+									</TableCell>
+									<TableCell className='text-sm text-gray-600'>
+										{highlightText(partner.contact, searchTerm)}
+									</TableCell>
+									<TableCell className='text-sm text-gray-600'>
+										{highlightText(partner.phone, searchTerm)}
+									</TableCell>
+									<TableCell className='text-sm text-gray-600'>
+										{highlightText(partner.email, searchTerm)}
+									</TableCell>
+									<TableCell>
+										<Badge variant='secondary' className='text-xs'>
+											{getTypeLabel(partner.type)}
+										</Badge>
+									</TableCell>
+									<TableCell className='text-right'>
+										<div className='flex justify-end gap-2'>
+											<Button
+												variant='outline'
+												size='sm'
+												onClick={() => handleEdit(partner)}
+											>
+												<Edit className='h-4 w-4' />
+											</Button>
+											<Button
+												variant='outline'
+												size='sm'
+												onClick={() => handleDelete(partner.id)}
+												className='text-red-600 hover:bg-red-50'
+											>
+												<Trash2 className='h-4 w-4' />
+											</Button>
+										</div>
+									</TableCell>
+								</TableRow>
+							))}
+						</TableBody>
+					</Table>
+				</div>
+			</div>
+		</DashboardLayoutStickerV2>
+	)
+}
