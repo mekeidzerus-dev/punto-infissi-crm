@@ -1,4 +1,4 @@
-name: Deploy to FastPanel
+name: Simple Deploy
 
 on:
   push:
@@ -9,26 +9,6 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '18'
-        
-    - name: Install dependencies
-      run: npm ci
-      
-    - name: Create deployment archive
-      run: |
-        tar -czf deploy.tar.gz \
-          --exclude=node_modules \
-          --exclude=.git \
-          --exclude=.next/cache \
-          --exclude=*.log \
-          .
-          
     - name: Deploy to FastPanel
       uses: appleboy/ssh-action@v1.0.3
       with:
@@ -42,32 +22,8 @@ jobs:
           # Stop PM2
           pm2 stop punto-infissi-crm || true
           
-          # Clean directory (keep .env and node_modules)
-          find . -maxdepth 1 -not -name '.env' -not -name 'node_modules' -not -name '.' -not -name '..' -exec rm -rf {} \;
-          
-    - name: Upload files
-      uses: appleboy/scp-action@v0.1.7
-      with:
-        host: ${{ secrets.FASTPANEL_HOST }}
-        username: ${{ secrets.FASTPANEL_USER }}
-        port: ${{ secrets.FASTPANEL_PORT }}
-        key: ${{ secrets.FASTPANEL_SSH_KEY }}
-        source: "deploy.tar.gz"
-        target: "/var/www/fastuser/data/www/infissi.omoxsoft.com.ua/"
-        
-    - name: Extract and restart
-      uses: appleboy/ssh-action@v1.0.3
-      with:
-        host: ${{ secrets.FASTPANEL_HOST }}
-        username: ${{ secrets.FASTPANEL_USER }}
-        port: ${{ secrets.FASTPANEL_PORT }}
-        key: ${{ secrets.FASTPANEL_SSH_KEY }}
-        script: |
-          cd /var/www/fastuser/data/www/infissi.omoxsoft.com.ua
-          
-          # Extract archive
-          tar -xzf deploy.tar.gz
-          rm deploy.tar.gz
+          # Update from Git
+          git pull origin main
           
           # Install dependencies
           npm ci --production
@@ -92,5 +48,4 @@ jobs:
           # Start PM2
           pm2 start punto-infissi-crm
           
-          # Check status
-          pm2 status
+          echo "Deploy completed successfully!"
