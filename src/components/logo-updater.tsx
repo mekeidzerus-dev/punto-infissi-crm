@@ -6,6 +6,30 @@ const LOGO_STORAGE_KEY = 'punto-infissi-logo-path'
 
 export function LogoUpdater() {
 	useEffect(() => {
+		// Загружаем логотип из БД при первой загрузке
+		const loadLogoFromDB = async () => {
+			try {
+				const response = await fetch('/api/organization')
+				if (response.ok) {
+					const org = await response.json()
+					if (org.logoUrl) {
+						localStorage.setItem(LOGO_STORAGE_KEY, org.logoUrl)
+						console.log('✅ Loaded logo from database:', org.logoUrl)
+						window.dispatchEvent(new Event('logo-updated'))
+					}
+				}
+			} catch (error) {
+				console.error('❌ Failed to load logo from database:', error)
+			}
+		}
+
+		// Проверяем, есть ли логотип в localStorage
+		const cachedLogo = localStorage.getItem(LOGO_STORAGE_KEY)
+		if (!cachedLogo) {
+			// Если нет в кэше, загружаем из БД
+			loadLogoFromDB()
+		}
+
 		// Функция для обновления логотипа
 		const updateLogo = () => {
 			const logoPath = localStorage.getItem(LOGO_STORAGE_KEY)

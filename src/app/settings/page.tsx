@@ -127,29 +127,67 @@ export default function SettingsPage() {
 
 	// Загружаем сохраненные настройки при монтировании
 	useEffect(() => {
-		// Фавикон
-		const savedFaviconPath = localStorage.getItem('punto-infissi-favicon-path')
-		if (savedFaviconPath) {
-			setFavicon(savedFaviconPath)
-			setFaviconPreview(savedFaviconPath)
-		}
-
-		// Логотип
-		const savedLogoPath = localStorage.getItem('punto-infissi-logo-path')
-		if (savedLogoPath) {
-			setLogo(savedLogoPath)
-			setLogoPreview(savedLogoPath)
-		}
-
-		// Данные компании
-		const savedCompanyData = localStorage.getItem('punto-infissi-company-data')
-		if (savedCompanyData) {
+		// Загружаем данные из базы данных
+		const loadOrganizationData = async () => {
 			try {
-				setCompanyData(JSON.parse(savedCompanyData))
-			} catch (e) {
-				console.error('Ошибка загрузки данных компании:', e)
+				const response = await fetch('/api/organization')
+				if (response.ok) {
+					const org = await response.json()
+					
+					// Логотип из БД
+					if (org.logoUrl) {
+						setLogo(org.logoUrl)
+						setLogoPreview(org.logoUrl)
+						localStorage.setItem('punto-infissi-logo-path', org.logoUrl)
+						window.dispatchEvent(new Event('logo-updated'))
+					}
+					
+					// Фавикон из БД
+					if (org.faviconUrl) {
+						setFavicon(org.faviconUrl)
+						setFaviconPreview(org.faviconUrl)
+						localStorage.setItem('punto-infissi-favicon-path', org.faviconUrl)
+						window.dispatchEvent(new Event('favicon-updated'))
+					}
+					
+					// Данные компании
+					if (org.name) {
+						setCompanyData(prev => ({
+							...prev,
+							name: org.name,
+						}))
+					}
+					
+					console.log('✅ Loaded organization data from database')
+				}
+			} catch (error) {
+				console.error('❌ Failed to load organization data:', error)
+				
+				// Fallback: пробуем загрузить из localStorage
+				const savedFaviconPath = localStorage.getItem('punto-infissi-favicon-path')
+				if (savedFaviconPath) {
+					setFavicon(savedFaviconPath)
+					setFaviconPreview(savedFaviconPath)
+				}
+
+				const savedLogoPath = localStorage.getItem('punto-infissi-logo-path')
+				if (savedLogoPath) {
+					setLogo(savedLogoPath)
+					setLogoPreview(savedLogoPath)
+				}
+
+				const savedCompanyData = localStorage.getItem('punto-infissi-company-data')
+				if (savedCompanyData) {
+					try {
+						setCompanyData(JSON.parse(savedCompanyData))
+					} catch (e) {
+						console.error('Ошибка загрузки данных компании:', e)
+					}
+				}
 			}
 		}
+		
+		loadOrganizationData()
 	}, [])
 
 	const handleFaviconUpload = async (

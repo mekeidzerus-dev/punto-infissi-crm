@@ -80,7 +80,38 @@ export async function POST(request: NextRequest) {
 			`Очистка логотипов завершена: сохранено ${cleanup.kept}, удалено ${cleanup.deleted}`
 		)
 
-		// 7. Возврат результата
+		// 7. Сохранение пути в базу данных
+		try {
+			const { prisma } = await import('@/lib/prisma')
+			
+			// Получаем или создаем организацию
+			const existing = await prisma.organization.findFirst()
+			
+			if (existing) {
+				await prisma.organization.update({
+					where: { id: existing.id },
+					data: { logoUrl: saveResult.path },
+				})
+				console.log('✅ Logo path saved to database:', saveResult.path)
+			} else {
+				await prisma.organization.create({
+					data: {
+						name: 'PUNTO INFISSI',
+						slug: 'punto-infissi',
+						logoUrl: saveResult.path,
+						currency: 'EUR',
+						timezone: 'Europe/Rome',
+						language: 'it',
+					},
+				})
+				console.log('✅ Created organization with logo:', saveResult.path)
+			}
+		} catch (dbError) {
+			console.error('⚠️ Failed to save logo to database:', dbError)
+			// Не прерываем выполнение, файл уже сохранен
+		}
+
+		// 8. Возврат результата
 		return NextResponse.json(
 			{
 				success: true,
@@ -139,6 +170,22 @@ export async function DELETE(request: NextRequest) {
 		console.log(
 			`Удалено ${cleanup.deleted} логотипов, ошибок: ${cleanup.errors}`
 		)
+
+		// 3. Удаление пути из базы данных
+		try {
+			const { prisma } = await import('@/lib/prisma')
+			const existing = await prisma.organization.findFirst()
+			
+			if (existing) {
+				await prisma.organization.update({
+					where: { id: existing.id },
+					data: { logoUrl: null },
+				})
+				console.log('✅ Logo path removed from database')
+			}
+		} catch (dbError) {
+			console.error('⚠️ Failed to remove logo from database:', dbError)
+		}
 
 		return NextResponse.json(
 			{
