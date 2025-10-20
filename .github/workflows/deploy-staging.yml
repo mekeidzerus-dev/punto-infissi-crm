@@ -8,7 +8,7 @@ on:
 jobs:
   deploy-staging:
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: 📥 Checkout code
         uses: actions/checkout@v4
@@ -22,67 +22,55 @@ jobs:
           key: ${{ secrets.FASTPANEL_SSH_KEY }}
           script: |
             set -e  # Останавливаем выполнение при любой ошибке
-            
+
             echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
             echo "🧪 STAGING DEPLOYMENT STARTED"
             echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-            
+
             # Директория staging
             STAGING_DIR="/var/www/fastuser/data/www/staging.infissi.omoxsoft.com.ua"
-            
+
             # Переходим в директорию
             cd $STAGING_DIR
-            
+
             # Останавливаем PM2 процесс
             echo "1️⃣ Останавливаем staging процесс..."
             pm2 stop punto-infissi-crm-staging || true
-            
+
             # Обновляем код из GitHub
             echo "2️⃣ Обновляем код из GitHub..."
             git fetch origin
             git reset --hard origin/develop
             
-            # Создаем правильный next.config.js (всегда пересоздаем)
-            echo "3️⃣ Создаем next.config.js..."
-            cat > next.config.js << 'EOFCONFIG'
-            /** @type {import("next").NextConfig} */
-            const nextConfig = {
-              typescript: {
-                ignoreBuildErrors: true,
-              },
-              eslint: {
-                ignoreDuringBuilds: true,
-              },
-            };
-            module.exports = nextConfig;
-            EOFCONFIG
-            echo "✅ next.config.js создан"
+            # Проверяем что next.config.js из репозитория правильный
+            echo "3️⃣ Проверяем next.config.js..."
+            cat next.config.js
             
             # Устанавливаем зависимости
             echo "4️⃣ Устанавливаем зависимости..."
             npm install
-            
+
             # Запускаем Prisma миграции
             echo "5️⃣ Запускаем Prisma миграции..."
             npx prisma migrate deploy
             npx prisma generate
-            
+
             # Собираем проект
             echo "6️⃣ Собираем проект..."
             rm -rf .next
             npm run build
-            
+
             # Запускаем PM2 процесс
             echo "7️⃣ Запускаем staging процесс..."
             pm2 delete punto-infissi-crm-staging || true
             pm2 start npm --name "punto-infissi-crm-staging" -- start -- --port 3002
             pm2 save
-            
+
             # Проверяем статус
             echo "8️⃣ Проверяем статус..."
             sleep 5
             pm2 list | grep staging
-            
+
             echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
             echo "✅ STAGING DEPLOYMENT COMPLETED"
             echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -94,4 +82,3 @@ jobs:
           echo "Проверяем staging..."
           curl -f http://95.67.11.37:3002 || exit 1
           echo "✅ Staging работает!"
-

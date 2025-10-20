@@ -1,6 +1,7 @@
 # 🏗️ АРХИТЕКТУРА DEPLOYMENT
 
 ## 📋 ОГЛАВЛЕНИЕ
+
 1. [Общая архитектура](#общая-архитектура)
 2. [Структура директорий](#структура-директорий)
 3. [GitHub Actions](#github-actions)
@@ -93,6 +94,7 @@
 **Триггер:** `push` в ветку `develop`
 
 **Шаги:**
+
 1. ✅ Checkout кода
 2. ✅ SSH подключение к серверу
 3. ✅ Остановка PM2 процесса
@@ -114,6 +116,7 @@
 **Триггер:** `push` в ветку `main`
 
 **Шаги:**
+
 1. ✅ Checkout кода
 2. ✅ SSH подключение к серверу
 3. ✅ Создание бэкапа
@@ -249,6 +252,7 @@ curl https://infissi.omoxsoft.com.ua/api/health
 ### **❌ Проблема: GitHub Actions падает**
 
 **Решение:**
+
 1. Проверить GitHub Actions: https://github.com/mekeidzerus-dev/punto-infissi-crm/actions
 2. Проверить секреты в GitHub:
    - `FASTPANEL_HOST`
@@ -262,6 +266,7 @@ curl https://infissi.omoxsoft.com.ua/api/health
 ### **❌ Проблема: PM2 процесс не запускается**
 
 **Решение:**
+
 ```bash
 ssh fastuser@95.67.11.37
 cd /var/www/fastuser/data/www/staging.infissi.omoxsoft.com.ua
@@ -269,6 +274,7 @@ pm2 logs punto-infissi-crm-staging --lines 50
 ```
 
 Проверить:
+
 - `.env` файл существует
 - `DATABASE_URL` правильный
 - `node_modules` установлены
@@ -279,19 +285,22 @@ pm2 logs punto-infissi-crm-staging --lines 50
 ### **❌ Проблема: Сборка падает (build fails)**
 
 **Решение:**
+
 1. Проверить `next.config.js`:
+
 ```javascript
 const nextConfig = {
-  typescript: {
-    ignoreBuildErrors: true,
-  },
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
-};
+	typescript: {
+		ignoreBuildErrors: true,
+	},
+	eslint: {
+		ignoreDuringBuilds: true,
+	},
+}
 ```
 
 2. Пересобрать вручную:
+
 ```bash
 ssh fastuser@95.67.11.37
 cd /var/www/fastuser/data/www/staging.infissi.omoxsoft.com.ua
@@ -305,13 +314,16 @@ npm run build
 ### **❌ Проблема: База данных не подключается**
 
 **Решение:**
+
 1. Проверить `.env`:
+
 ```bash
 ssh fastuser@95.67.11.37
 cat /var/www/fastuser/data/www/staging.infissi.omoxsoft.com.ua/.env
 ```
 
 2. Проверить PostgreSQL:
+
 ```bash
 psql -U infissi_omox -d infissi_omox -c "SELECT 1;"
 ```
@@ -321,14 +333,17 @@ psql -U infissi_omox -d infissi_omox -c "SELECT 1;"
 ## 📊 МЕТРИКИ
 
 ### **Время деплоя:**
+
 - **Staging:** 2-3 минуты
 - **Production:** 3-4 минуты
 
 ### **Downtime:**
+
 - **Staging:** ~10-15 секунд
 - **Production:** ~10-15 секунд
 
 ### **Успешность:**
+
 - **Target:** 99% успешных деплоев
 - **Rollback time:** < 5 минут
 
@@ -337,12 +352,14 @@ psql -U infissi_omox -d infissi_omox -c "SELECT 1;"
 ## 🎯 CHECKLIST ПЕРЕД ДЕПЛОЕМ
 
 ### **Staging:**
+
 - [ ] Код протестирован локально
 - [ ] Все тесты проходят
 - [ ] `.env` файл обновлен
 - [ ] Prisma схема обновлена (если нужно)
 
 ### **Production:**
+
 - [ ] Staging протестирован
 - [ ] Все функции работают
 - [ ] Нет критических ошибок в логах
@@ -354,11 +371,13 @@ psql -U infissi_omox -d infissi_omox -c "SELECT 1;"
 ## 📞 КОНТАКТЫ
 
 **В случае проблем:**
+
 1. Проверить GitHub Actions
 2. Проверить PM2 логи
 3. Проверить Health Check endpoint
 
 **Полезные команды:**
+
 ```bash
 # Рестарт staging
 ssh fastuser@95.67.11.37 "pm2 restart punto-infissi-crm-staging"
@@ -376,4 +395,3 @@ pm2 restart punto-infissi-crm-current
 ---
 
 **🎉 Все работает автоматически!**
-
