@@ -8,7 +8,7 @@ on:
 jobs:
   deploy-production:
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: 📥 Checkout code
         uses: actions/checkout@v4
@@ -22,15 +22,15 @@ jobs:
           key: ${{ secrets.FASTPANEL_SSH_KEY }}
           script: |
             set -e
-            
+
             echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
             echo "🚀 PRODUCTION DEPLOYMENT"
             echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-            
+
             PRODUCTION_DIR="/var/www/fastuser/data/www/infissi.omoxsoft.com.ua"
-            
+
             cd $PRODUCTION_DIR
-            
+
             # 1️⃣ Создаем бэкап
             echo "1️⃣ Создаем бэкап..."
             BACKUP_DIR="/var/www/fastuser/data/backups/punto-infissi-crm"
@@ -38,17 +38,27 @@ jobs:
             BACKUP_FILE="$BACKUP_DIR/backup-$(date +%Y%m%d-%H%M%S).tar.gz"
             tar -czf $BACKUP_FILE .next package-lock.json 2>/dev/null || true
             echo "✅ Бэкап: $BACKUP_FILE"
-            
+
             # 2️⃣ Останавливаем PM2
             echo "2️⃣ Останавливаем production..."
             pm2 stop punto-infissi-crm-current || true
-            
-            # 3️⃣ Обновляем код
-            echo "3️⃣ Обновляем код из GitHub..."
-            git fetch origin
-            git reset --hard origin/main
+
+            # 3️⃣ Инициализируем Git репозиторий если нужно
+            echo "3️⃣ Проверяем Git репозиторий..."
+            if [ ! -d ".git" ]; then
+              echo "📥 Клонируем репозиторий..."
+              cd /var/www/fastuser/data/www/
+              rm -rf infissi.omoxsoft.com.ua
+              git clone https://github.com/mekeidzerus-dev/punto-infissi-crm.git infissi.omoxsoft.com.ua
+              cd infissi.omoxsoft.com.ua
+              git checkout main
+            else
+              echo "🔄 Обновляем существующий репозиторий..."
+              git fetch origin
+              git reset --hard origin/main
+            fi
             echo "✅ Код обновлен: $(git log --oneline -1)"
-            
+
             # 4️⃣ Проверяем next.config.js
             echo "4️⃣ Проверяем next.config.js..."
             if grep -q "NODE_ENV" next.config.js; then
@@ -56,31 +66,31 @@ jobs:
               exit 1
             fi
             echo "✅ next.config.js правильный"
-            
+
             # 5️⃣ Устанавливаем зависимости
             echo "5️⃣ Устанавливаем зависимости..."
             npm install
-            
+
             # 6️⃣ Prisma миграции
             echo "6️⃣ Запускаем Prisma миграции..."
             npx prisma migrate deploy
             npx prisma generate
-            
+
             # 7️⃣ Собираем проект
             echo "7️⃣ Собираем проект..."
             rm -rf .next
             npm run build
-            
+
             # 8️⃣ Запускаем PM2
             echo "8️⃣ Запускаем production..."
             pm2 start npm --name "punto-infissi-crm-current" -- start -- --port 3000 || pm2 restart punto-infissi-crm-current
             pm2 save
-            
+
             # 9️⃣ Проверяем статус
             echo "9️⃣ Проверяем статус..."
             sleep 5
             pm2 list | grep current
-            
+
             echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
             echo "✅ PRODUCTION DEPLOYMENT COMPLETED"
             echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
