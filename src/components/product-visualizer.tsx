@@ -5,55 +5,118 @@ import { useEffect, useState } from 'react'
 interface ProductVisualizerProps {
 	categoryName: string
 	parameters: Record<string, any>
+	categoryParameters?: any[]
 }
 
 export function ProductVisualizer({
 	categoryName,
 	parameters,
+	categoryParameters = [],
 }: ProductVisualizerProps) {
 	const [dimensions, setDimensions] = useState({ width: 300, height: 400 })
 
+	// Утилита для получения значения параметра по имени
+	const getParamValue = (names: string[]) => {
+		for (const name of names) {
+			const param = categoryParameters.find(
+				cp =>
+					cp.parameter.name === name ||
+					cp.parameter.nameIt === name ||
+					cp.parameter.name.toLowerCase().includes(name.toLowerCase())
+			)
+			if (param && parameters[param.parameter.id]) {
+				return parameters[param.parameter.id]
+			}
+		}
+		return null
+	}
+
+	// Получаем ширину и высоту
+	const width = getParamValue(['Ширина', 'Larghezza', 'width']) || 1000
+	const height = getParamValue(['Высота', 'Altezza', 'height']) || 2000
+
 	useEffect(() => {
-		// Масштабируем размеры для отображения
-		const width = parameters.width || 1000
-		const height = parameters.height || 2000
-		const scale = Math.min(300 / width, 400 / height)
+		// Масштабируем размеры для отображения (фиксированный размер контейнера)
+		const maxWidth = 300
+		const maxHeight = 400
+		const scale = Math.min(maxWidth / width, maxHeight / height)
 		setDimensions({
 			width: width * scale,
 			height: height * scale,
 		})
-	}, [parameters.width, parameters.height])
+	}, [width, height])
 
-	// Получаем цвет из параметра
-	const getColor = () => {
-		const colorParam = parameters.color || ''
-		if (colorParam.includes('Белый') || colorParam.includes('9010'))
-			return '#F5F5F5'
-		if (colorParam.includes('Серый') || colorParam.includes('7011'))
-			return '#525252'
-		if (colorParam.includes('Красный') || colorParam.includes('3003'))
-			return '#DC2626'
-		if (colorParam.includes('Коричневый')) return '#78350F'
-		return '#D1D5DB' // По умолчанию серый
+	// Получаем цвет рамы (может быть с HEX или RAL кодом)
+	const getFrameColor = () => {
+		const colorValue =
+			getParamValue(['Цвет рамы', 'Colore telaio', 'frame_color']) || ''
+
+		// Если это объект с hexColor
+		if (typeof colorValue === 'object' && colorValue.hexColor) {
+			return colorValue.hexColor
+		}
+
+		// Если это строка с HEX
+		if (typeof colorValue === 'string' && colorValue.startsWith('#')) {
+			return colorValue
+		}
+
+		// Если это строка с названием - пытаемся определить цвет
+		const colorStr = typeof colorValue === 'string' ? colorValue : ''
+		if (
+			colorStr.includes('Белый') ||
+			colorStr.includes('Bianco') ||
+			colorStr.includes('9010') ||
+			colorStr.includes('9016')
+		)
+			return '#F1F0EA'
+		if (
+			colorStr.includes('Серый') ||
+			colorStr.includes('Grigio') ||
+			colorStr.includes('7016')
+		)
+			return '#383E42'
+		if (
+			colorStr.includes('Коричневый') ||
+			colorStr.includes('Marrone') ||
+			colorStr.includes('8011')
+		)
+			return '#5A3A29'
+		if (
+			colorStr.includes('Чёрн') ||
+			colorStr.includes('Nero') ||
+			colorStr.includes('9005')
+		)
+			return '#0E0E10'
+
+		return '#CBD0CC' // По умолчанию светло-серый (RAL 7035)
 	}
 
 	// Получаем материал
 	const getMaterial = () => {
-		const material = parameters.material || ''
-		if (material.includes('ПВХ')) return 'PVC'
-		if (material.includes('Алюминий')) return 'AL'
-		if (material.includes('Дерево')) return 'WOOD'
-		return material
+		const material = getParamValue(['Материал', 'Materiale', 'material']) || ''
+		const materialStr = typeof material === 'string' ? material : ''
+		if (materialStr.includes('ПВХ') || materialStr.includes('PVC')) return 'PVC'
+		if (materialStr.includes('Алюминий') || materialStr.includes('Alluminio'))
+			return 'AL'
+		if (materialStr.includes('Дерев') || materialStr.includes('Legno'))
+			return 'WOOD'
+		return materialStr
 	}
 
-	const color = getColor()
+	const frameColor = getFrameColor()
 	const material = getMaterial()
 
 	// Рендер двери
 	const renderDoor = () => {
-		const opening = parameters.opening || 'Внутрь-влево'
-		const hasHandle = parameters.handle && parameters.handle !== 'Без ручки'
-		const hasLock = parameters.lock && parameters.lock !== 'Без замка'
+		const openingType =
+			getParamValue(['Тип открытия', 'Tipo di apertura', 'opening_type']) || ''
+		const openingSide =
+			getParamValue(['Сторона открытия', 'Lato di apertura', 'opening_side']) ||
+			'Влево'
+
+		const opening = `${openingType} ${openingSide}`
+		const hasHandle = true // Всегда показываем ручку для дверей
 
 		return (
 			<div
@@ -64,7 +127,7 @@ export function ProductVisualizer({
 				<div
 					className='absolute inset-0 rounded-lg shadow-lg border-4'
 					style={{
-						backgroundColor: color,
+						backgroundColor: frameColor,
 						borderColor: '#374151',
 					}}
 				>
@@ -118,35 +181,30 @@ export function ProductVisualizer({
 							style={{
 								width: '12px',
 								height: '60px',
-								right: opening.includes('влево') ? '10px' : 'auto',
-								left: opening.includes('вправо') ? '10px' : 'auto',
+								right:
+									openingSide.includes('лев') || openingSide.includes('Left')
+										? '10px'
+										: 'auto',
+								left:
+									openingSide.includes('прав') || openingSide.includes('Right')
+										? '10px'
+										: 'auto',
 								top: '50%',
 								transform: 'translateY(-50%)',
-							}}
-						/>
-					)}
-
-					{/* Замок */}
-					{hasLock && (
-						<div
-							className='absolute bg-gray-800 rounded shadow'
-							style={{
-								width: '20px',
-								height: '8px',
-								right: opening.includes('влево') ? '8px' : 'auto',
-								left: opening.includes('вправо') ? '8px' : 'auto',
-								top: '50%',
-								transform: 'translateY(-20px)',
 							}}
 						/>
 					)}
 				</div>
 
 				{/* Стрелка направления открывания */}
-				<div className='absolute -top-8 left-0 right-0 flex items-center justify-center'>
-					<div className='bg-blue-500 text-white text-xs px-2 py-1 rounded flex items-center gap-1'>
-						{opening.includes('влево') ? '←' : '→'}
-						{opening.includes('Внутрь') ? ' Внутрь' : ' Наружу'}
+				<div className='absolute -top-10 left-0 right-0 flex items-center justify-center'>
+					<div className='bg-blue-500 text-white text-xs px-3 py-1.5 rounded-lg shadow-md flex items-center gap-2'>
+						<span className='text-lg font-bold'>
+							{openingSide.includes('лев') || openingSide.includes('Left')
+								? '←'
+								: '→'}
+						</span>
+						<span>{openingType || 'Apertura'}</span>
 					</div>
 				</div>
 			</div>
@@ -155,9 +213,12 @@ export function ProductVisualizer({
 
 	// Рендер окна
 	const renderWindow = () => {
-		const glassType = parameters.glass || 'Однокамерный'
-		const openingType = parameters.opening || 'Поворотное'
-		const hasHandle = parameters.handle && parameters.handle !== 'Без ручки'
+		const glassType =
+			getParamValue(['Стекло', 'Vetro', 'glass']) || 'Однокамерный'
+		const openingType =
+			getParamValue(['Тип открытия', 'Tipo di apertura', 'opening_type']) ||
+			'Поворотное'
+		const hasHandle = true // Всегда показываем ручку для окон
 
 		const glassCount = glassType.includes('Однокамерный')
 			? 1
@@ -174,7 +235,7 @@ export function ProductVisualizer({
 				<div
 					className='absolute inset-0 rounded shadow-lg border-8'
 					style={{
-						backgroundColor: color,
+						backgroundColor: frameColor,
 						borderColor: '#374151',
 					}}
 				>
@@ -201,7 +262,7 @@ export function ProductVisualizer({
 						style={{
 							left: '50%',
 							transform: 'translateX(-50%)',
-							backgroundColor: color,
+							backgroundColor: frameColor,
 							borderLeft: '1px solid #374151',
 							borderRight: '1px solid #374151',
 						}}
@@ -213,7 +274,7 @@ export function ProductVisualizer({
 						style={{
 							top: '50%',
 							transform: 'translateY(-50%)',
-							backgroundColor: color,
+							backgroundColor: frameColor,
 							borderTop: '1px solid #374151',
 							borderBottom: '1px solid #374151',
 						}}
@@ -279,15 +340,11 @@ export function ProductVisualizer({
 			<div className='mt-6 grid grid-cols-2 gap-4 text-sm'>
 				<div className='text-center'>
 					<div className='text-gray-500'>Ширина</div>
-					<div className='font-semibold text-gray-900'>
-						{parameters.width} мм
-					</div>
+					<div className='font-semibold text-gray-900'>{width} мм</div>
 				</div>
 				<div className='text-center'>
 					<div className='text-gray-500'>Высота</div>
-					<div className='font-semibold text-gray-900'>
-						{parameters.height} мм
-					</div>
+					<div className='font-semibold text-gray-900'>{height} мм</div>
 				</div>
 			</div>
 
@@ -296,9 +353,11 @@ export function ProductVisualizer({
 				<div className='flex items-center gap-2'>
 					<div
 						className='w-6 h-6 rounded border-2 border-gray-300 shadow-sm'
-						style={{ backgroundColor: color }}
+						style={{ backgroundColor: frameColor }}
 					/>
-					<span className='text-sm text-gray-600'>{parameters.color}</span>
+					<span className='text-sm text-gray-600'>
+						{getParamValue(['Цвет рамы', 'Colore telaio']) || 'Colore'}
+					</span>
 				</div>
 			</div>
 		</div>

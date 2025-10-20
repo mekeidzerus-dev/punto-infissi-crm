@@ -13,16 +13,18 @@
 ✅ **Бэкапы** предыдущих версий  
 ✅ **Zero-downtime** деплой  
 ✅ **Уведомления** о статусе деплоя  
-✅ **Откат** к предыдущей версии при ошибке  
+✅ **Откат** к предыдущей версии при ошибке
 
 ---
 
 ## 📋 ЧТО СОЗДАНО
 
 ### 1. GitHub Actions Workflow
+
 **Файл:** `.github/workflows/deploy.yml`
 
 **Что делает:**
+
 - 🔍 Проверяет код (ESLint, build)
 - 📦 Создает архив для деплоя
 - 🚀 Загружает на FastPanel сервер
@@ -31,9 +33,11 @@
 - ▶️ Запускает приложение
 
 ### 2. PM2 Configuration
+
 **Файл:** `ecosystem.config.js`
 
 **Что делает:**
+
 - 🔄 Автоперезапуск при сбоях
 - 📊 Мониторинг памяти
 - 📝 Логирование
@@ -74,16 +78,18 @@ sudo -u postgres createuser --interactive
 
 1. **Откройте FastPanel**
 2. **Создайте сайт:**
+
    - Домен: `your-domain.com`
    - Тип: Node.js
    - Версия: 18.x
 
 3. **Настройте Nginx:**
+
 ```nginx
 server {
     listen 80;
     server_name your-domain.com;
-    
+
     location / {
         proxy_pass http://localhost:3000;
         proxy_http_version 1.1;
@@ -196,6 +202,7 @@ curl http://localhost:3000
 
 1. **Сделайте изменения в коде**
 2. **Коммит и пуш:**
+
 ```bash
 git add .
 git commit -m "feat: новая функция"
@@ -203,6 +210,7 @@ git push origin main
 ```
 
 3. **GitHub Actions автоматически:**
+
    - ✅ Проверит код
    - ✅ Соберет проект
    - ✅ Загрузит на сервер
@@ -327,12 +335,14 @@ ufw enable
 ### Оптимизации:
 
 1. **PM2 кластер** (для многоядерных серверов):
+
 ```javascript
 // ecosystem.config.js
-instances: 'max'  // Использовать все ядра
+instances: 'max' // Использовать все ядра
 ```
 
 2. **Nginx кэширование:**
+
 ```nginx
 location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg)$ {
     expires 1y;
@@ -341,6 +351,7 @@ location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg)$ {
 ```
 
 3. **Сжатие:**
+
 ```nginx
 gzip on;
 gzip_types text/plain text/css application/json application/javascript;
@@ -353,12 +364,14 @@ gzip_types text/plain text/css application/json application/javascript;
 ### Частые ошибки:
 
 **1. "Permission denied"**
+
 ```bash
 # Решение
 chown -R www-data:www-data /var/www/punto-infissi-crm
 ```
 
 **2. "Database connection failed"**
+
 ```bash
 # Проверьте .env файл
 cat .env | grep DATABASE_URL
@@ -368,6 +381,7 @@ sudo -u postgres psql -c "\l"
 ```
 
 **3. "Port 3000 already in use"**
+
 ```bash
 # Найдите процесс
 lsof -i :3000
@@ -377,6 +391,7 @@ kill -9 PID
 ```
 
 **4. "Build failed"**
+
 ```bash
 # Проверьте логи GitHub Actions
 # Обычно проблема в коде или зависимостях
@@ -413,4 +428,5 @@ kill -9 PID
 
 _Подготовил: AI CTO Partner_  
 _Дата: 19 октября 2025_
+
 

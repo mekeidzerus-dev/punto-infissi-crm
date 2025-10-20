@@ -18,6 +18,7 @@ import { FileText, Plus, Edit, Trash2, Eye, Download } from 'lucide-react'
 import { multiSearch } from '@/lib/multi-search'
 import { highlightText } from '@/lib/highlight-text'
 import { useLanguage } from '@/contexts/LanguageContext'
+import { pluralizeGroups } from '@/lib/i18n'
 
 interface Client {
 	id: number
@@ -57,7 +58,7 @@ interface ProposalDocumentView {
 }
 
 export default function ProposalsPage() {
-	const { t } = useLanguage()
+	const { t, locale } = useLanguage()
 	const [proposals, setProposals] = useState<ProposalDocumentView[]>([])
 	const [searchTerm, setSearchTerm] = useState('')
 	const [showForm, setShowForm] = useState(false)
@@ -349,7 +350,8 @@ export default function ProposalsPage() {
 											</td>
 											<td className='py-3 px-4'>
 												<div className='text-sm'>
-													{proposal.groups.length} групп
+													{proposal.groups.length}{' '}
+													{pluralizeGroups(proposal.groups.length, locale)}
 												</div>
 											</td>
 											<td className='py-3 px-4 text-right font-medium'>

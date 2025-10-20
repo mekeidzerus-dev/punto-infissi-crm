@@ -24,7 +24,10 @@ export default function RootLayout({
 				/>
 				{/* Фавикон будет управляться динамически через FaviconUpdater */}
 			</head>
-			<body className={`${inter.className} flex flex-col min-h-screen`} suppressHydrationWarning>
+			<body
+				className={`${inter.className} flex flex-col min-h-screen`}
+				suppressHydrationWarning
+			>
 				<LanguageProvider>
 					<FaviconUpdater />
 					<LogoUpdater />

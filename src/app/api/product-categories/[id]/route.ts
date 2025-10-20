@@ -4,10 +4,10 @@ import { prisma } from '@/lib/prisma'
 // GET /api/product-categories/[id] - получить категорию по ID
 export async function GET(
 	request: NextRequest,
-	{ params }: { params: { id: string } }
+	{ params }: { params: Promise<{ id: string }> }
 ) {
 	try {
-		const categoryId = params.id
+		const { id: categoryId } = await params
 		console.log(`🔍 Fetching category: ${categoryId}`)
 
 		const category = await prisma.productCategory.findUnique({
@@ -40,10 +40,10 @@ export async function GET(
 // PUT /api/product-categories/[id] - обновить категорию
 export async function PUT(
 	request: NextRequest,
-	{ params }: { params: { id: string } }
+	{ params }: { params: Promise<{ id: string }> }
 ) {
 	try {
-		const categoryId = params.id
+		const { id: categoryId } = await params
 		const data = await request.json()
 		console.log(`📝 Updating category: ${categoryId}`)
 
@@ -93,10 +93,10 @@ export async function PUT(
 // DELETE /api/product-categories/[id] - удалить категорию
 export async function DELETE(
 	request: NextRequest,
-	{ params }: { params: { id: string } }
+	{ params }: { params: Promise<{ id: string }> }
 ) {
 	try {
-		const categoryId = params.id
+		const { id: categoryId } = await params
 		console.log(`🗑️ Deleting category: ${categoryId}`)
 
 		// Проверяем что категория существует

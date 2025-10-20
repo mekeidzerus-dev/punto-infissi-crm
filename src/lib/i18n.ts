@@ -121,6 +121,9 @@ export const translations = {
 		noProductsInGroup: 'Нет товаров в этой группе',
 		proposalNumber: 'Номер предложения',
 		groups: 'Группы',
+		groupSingular: 'группа',
+		groupPlural: 'группы',
+		groupMany: 'групп',
 		amount: 'Сумма',
 		selectVatRate: 'Выберите ставку НДС',
 
@@ -525,6 +528,9 @@ export const translations = {
 		noProductsInGroup: 'Nessun prodotto in questo gruppo',
 		proposalNumber: 'Numero preventivo',
 		groups: 'Gruppi',
+		groupSingular: 'gruppo',
+		groupPlural: 'gruppi',
+		groupMany: 'gruppi',
 		amount: 'Importo',
 		selectVatRate: 'Seleziona aliquota IVA',
 
@@ -835,6 +841,19 @@ export function getTranslation(
 	}
 
 	return translation
+}
+
+// Pluralization utility for groups
+export function pluralizeGroups(count: number, locale: Locale): string {
+	if (locale === 'it') {
+		// Italian: 1 gruppo, 2+ gruppi
+		return count === 1 ? 'gruppo' : 'gruppi'
+	} else {
+		// Russian: 1 группа, 2-4 группы, 5+ групп
+		if (count === 1) return 'группа'
+		if (count >= 2 && count <= 4) return 'группы'
+		return 'групп'
+	}
 }
 
 export function t(locale: Locale) {

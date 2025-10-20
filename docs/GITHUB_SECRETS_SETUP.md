@@ -29,27 +29,34 @@
 ### ШАГ 2: Добавьте каждый секрет
 
 #### 1️⃣ FASTPANEL_HOST
+
 ```
 Name: FASTPANEL_HOST
 Value: your-server.com
 ```
+
 **Пример:** `fastpanel.example.com` или `192.168.1.100`
 
 #### 2️⃣ FASTPANEL_USER
+
 ```
 Name: FASTPANEL_USER
 Value: root
 ```
+
 **Обычно:** `root` или `ubuntu` (зависит от сервера)
 
 #### 3️⃣ FASTPANEL_PORT
+
 ```
 Name: FASTPANEL_PORT
 Value: 22
 ```
+
 **Обычно:** `22` (стандартный SSH порт)
 
 #### 4️⃣ FASTPANEL_SSH_KEY
+
 ```
 Name: FASTPANEL_SSH_KEY
 Value: -----BEGIN OPENSSH PRIVATE KEY-----
@@ -59,6 +66,7 @@ QyNTUxOQAAACBexample...your-private-key-here...
 ```
 
 **Как получить SSH ключ:**
+
 ```bash
 # На вашем компьютере
 ssh-keygen -t ed25519 -C "deploy@punto-infissi-crm"
@@ -71,6 +79,7 @@ ssh-copy-id root@your-server.com
 ```
 
 #### 5️⃣ DATABASE_URL
+
 ```
 Name: DATABASE_URL
 Value: postgresql://punto_user:your_password@localhost:5432/punto_infissi_crm
@@ -83,12 +92,14 @@ Value: postgresql://punto_user:your_password@localhost:5432/punto_infissi_crm
 ## 🔑 ДОПОЛНИТЕЛЬНЫЕ СЕКРЕТЫ (опционально)
 
 ### NEXTAUTH_SECRET
+
 ```
 Name: NEXTAUTH_SECRET
 Value: your-super-secret-key-here-min-32-chars
 ```
 
 ### NEXTAUTH_URL
+
 ```
 Name: NEXTAUTH_URL
 Value: https://your-domain.com
@@ -101,9 +112,11 @@ Value: https://your-domain.com
 После добавления всех секретов:
 
 1. **Перейдите в Actions:**
+
    - `https://github.com/mekeidzerus-dev/punto-infissi-crm/actions`
 
 2. **Сделайте тестовый коммит:**
+
    ```bash
    git add .
    git commit -m "test: CI/CD setup"
@@ -119,18 +132,24 @@ Value: https://your-domain.com
 ## 🚨 ЧАСТЫЕ ОШИБКИ
 
 ### "Permission denied (publickey)"
+
 **Решение:** Проверьте FASTPANEL_SSH_KEY
+
 - Ключ должен быть приватным (начинается с `-----BEGIN`)
 - Публичный ключ должен быть добавлен на сервер
 
 ### "Host key verification failed"
+
 **Решение:** Добавьте сервер в known_hosts
+
 ```bash
 ssh-keyscan -H your-server.com >> ~/.ssh/known_hosts
 ```
 
 ### "Database connection failed"
+
 **Решение:** Проверьте DATABASE_URL
+
 - Формат: `postgresql://user:pass@host:port/db`
 - Убедитесь что БД существует на сервере
 
@@ -173,7 +192,7 @@ chown -R www-data:www-data /var/www/punto-infissi-crm
 
 ```
 ✅ FASTPANEL_HOST
-✅ FASTPANEL_USER  
+✅ FASTPANEL_USER
 ✅ FASTPANEL_PORT
 ✅ FASTPANEL_SSH_KEY
 ✅ DATABASE_URL
@@ -200,3 +219,5 @@ chown -R www-data:www-data /var/www/punto-infissi-crm
 
 _Подготовил: AI CTO Partner_  
 _Дата: 19 октября 2025_
+
+

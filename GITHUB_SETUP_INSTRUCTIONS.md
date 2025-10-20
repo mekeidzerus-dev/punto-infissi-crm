@@ -26,11 +26,12 @@
 1. Откройте: **https://github.com/new**
 
 2. Заполните форму:
+
    ```
    Repository name: punto-infissi-crm
    Description: CRM система для продажи окон и дверей с автоматическим расчетом цен
    Visibility: 🔒 Private (выберите это!)
-   
+
    ❌ НЕ добавляйте:
    - README (уже есть)
    - .gitignore (уже есть)
@@ -72,6 +73,7 @@ git push -u origin main
 **Если попросит авторизацию:**
 
 GitHub может запросить:
+
 - **Username:** ваш GitHub username
 - **Password:** НЕ ПАРОЛЬ! Нужен **Personal Access Token**
 
@@ -86,6 +88,7 @@ GitHub может запросить:
 2. Нажмите **"Generate new token" → "Generate new token (classic)"**
 
 3. Настройки:
+
    ```
    Note: Punto Infissi CRM Deploy
    Expiration: 90 days (или No expiration)
@@ -96,6 +99,7 @@ GitHub может запросить:
 4. Нажмите **"Generate token"**
 
 5. **⚠️ ВАЖНО:** Скопируйте токен (он больше НЕ отобразится!)
+
    ```
    ghp_XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
    ```
@@ -111,6 +115,7 @@ GitHub может запросить:
 ### ШАГ 5: Проверьте загрузку
 
 1. Откройте репозиторий:
+
    ```
    https://github.com/YOUR_USERNAME/punto-infissi-crm
    ```
@@ -208,18 +213,23 @@ MAJOR.MINOR.PATCH
 ### Как изменить версию:
 
 1. Обновите `package.json`:
+
    ```json
    "version": "1.0.1"
    ```
 
 2. Обновите `CHANGELOG.md`:
+
    ```md
    ## [1.0.1] - 2025-10-20
+
    ### Fixed
+
    - Исправил баг с ...
    ```
 
 3. Коммит:
+
    ```bash
    git add package.json CHANGELOG.md
    git commit -m "chore: Bump version to 1.0.1"
@@ -298,4 +308,5 @@ git push origin main
 
 _Подготовил: AI CTO Partner_  
 _Дата: 19 октября 2025_
+
 
