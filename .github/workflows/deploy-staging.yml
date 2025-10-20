@@ -42,11 +42,9 @@ jobs:
             git fetch origin
             git reset --hard origin/develop
             
-            # Проверяем next.config.js
-            echo "3️⃣ Проверяем next.config.js..."
-            if [ ! -f "next.config.js" ] || ! grep -q "ignoreBuildErrors" next.config.js; then
-              echo "Создаем правильный next.config.js..."
-              cat > next.config.js << 'EOF'
+            # Создаем правильный next.config.js (всегда пересоздаем)
+            echo "3️⃣ Создаем next.config.js..."
+            cat > next.config.js << 'EOFCONFIG'
             /** @type {import("next").NextConfig} */
             const nextConfig = {
               typescript: {
@@ -57,8 +55,8 @@ jobs:
               },
             };
             module.exports = nextConfig;
-            EOF
-            fi
+            EOFCONFIG
+            echo "✅ next.config.js создан"
             
             # Устанавливаем зависимости
             echo "4️⃣ Устанавливаем зависимости..."
