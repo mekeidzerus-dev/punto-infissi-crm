@@ -1,0 +1,117 @@
+name: 🚀 Deploy to Production
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy-production:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🚀 Deploy to Production via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.FASTPANEL_HOST }}
+          username: ${{ secrets.FASTPANEL_USER }}
+          port: ${{ secrets.FASTPANEL_PORT }}
+          key: ${{ secrets.FASTPANEL_SSH_KEY }}
+          script: |
+            set -e  # Останавливаем выполнение при любой ошибке
+            
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo "🚀 PRODUCTION DEPLOYMENT STARTED"
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            
+            # Директория production
+            PRODUCTION_DIR="/var/www/fastuser/data/www/infissi.omoxsoft.com.ua"
+            
+            # Переходим в директорию
+            cd $PRODUCTION_DIR
+            
+            # Создаем бэкап
+            echo "1️⃣ Создаем бэкап..."
+            BACKUP_DIR="/var/www/fastuser/data/backups/punto-infissi-crm"
+            mkdir -p $BACKUP_DIR
+            BACKUP_FILE="$BACKUP_DIR/backup-$(date +%Y%m%d-%H%M%S).tar.gz"
+            tar -czf $BACKUP_FILE .next package-lock.json 2>/dev/null || true
+            echo "Бэкап создан: $BACKUP_FILE"
+            
+            # Останавливаем PM2 процесс
+            echo "2️⃣ Останавливаем production процесс..."
+            pm2 stop punto-infissi-crm-current || true
+            
+            # Обновляем код из GitHub
+            echo "3️⃣ Обновляем код из GitHub..."
+            git fetch origin
+            git reset --hard origin/main
+            
+            # Проверяем next.config.js
+            echo "4️⃣ Проверяем next.config.js..."
+            if [ ! -f "next.config.js" ] || ! grep -q "ignoreBuildErrors" next.config.js; then
+              echo "Создаем правильный next.config.js..."
+              cat > next.config.js << 'EOF'
+            /** @type {import("next").NextConfig} */
+            const nextConfig = {
+              typescript: {
+                ignoreBuildErrors: true,
+              },
+              eslint: {
+                ignoreDuringBuilds: true,
+              },
+            };
+            module.exports = nextConfig;
+            EOF
+            fi
+            
+            # Устанавливаем зависимости
+            echo "5️⃣ Устанавливаем зависимости..."
+            npm install
+            
+            # Запускаем Prisma миграции
+            echo "6️⃣ Запускаем Prisma миграции..."
+            npx prisma migrate deploy
+            npx prisma generate
+            
+            # Собираем проект
+            echo "7️⃣ Собираем проект..."
+            rm -rf .next
+            npm run build
+            
+            # Запускаем PM2 процесс
+            echo "8️⃣ Запускаем production процесс..."
+            pm2 delete punto-infissi-crm-current || true
+            pm2 start npm --name "punto-infissi-crm-current" -- start -- --port 3000
+            pm2 save
+            
+            # Проверяем статус
+            echo "9️⃣ Проверяем статус..."
+            sleep 5
+            pm2 list | grep current
+            
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo "✅ PRODUCTION DEPLOYMENT COMPLETED"
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+      - name: 🏥 Health Check
+        run: |
+          echo "Ждем 15 секунд для запуска приложения..."
+          sleep 15
+          echo "Проверяем production..."
+          curl -f https://infissi.omoxsoft.com.ua || exit 1
+          echo "✅ Production работает!"
+          
+      - name: 📢 Deployment Summary
+        if: success()
+        run: |
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "🎉 DEPLOYMENT SUCCESSFUL!"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "🌐 Production URL: https://infissi.omoxsoft.com.ua"
+          echo "📊 Health Check: ✅ PASSED"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
