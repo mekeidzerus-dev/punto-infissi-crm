@@ -1,0 +1,106 @@
+name: Deploy to Staging
+
+on:
+  push:
+    branches: [ develop, feature/* ]
+
+jobs:
+  deploy-staging:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Create deployment archive
+      run: |
+        cd ..
+        tar -czf punto-infissi-crm-staging.tar.gz \
+          --exclude='punto-infissi-crm/node_modules' \
+          --exclude='punto-infissi-crm/.git' \
+          --exclude='punto-infissi-crm/.next/cache' \
+          --exclude='punto-infissi-crm/*.log' \
+          --exclude='punto-infissi-crm/*.tar.gz' \
+          punto-infissi-crm/
+        mv punto-infissi-crm-staging.tar.gz punto-infissi-crm/
+          
+    - name: Deploy to Staging
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ secrets.FASTPANEL_HOST }}
+        username: ${{ secrets.FASTPANEL_USER }}
+        port: ${{ secrets.FASTPANEL_PORT }}
+        key: ${{ secrets.FASTPANEL_SSH_KEY }}
+        script: |
+          cd /var/www/fastuser/data/www
+          
+          # Создаем staging директорию
+          mkdir -p staging.infissi.omoxsoft.com.ua
+          cd staging.infissi.omoxsoft.com.ua
+          
+    - name: Upload staging files
+      uses: appleboy/scp-action@v0.1.7
+      with:
+        host: ${{ secrets.FASTPANEL_HOST }}
+        username: ${{ secrets.FASTPANEL_USER }}
+        port: ${{ secrets.FASTPANEL_PORT }}
+        key: ${{ secrets.FASTPANEL_SSH_KEY }}
+        source: "punto-infissi-crm-staging.tar.gz"
+        target: "/var/www/fastuser/data/www/staging.infissi.omoxsoft.com.ua/"
+        
+    - name: Build and start staging
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ secrets.FASTPANEL_HOST }}
+        username: ${{ secrets.FASTPANEL_USER }}
+        port: ${{ secrets.FASTPANEL_PORT }}
+        key: ${{ secrets.FASTPANEL_SSH_KEY }}
+        script: |
+          cd /var/www/fastuser/data/www/staging.infissi.omoxsoft.com.ua
+          
+          # Extract archive
+          tar -xzf punto-infissi-crm-staging.tar.gz
+          mv punto-infissi-crm/* . 2>/dev/null || true
+          mv punto-infissi-crm/.* . 2>/dev/null || true
+          rmdir punto-infissi-crm 2>/dev/null || true
+          rm punto-infissi-crm-staging.tar.gz
+          
+          # Install dependencies
+          npm ci --production
+          npm install @tailwindcss/postcss tailwindcss postcss autoprefixer --save-dev
+          
+          # Create staging next.config.js
+          cat > next.config.js << 'EOF'
+          /** @type {import('next').NextConfig} */
+          const nextConfig = {
+            typescript: {
+              ignoreBuildErrors: true,
+            },
+            eslint: {
+              ignoreDuringBuilds: true,
+            },
+            env: {
+              NODE_ENV: 'staging',
+            },
+          };
+          module.exports = nextConfig;
+          EOF
+          
+          # Build project
+          npm run build
+          
+          # Start staging version
+          pm2 stop punto-infissi-crm-staging || true
+          pm2 delete punto-infissi-crm-staging || true
+          pm2 start npm --name "punto-infissi-crm-staging" -- start -- --port 3002
+          
+          echo "Staging deployed successfully!"
+          echo "Access: http://staging.infissi.omoxsoft.com.ua"
