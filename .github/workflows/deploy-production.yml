@@ -80,7 +80,7 @@ jobs:
               exit 1
             fi
             echo "✅ .env файл найден"
-            
+
             echo "🔧 Генерируем Prisma клиент..."
             npx prisma generate
             echo "✅ Prisma клиент сгенерирован"
@@ -89,11 +89,14 @@ jobs:
             echo "7️⃣ Собираем проект..."
             rm -rf .next
             npm run build
+            echo "✅ Проект собран успешно"
 
             # 8️⃣ Запускаем PM2
             echo "8️⃣ Запускаем production..."
-            pm2 start npm --name "punto-infissi-crm-current" -- start -- --port 3000 || pm2 restart punto-infissi-crm-current
+            pm2 delete punto-infissi-crm-current || true
+            pm2 start npm --name "punto-infissi-crm-current" -- start -- --port 3000
             pm2 save
+            echo "✅ PM2 процесс запущен"
 
             # 9️⃣ Проверяем статус
             echo "9️⃣ Проверяем статус..."
