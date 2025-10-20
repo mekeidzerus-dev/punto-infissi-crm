@@ -28,9 +28,6 @@ export function Footer() {
 						<span className='hidden md:inline text-xs text-gray-400'>
 							CRM System
 						</span>
-						<span className='text-xs px-2 py-1 bg-green-50 text-green-600 rounded'>
-							🚀 Auto Deploy Test
-						</span>
 					</div>
 
 					{/* Правая часть - Ссылки */}
