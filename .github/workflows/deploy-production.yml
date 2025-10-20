@@ -8,7 +8,7 @@ on:
 jobs:
   deploy-production:
     runs-on: ubuntu-latest
-
+    
     steps:
       - name: 📥 Checkout code
         uses: actions/checkout@v4
@@ -21,82 +21,74 @@ jobs:
           port: ${{ secrets.FASTPANEL_PORT }}
           key: ${{ secrets.FASTPANEL_SSH_KEY }}
           script: |
-            set -e  # Останавливаем выполнение при любой ошибке
-
+            set -e
+            
             echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-            echo "🚀 PRODUCTION DEPLOYMENT STARTED"
+            echo "🚀 PRODUCTION DEPLOYMENT"
             echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-
-            # Директория production
+            
             PRODUCTION_DIR="/var/www/fastuser/data/www/infissi.omoxsoft.com.ua"
-
-            # Переходим в директорию
+            
             cd $PRODUCTION_DIR
-
-            # Создаем бэкап
+            
+            # 1️⃣ Создаем бэкап
             echo "1️⃣ Создаем бэкап..."
             BACKUP_DIR="/var/www/fastuser/data/backups/punto-infissi-crm"
             mkdir -p $BACKUP_DIR
             BACKUP_FILE="$BACKUP_DIR/backup-$(date +%Y%m%d-%H%M%S).tar.gz"
             tar -czf $BACKUP_FILE .next package-lock.json 2>/dev/null || true
-            echo "Бэкап создан: $BACKUP_FILE"
-
-            # Останавливаем PM2 процесс
-            echo "2️⃣ Останавливаем production процесс..."
+            echo "✅ Бэкап: $BACKUP_FILE"
+            
+            # 2️⃣ Останавливаем PM2
+            echo "2️⃣ Останавливаем production..."
             pm2 stop punto-infissi-crm-current || true
-
-            # Обновляем код из GitHub
+            
+            # 3️⃣ Обновляем код
             echo "3️⃣ Обновляем код из GitHub..."
             git fetch origin
             git reset --hard origin/main
+            echo "✅ Код обновлен: $(git log --oneline -1)"
             
-            # Проверяем что next.config.js из репозитория правильный
+            # 4️⃣ Проверяем next.config.js
             echo "4️⃣ Проверяем next.config.js..."
-            cat next.config.js
+            if grep -q "NODE_ENV" next.config.js; then
+              echo "❌ ОШИБКА: next.config.js содержит NODE_ENV!"
+              exit 1
+            fi
+            echo "✅ next.config.js правильный"
             
-            # Устанавливаем зависимости
+            # 5️⃣ Устанавливаем зависимости
             echo "5️⃣ Устанавливаем зависимости..."
             npm install
-
-            # Запускаем Prisma миграции
+            
+            # 6️⃣ Prisma миграции
             echo "6️⃣ Запускаем Prisma миграции..."
             npx prisma migrate deploy
             npx prisma generate
-
-            # Собираем проект
+            
+            # 7️⃣ Собираем проект
             echo "7️⃣ Собираем проект..."
             rm -rf .next
             npm run build
-
-            # Запускаем PM2 процесс
-            echo "8️⃣ Запускаем production процесс..."
-            pm2 delete punto-infissi-crm-current || true
-            pm2 start npm --name "punto-infissi-crm-current" -- start -- --port 3000
+            
+            # 8️⃣ Запускаем PM2
+            echo "8️⃣ Запускаем production..."
+            pm2 start npm --name "punto-infissi-crm-current" -- start -- --port 3000 || pm2 restart punto-infissi-crm-current
             pm2 save
-
-            # Проверяем статус
+            
+            # 9️⃣ Проверяем статус
             echo "9️⃣ Проверяем статус..."
             sleep 5
             pm2 list | grep current
-
+            
             echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
             echo "✅ PRODUCTION DEPLOYMENT COMPLETED"
             echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
       - name: 🏥 Health Check
         run: |
-          echo "Ждем 15 секунд для запуска приложения..."
+          echo "⏳ Ждем 15 секунд..."
           sleep 15
-          echo "Проверяем production..."
+          echo "🔍 Проверяем production..."
           curl -f https://infissi.omoxsoft.com.ua || exit 1
           echo "✅ Production работает!"
-
-      - name: 📢 Deployment Summary
-        if: success()
-        run: |
-          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-          echo "🎉 DEPLOYMENT SUCCESSFUL!"
-          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-          echo "🌐 Production URL: https://infissi.omoxsoft.com.ua"
-          echo "📊 Health Check: ✅ PASSED"
-          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
