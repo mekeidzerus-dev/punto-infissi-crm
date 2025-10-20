@@ -14,6 +14,9 @@ export default function Home() {
 				<p className='text-gray-600 mb-8'>
 					Система управления продажами окон и дверей
 				</p>
+				<div className='bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded mb-6'>
+					🚀 <strong>АВТОМАТИЧЕСКИЙ ДЕПЛОЙ</strong> - GitHub Actions работает!
+				</div>
 				<button
 					onClick={() => router.push('/dashboard')}
 					className='bg-red-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-red-700 transition-colors'
