@@ -22,12 +22,16 @@ jobs:
       
     - name: Create deployment archive
       run: |
-        tar -czf deploy.tar.gz \
-          --exclude=node_modules \
-          --exclude=.git \
-          --exclude=.next/cache \
-          --exclude=*.log \
-          .
+        # Создаем архив в родительской директории, чтобы избежать конфликта
+        cd ..
+        tar -czf punto-infissi-crm-deploy.tar.gz \
+          --exclude='punto-infissi-crm/node_modules' \
+          --exclude='punto-infissi-crm/.git' \
+          --exclude='punto-infissi-crm/.next/cache' \
+          --exclude='punto-infissi-crm/*.log' \
+          --exclude='punto-infissi-crm/*.tar.gz' \
+          punto-infissi-crm/
+        mv punto-infissi-crm-deploy.tar.gz punto-infissi-crm/
           
     - name: Deploy to FastPanel
       uses: appleboy/ssh-action@v1.0.3
@@ -52,7 +56,7 @@ jobs:
         username: ${{ secrets.FASTPANEL_USER }}
         port: ${{ secrets.FASTPANEL_PORT }}
         key: ${{ secrets.FASTPANEL_SSH_KEY }}
-        source: "deploy.tar.gz"
+        source: "punto-infissi-crm-deploy.tar.gz"
         target: "/var/www/fastuser/data/www/infissi.omoxsoft.com.ua/"
         
     - name: Extract and restart
@@ -66,8 +70,12 @@ jobs:
           cd /var/www/fastuser/data/www/infissi.omoxsoft.com.ua
           
           # Extract archive
-          tar -xzf deploy.tar.gz
-          rm deploy.tar.gz
+          tar -xzf punto-infissi-crm-deploy.tar.gz
+          # Move files from subdirectory to current directory
+          mv punto-infissi-crm/* . 2>/dev/null || true
+          mv punto-infissi-crm/.* . 2>/dev/null || true
+          rmdir punto-infissi-crm 2>/dev/null || true
+          rm punto-infissi-crm-deploy.tar.gz
           
           # Install dependencies
           npm ci --production
