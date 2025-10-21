@@ -1,15 +1,21 @@
 'use client'
 
-import { Bell, Search, User, Settings } from 'lucide-react'
+import { Bell, Search, User, Settings, Image } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { LogoUpdater } from '@/components/logo-updater'
 import { LanguageSwitcher } from '@/components/language-switcher'
 import { useLanguage } from '@/contexts/LanguageContext'
+import { useRouter } from 'next/navigation'
 
 export function HeaderWithLogoV2() {
 	const { t } = useLanguage()
+	const router = useRouter()
+
+	const handleLogoClick = () => {
+		router.push('/settings')
+	}
 	return (
 		<header className='sticker-header-with-logo-v2 px-8 py-6'>
 			<div className='flex items-center justify-between'>
@@ -24,8 +30,17 @@ export function HeaderWithLogoV2() {
 							style={{ display: 'none' }}
 						/>
 						{/* Дефолтный логотип */}
-						<div className='default-logo text-4xl font-bold text-red-600'>
-							P
+						<div
+							className='default-logo flex items-center justify-center h-14 w-20 bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg hover:bg-gray-100 hover:border-gray-400 transition-all duration-200 cursor-pointer group'
+							onClick={handleLogoClick}
+							title={t('clickToUploadLogo')}
+						>
+							<div className='text-center'>
+								<Image className='h-5 w-5 text-gray-400 mx-auto mb-1 group-hover:text-gray-500 transition-colors' />
+								<span className='text-xs text-gray-500 font-medium group-hover:text-gray-600 transition-colors'>
+									{t('logoPlaceholder')}
+								</span>
+							</div>
 						</div>
 					</div>
 

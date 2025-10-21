@@ -83,10 +83,10 @@ export async function POST(request: NextRequest) {
 		// 7. Сохранение пути в базу данных
 		try {
 			const { prisma } = await import('@/lib/prisma')
-			
+
 			// Получаем или создаем организацию
 			const existing = await prisma.organization.findFirst()
-			
+
 			if (existing) {
 				await prisma.organization.update({
 					where: { id: existing.id },
@@ -175,7 +175,7 @@ export async function DELETE(request: NextRequest) {
 		try {
 			const { prisma } = await import('@/lib/prisma')
 			const existing = await prisma.organization.findFirst()
-			
+
 			if (existing) {
 				await prisma.organization.update({
 					where: { id: existing.id },

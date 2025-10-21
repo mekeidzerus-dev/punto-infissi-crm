@@ -51,11 +51,11 @@ localStorage.setItem('punto-infissi-logo-path', data.path)
                             ├───> PostgreSQL → Organization.logoUrl  ✅
                             │
                             └───> localStorage (кэш)
-                    
-┌─────────────┐      ┌──────────────┐      
-│  Загрузка   │─────>│  /api/       │      
+
+┌─────────────┐      ┌──────────────┐
+│  Загрузка   │─────>│  /api/       │
 │  страницы   │      │  organization│────> PostgreSQL.Organization  ✅
-└─────────────┘      └──────────────┘      
+└─────────────┘      └──────────────┘
                             │
                             └───> localStorage (кэш для UI)
 ```
@@ -69,6 +69,7 @@ localStorage.setItem('punto-infissi-logo-path', data.path)
 **Файл:** `src/app/api/organization/route.ts` (НОВЫЙ)
 
 **Функциональность:**
+
 - `GET /api/organization` - получение настроек организации
 - `PUT /api/organization` - обновление настроек организации
 - Автоматическое создание дефолтной организации при первом обращении
@@ -80,7 +81,7 @@ export async function GET() {
 	const organization = await prisma.organization.findFirst({
 		include: { settings: true },
 	})
-	
+
 	if (!organization) {
 		// Создаем дефолтную организацию
 		const newOrg = await prisma.organization.create({
@@ -94,7 +95,7 @@ export async function GET() {
 		})
 		return NextResponse.json(newOrg)
 	}
-	
+
 	return NextResponse.json(organization)
 }
 
@@ -102,7 +103,7 @@ export async function GET() {
 export async function PUT(request: NextRequest) {
 	const body = await request.json()
 	const { logoUrl, faviconUrl, ... } = body
-	
+
 	const updated = await prisma.organization.update({
 		where: { id: existing.id },
 		data: {
@@ -110,7 +111,7 @@ export async function PUT(request: NextRequest) {
 			// ...
 		},
 	})
-	
+
 	return NextResponse.json(updated)
 }
 ```
@@ -122,6 +123,7 @@ export async function PUT(request: NextRequest) {
 **Файл:** `src/app/api/logo/route.ts`
 
 **Изменения в POST:**
+
 - После сохранения файла на диск → сохраняем путь в БД
 - Обновляем поле `Organization.logoUrl`
 
@@ -130,7 +132,7 @@ export async function PUT(request: NextRequest) {
 try {
 	const { prisma } = await import('@/lib/prisma')
 	const existing = await prisma.organization.findFirst()
-	
+
 	if (existing) {
 		await prisma.organization.update({
 			where: { id: existing.id },
@@ -139,7 +141,9 @@ try {
 		console.log('✅ Logo path saved to database:', saveResult.path)
 	} else {
 		// Создаем новую организацию с логотипом
-		await prisma.organization.create({ /* ... */ })
+		await prisma.organization.create({
+			/* ... */
+		})
 	}
 } catch (dbError) {
 	console.error('⚠️ Failed to save logo to database:', dbError)
@@ -148,6 +152,7 @@ try {
 ```
 
 **Изменения в DELETE:**
+
 - При удалении файла с диска → удаляем путь из БД
 - Устанавливаем `Organization.logoUrl = null`
 
@@ -156,7 +161,7 @@ try {
 try {
 	const { prisma } = await import('@/lib/prisma')
 	const existing = await prisma.organization.findFirst()
-	
+
 	if (existing) {
 		await prisma.organization.update({
 			where: { id: existing.id },
@@ -176,6 +181,7 @@ try {
 **Файл:** `src/app/settings/page.tsx`
 
 **Изменения в useEffect:**
+
 - Загружаем данные из БД при монтировании компонента
 - Синхронизируем с localStorage для быстрого доступа
 - Fallback на localStorage если БД недоступна
@@ -187,7 +193,7 @@ useEffect(() => {
 			const response = await fetch('/api/organization')
 			if (response.ok) {
 				const org = await response.json()
-				
+
 				// Логотип из БД
 				if (org.logoUrl) {
 					setLogo(org.logoUrl)
@@ -195,7 +201,7 @@ useEffect(() => {
 					localStorage.setItem('punto-infissi-logo-path', org.logoUrl)
 					window.dispatchEvent(new Event('logo-updated'))
 				}
-				
+
 				// Фавикон из БД
 				if (org.faviconUrl) {
 					setFavicon(org.faviconUrl)
@@ -203,7 +209,7 @@ useEffect(() => {
 					localStorage.setItem('punto-infissi-favicon-path', org.faviconUrl)
 					window.dispatchEvent(new Event('favicon-updated'))
 				}
-				
+
 				console.log('✅ Loaded organization data from database')
 			}
 		} catch (error) {
@@ -211,7 +217,7 @@ useEffect(() => {
 			// Fallback на localStorage
 		}
 	}
-	
+
 	loadOrganizationData()
 }, [])
 ```
@@ -223,6 +229,7 @@ useEffect(() => {
 **Файл:** `src/components/logo-updater.tsx`
 
 **Изменения:**
+
 - Загружаем логотип из БД при первой загрузке
 - Проверяем localStorage как кэш
 - Если кэш пуст → запрашиваем БД
@@ -252,7 +259,7 @@ useEffect(() => {
 		// Если нет в кэше, загружаем из БД
 		loadLogoFromDB()
 	}
-	
+
 	// ... остальной код updateLogo()
 }, [])
 ```
@@ -269,36 +276,37 @@ model Organization {
   name        String
   slug        String   @unique
   domain      String?  @unique
-  
+
   // Брендинг
   faviconUrl  String?  // ✅ Путь к фавикону
   logoUrl     String?  // ✅ Путь к логотипу
   primaryColor String? @default("#dc2626")
-  
+
   // Локализация
   currency    String   @default("EUR")
   timezone    String   @default("Europe/Rome")
   language    String   @default("it")
-  
+
   // Подписка
   plan        String   @default("free")
   maxUsers    Int      @default(5)
-  
+
   // Метаданные
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-  
+
   // Связи
   users       User[]
   settings    OrganizationSettings?
-  
+
   @@index([slug])
   @@index([domain])
 }
 ```
 
 **Важные поля:**
+
 - `logoUrl` - путь к файлу логотипа (например: `/logos/logo-abc123.png`)
 - `faviconUrl` - путь к фавикону
 - `name` - название организации
@@ -341,43 +349,47 @@ model Organization {
 ### Сценарии для проверки:
 
 1. **Загрузка логотипа:**
+
    ```bash
    # 1. Загрузить логотип через UI
    # 2. Проверить в БД:
    SELECT "logoUrl" FROM "Organization" LIMIT 1;
-   
+
    # Должен вернуть: /logos/logo-{hash}.png
    ```
 
 2. **Перезагрузка страницы:**
+
    ```bash
    # 1. Загрузить логотип
    # 2. F5 (перезагрузка)
    # 3. Проверить консоль:
    ✅ Loaded logo from database: /logos/logo-abc123.png
-   
+
    # 4. Логотип должен отображаться
    ```
 
 3. **Очистка кэша:**
+
    ```bash
    # 1. Загрузить логотип
    # 2. Открыть DevTools → Application → Local Storage → Очистить
    # 3. F5 (перезагрузка)
    # 4. Проверить консоль:
    ✅ Loaded logo from database: /logos/logo-abc123.png
-   
+
    # 5. Логотип должен восстановиться из БД
    ```
 
 4. **Удаление логотипа:**
+
    ```bash
    # 1. Нажать "Сбросить логотип"
    # 2. Проверить в БД:
    SELECT "logoUrl" FROM "Organization" LIMIT 1;
-   
+
    # Должен вернуть: NULL
-   
+
    # 3. localStorage также должен быть пуст
    # 4. Отображается дефолтный "P"
    ```
@@ -396,12 +408,12 @@ model Organization {
 
 ### API Endpoints:
 
-| Метод | Endpoint | Описание |
-|-------|----------|----------|
-| `GET` | `/api/organization` | Получить настройки организации |
-| `PUT` | `/api/organization` | Обновить настройки организации |
-| `POST` | `/api/logo` | Загрузить новый логотип |
-| `DELETE` | `/api/logo` | Удалить логотип |
+| Метод    | Endpoint            | Описание                       |
+| -------- | ------------------- | ------------------------------ |
+| `GET`    | `/api/organization` | Получить настройки организации |
+| `PUT`    | `/api/organization` | Обновить настройки организации |
+| `POST`   | `/api/logo`         | Загрузить новый логотип        |
+| `DELETE` | `/api/logo`         | Удалить логотип                |
 
 ### Схема хранения:
 
@@ -435,9 +447,9 @@ model Organization {
 ### Проверка наличия таблицы:
 
 ```sql
-SELECT table_name 
-FROM information_schema.tables 
-WHERE table_schema = 'public' 
+SELECT table_name
+FROM information_schema.tables
+WHERE table_schema = 'public'
   AND table_name = 'Organization';
 ```
 
@@ -472,11 +484,13 @@ npx prisma generate
 ## 🎯 РЕЗУЛЬТАТ
 
 **ДО:**
+
 - Логотип терялся после перезагрузки ❌
 - Отображалась буква "P" вместо логотипа ❌
 - Данные хранились только в localStorage ❌
 
 **ПОСЛЕ:**
+
 - Логотип сохраняется в PostgreSQL ✅
 - Логотип восстанавливается после перезагрузки ✅
 - Логотип синхронизируется между вкладками/устройствами ✅
@@ -514,6 +528,7 @@ punto-infissi-crm/
 ### Проблема: Логотип не загружается из БД
 
 **Решение:**
+
 1. Проверить консоль браузера на ошибки
 2. Проверить наличие записи в БД:
    ```sql
@@ -527,6 +542,7 @@ punto-infissi-crm/
 ### Проблема: API возвращает ошибку 500
 
 **Решение:**
+
 1. Проверить логи сервера
 2. Убедиться что Prisma клиент сгенерирован:
    ```bash
@@ -540,12 +556,13 @@ punto-infissi-crm/
 ### Проблема: Логотип отображается в настройках, но не в header
 
 **Решение:**
+
 1. Проверить что `LogoUpdater` импортирован в `layout.tsx`
 2. Проверить что элементы имеют класс `.company-logo`
 3. Проверить событие `logo-updated`:
    ```javascript
    window.addEventListener('logo-updated', () => {
-       console.log('Logo updated event triggered')
+   	console.log('Logo updated event triggered')
    })
    ```
 

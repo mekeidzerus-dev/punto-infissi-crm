@@ -133,7 +133,7 @@ export default function SettingsPage() {
 				const response = await fetch('/api/organization')
 				if (response.ok) {
 					const org = await response.json()
-					
+
 					// Логотип из БД
 					if (org.logoUrl) {
 						setLogo(org.logoUrl)
@@ -141,7 +141,7 @@ export default function SettingsPage() {
 						localStorage.setItem('punto-infissi-logo-path', org.logoUrl)
 						window.dispatchEvent(new Event('logo-updated'))
 					}
-					
+
 					// Фавикон из БД
 					if (org.faviconUrl) {
 						setFavicon(org.faviconUrl)
@@ -149,7 +149,7 @@ export default function SettingsPage() {
 						localStorage.setItem('punto-infissi-favicon-path', org.faviconUrl)
 						window.dispatchEvent(new Event('favicon-updated'))
 					}
-					
+
 					// Данные компании
 					if (org.name) {
 						setCompanyData(prev => ({
@@ -157,14 +157,16 @@ export default function SettingsPage() {
 							name: org.name,
 						}))
 					}
-					
+
 					console.log('✅ Loaded organization data from database')
 				}
 			} catch (error) {
 				console.error('❌ Failed to load organization data:', error)
-				
+
 				// Fallback: пробуем загрузить из localStorage
-				const savedFaviconPath = localStorage.getItem('punto-infissi-favicon-path')
+				const savedFaviconPath = localStorage.getItem(
+					'punto-infissi-favicon-path'
+				)
 				if (savedFaviconPath) {
 					setFavicon(savedFaviconPath)
 					setFaviconPreview(savedFaviconPath)
@@ -176,7 +178,9 @@ export default function SettingsPage() {
 					setLogoPreview(savedLogoPath)
 				}
 
-				const savedCompanyData = localStorage.getItem('punto-infissi-company-data')
+				const savedCompanyData = localStorage.getItem(
+					'punto-infissi-company-data'
+				)
 				if (savedCompanyData) {
 					try {
 						setCompanyData(JSON.parse(savedCompanyData))
@@ -186,7 +190,7 @@ export default function SettingsPage() {
 				}
 			}
 		}
-		
+
 		loadOrganizationData()
 	}, [])
 
