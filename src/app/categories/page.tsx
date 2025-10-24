@@ -17,16 +17,12 @@ import { Tags, Plus, Search } from 'lucide-react'
 import { useLanguage } from '@/contexts/LanguageContext'
 
 interface Category {
-	id: number
+	id: string
 	name: string
-	nameIt: string
 	description?: string
-	descriptionIt?: string
+	icon: string
 	isActive: boolean
 	createdAt: string
-	_count?: {
-		products: number
-	}
 }
 
 export default function CategoriesPage() {
@@ -59,13 +55,21 @@ export default function CategoriesPage() {
 		setShowManager(true)
 	}
 
+	const handleCategorySaved = () => {
+		setShowManager(false)
+		fetchCategories() // Обновляем список после сохранения
+	}
+
+	const handleCategoryDeleted = () => {
+		fetchCategories() // Обновляем список после удаления
+	}
+
 	const filteredCategories = categories.filter(category => {
 		const searchLower = searchTerm.toLowerCase()
 		return (
 			category.name.toLowerCase().includes(searchLower) ||
-			category.nameIt.toLowerCase().includes(searchLower) ||
-			(category.description && category.description.toLowerCase().includes(searchLower)) ||
-			(category.descriptionIt && category.descriptionIt.toLowerCase().includes(searchLower))
+			(category.description &&
+				category.description.toLowerCase().includes(searchLower))
 		)
 	})
 
@@ -116,7 +120,10 @@ export default function CategoriesPage() {
 								<p className='text-gray-500 mb-4'>
 									{t('noCategoriesDescription')}
 								</p>
-								<Button onClick={handleAddCategory} className='bg-green-600 hover:bg-green-700'>
+								<Button
+									onClick={handleAddCategory}
+									className='bg-green-600 hover:bg-green-700'
+								>
 									<Plus className='h-4 w-4 mr-2' />
 									{t('addFirstCategory')}
 								</Button>
@@ -126,34 +133,39 @@ export default function CategoriesPage() {
 				) : (
 					<div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'>
 						{filteredCategories.map(category => (
-							<Card key={category.id} className='p-4 hover:shadow-md transition-shadow'>
+							<Card
+								key={category.id}
+								className='p-4 hover:shadow-md transition-shadow'
+							>
 								<div className='flex items-start justify-between mb-3'>
 									<div className='flex items-center gap-2'>
-										<Tags className='h-5 w-5 text-blue-600' />
+										<span className='text-2xl'>{category.icon}</span>
 										<h3 className='font-medium text-gray-900'>
-											{locale === 'it' ? category.nameIt : category.name}
+											{category.name}
 										</h3>
 									</div>
-									<div className={`px-2 py-1 rounded-full text-xs ${
-										category.isActive 
-											? 'bg-green-100 text-green-800' 
-											: 'bg-gray-100 text-gray-600'
-									}`}>
+									<div
+										className={`px-2 py-1 rounded-full text-xs ${
+											category.isActive
+												? 'bg-green-100 text-green-800'
+												: 'bg-gray-100 text-gray-600'
+										}`}
+									>
 										{category.isActive ? t('active') : t('inactive')}
 									</div>
 								</div>
-								
-								{(category.description || category.descriptionIt) && (
+
+								{category.description && (
 									<p className='text-sm text-gray-600 mb-3'>
-										{locale === 'it' ? category.descriptionIt : category.description}
+										{category.description}
 									</p>
 								)}
-								
+
 								<div className='flex items-center justify-between text-xs text-gray-500'>
-									<span>{t('created')}: {new Date(category.createdAt).toLocaleDateString()}</span>
-									{category._count?.products && (
-										<span>{category._count.products} {t('products')}</span>
-									)}
+									<span>
+										{t('created')}:{' '}
+										{new Date(category.createdAt).toLocaleDateString()}
+									</span>
 								</div>
 							</Card>
 						))}
@@ -166,7 +178,10 @@ export default function CategoriesPage() {
 						<DialogHeader>
 							<DialogTitle>{t('categorySettings')}</DialogTitle>
 						</DialogHeader>
-						<ProductCategoriesManager />
+						<ProductCategoriesManager 
+							onCategorySaved={handleCategorySaved}
+							onCategoryDeleted={handleCategoryDeleted}
+						/>
 					</DialogContent>
 				</Dialog>
 			</div>

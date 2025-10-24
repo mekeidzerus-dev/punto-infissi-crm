@@ -205,7 +205,15 @@ const DEFAULT_ICONS = [
 	},
 ]
 
-export function ProductCategoriesManager() {
+interface ProductCategoriesManagerProps {
+	onCategorySaved?: () => void
+	onCategoryDeleted?: () => void
+}
+
+export function ProductCategoriesManager({ 
+	onCategorySaved, 
+	onCategoryDeleted 
+}: ProductCategoriesManagerProps = {}) {
 	const { t } = useLanguage()
 	const [categories, setCategories] = useState<ProductCategory[]>([])
 	const [filteredCategories, setFilteredCategories] = useState<
@@ -254,7 +262,7 @@ export function ProductCategoriesManager() {
 	const fetchCategories = async () => {
 		try {
 			setLoading(true)
-			const response = await fetch('/api/product-categories')
+			const response = await fetch('/api/categories')
 			if (response.ok) {
 				const data = await response.json()
 				setCategories(data)
@@ -280,7 +288,7 @@ export function ProductCategoriesManager() {
 		}
 
 		try {
-			const response = await fetch('/api/product-categories', {
+			const response = await fetch('/api/categories', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
@@ -304,6 +312,8 @@ export function ProductCategoriesManager() {
 		} catch (error) {
 			console.error('❌ Errore:', error)
 			alert('Errore durante la creazione della categoria')
+		} finally {
+			onCategorySaved?.()
 		}
 	}
 
@@ -320,7 +330,7 @@ export function ProductCategoriesManager() {
 
 		try {
 			const response = await fetch(
-				`/api/product-categories/${editingCategory.id}`,
+				`/api/categories/${editingCategory.id}`,
 				{
 					method: 'PUT',
 					headers: { 'Content-Type': 'application/json' },
@@ -351,12 +361,14 @@ export function ProductCategoriesManager() {
 		} catch (error) {
 			console.error('❌ Errore:', error)
 			alert("Errore durante l'aggiornamento della categoria")
+		} finally {
+			onCategorySaved?.()
 		}
 	}
 
 	const handleToggleActive = async (categoryId: string, isActive: boolean) => {
 		try {
-			const response = await fetch(`/api/product-categories/${categoryId}`, {
+			const response = await fetch(`/api/categories/${categoryId}`, {
 				method: 'PUT',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ isActive: !isActive }),
@@ -386,7 +398,7 @@ export function ProductCategoriesManager() {
 		}
 
 		try {
-			const response = await fetch(`/api/product-categories/${categoryId}`, {
+			const response = await fetch(`/api/categories/${categoryId}`, {
 				method: 'DELETE',
 			})
 
@@ -401,6 +413,8 @@ export function ProductCategoriesManager() {
 		} catch (error) {
 			console.error('❌ Errore:', error)
 			alert("Errore durante l'eliminazione della categoria")
+		} finally {
+			onCategoryDeleted?.()
 		}
 	}
 

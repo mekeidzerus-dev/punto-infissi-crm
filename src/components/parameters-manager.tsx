@@ -13,7 +13,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from '@/components/ui/select'
-import { Plus, Edit, Trash2, Search, X } from 'lucide-react'
+import { Plus, Edit, Trash2, X } from 'lucide-react'
 import { useLanguage } from '@/contexts/LanguageContext'
 import ParameterEditForm from './parameter-edit-form'
 
@@ -37,7 +37,6 @@ export function ParametersManager() {
 	const { t, locale } = useLanguage()
 	const [parameters, setParameters] = useState<Parameter[]>([])
 	const [loading, setLoading] = useState(true)
-	const [searchTerm, setSearchTerm] = useState('')
 	const [showAddModal, setShowAddModal] = useState(false)
 	const [selectedParameter, setSelectedParameter] = useState<Parameter | null>(
 		null
@@ -113,12 +112,6 @@ export function ParametersManager() {
 		}
 	}
 
-	const filteredParameters = parameters.filter(
-		p =>
-			p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-			p.nameIt?.toLowerCase().includes(searchTerm.toLowerCase())
-	)
-
 	const getTypeLabel = (type: string) => {
 		const types = {
 			TEXT: 'Текст / Testo',
@@ -139,10 +132,7 @@ export function ParametersManager() {
 
 	return (
 		<div className='space-y-4'>
-			<div className='flex items-center justify-between'>
-				<h2 className='text-xl font-semibold'>
-					Параметры продуктов / Parametri prodotti
-				</h2>
+			<div className='flex items-center justify-end'>
 				<Button
 					onClick={() => setShowAddModal(true)}
 					className='bg-green-600 hover:bg-green-700 text-white'
@@ -152,20 +142,9 @@ export function ParametersManager() {
 				</Button>
 			</div>
 
-			{/* Поиск */}
-			<div className='relative'>
-				<Search className='absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400' />
-				<Input
-					placeholder={t('search')}
-					value={searchTerm}
-					onChange={e => setSearchTerm(e.target.value)}
-					className='pl-10'
-				/>
-			</div>
-
 			{/* Список параметров */}
 			<div className='grid grid-cols-1 gap-4'>
-				{filteredParameters.map(param => (
+				{parameters.map(param => (
 					<Card
 						key={param.id}
 						className='p-4 hover:shadow-md transition-shadow'
@@ -283,7 +262,7 @@ export function ParametersManager() {
 				))}
 			</div>
 
-			{filteredParameters.length === 0 && (
+			{parameters.length === 0 && (
 				<div className='text-center py-12 text-gray-500'>
 					<p>Параметры не найдены</p>
 				</div>
