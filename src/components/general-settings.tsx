@@ -64,7 +64,7 @@ export function GeneralSettings() {
 			const response = await fetch('/api/organization')
 			if (response.ok) {
 				const org = await response.json()
-				
+
 				// Фавикон
 				if (org.faviconUrl) {
 					setFavicon(org.faviconUrl)
@@ -124,7 +124,9 @@ export function GeneralSettings() {
 	}
 
 	// Обработчики для фавикона
-	const handleFaviconUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+	const handleFaviconUpload = async (
+		e: React.ChangeEvent<HTMLInputElement>
+	) => {
 		const file = e.target.files?.[0]
 		if (!file) return
 
@@ -315,9 +317,7 @@ export function GeneralSettings() {
 												{currency.symbol}
 											</span>
 											<span>{currency.name}</span>
-											<span className='text-gray-500'>
-												({currency.code})
-											</span>
+											<span className='text-gray-500'>({currency.code})</span>
 										</div>
 									</SelectItem>
 								))}
@@ -358,7 +358,7 @@ export function GeneralSettings() {
 							<ImageIcon className='h-4 w-4 text-gray-500' />
 							<Label>Логотип компании</Label>
 						</div>
-						
+
 						<div className='flex items-center gap-4'>
 							{logoPreview && (
 								<div className='w-16 h-16 border rounded-lg overflow-hidden bg-gray-50'>
@@ -369,7 +369,7 @@ export function GeneralSettings() {
 									/>
 								</div>
 							)}
-							
+
 							<div className='flex-1'>
 								<input
 									type='file'
@@ -379,7 +379,9 @@ export function GeneralSettings() {
 									className='hidden'
 								/>
 								<Button
-									onClick={() => document.getElementById('logo-upload')?.click()}
+									onClick={() =>
+										document.getElementById('logo-upload')?.click()
+									}
 									variant='outline'
 									size='sm'
 								>
@@ -398,7 +400,7 @@ export function GeneralSettings() {
 							<ImageIcon className='h-4 w-4 text-gray-500' />
 							<Label>Фавикон</Label>
 						</div>
-						
+
 						<div className='flex items-center gap-4'>
 							{faviconPreview && (
 								<div className='w-8 h-8 border rounded overflow-hidden bg-gray-50'>
@@ -409,7 +411,7 @@ export function GeneralSettings() {
 									/>
 								</div>
 							)}
-							
+
 							<div className='flex-1'>
 								<input
 									type='file'
@@ -419,7 +421,9 @@ export function GeneralSettings() {
 									className='hidden'
 								/>
 								<Button
-									onClick={() => document.getElementById('favicon-upload')?.click()}
+									onClick={() =>
+										document.getElementById('favicon-upload')?.click()
+									}
 									variant='outline'
 									size='sm'
 								>

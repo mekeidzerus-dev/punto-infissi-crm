@@ -7,7 +7,9 @@ import { GeneralSettings } from '@/components/general-settings'
 import { DictionariesSection } from '@/components/dictionaries-section'
 
 export default function SettingsPage() {
-	const [activeTab, setActiveTab] = useState<'general' | 'dictionaries'>('general')
+	const [activeTab, setActiveTab] = useState<'general' | 'dictionaries'>(
+		'general'
+	)
 
 	return (
 		<DashboardLayoutStickerV2 hideTopNav={true}>

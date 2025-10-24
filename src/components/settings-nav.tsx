@@ -22,9 +22,9 @@ export function SettingsNav({ activeTab, onTabChange }: SettingsNavProps) {
 						<span>Общие настройки</span>
 					</div>
 				</Button>
-				
+
 				<div className='settings-nav-divider'></div>
-				
+
 				<Button
 					variant={activeTab === 'dictionaries' ? 'default' : 'ghost'}
 					onClick={() => onTabChange('dictionaries')}

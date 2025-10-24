@@ -14,6 +14,7 @@ import {
 	GripVertical,
 	ChevronDown,
 	ChevronRight,
+	Tags,
 } from 'lucide-react'
 import {
 	DndContext,
@@ -64,6 +65,7 @@ const getNavigationItems = (t: any): NavigationItem[] => [
 	{ id: 'products', name: t('products'), href: '/products', icon: Package },
 	{ id: 'proposals', name: t('proposals'), href: '/proposals', icon: FileText },
 	{ id: 'orders', name: t('orders'), href: '/orders', icon: ShoppingCart },
+	{ id: 'categories', name: t('categories'), href: '/categories', icon: Tags },
 	{ id: 'settings', name: t('settings'), href: '/settings', icon: Settings },
 ]
 
