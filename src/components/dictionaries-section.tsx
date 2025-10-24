@@ -24,7 +24,6 @@ import {
 } from 'lucide-react'
 import { DictionariesManager } from '@/components/dictionaries-manager'
 import { VATRatesManager } from '@/components/vat-rates-manager'
-import { ProductCategoriesManager } from '@/components/product-categories-manager'
 import { ParametersManager } from '@/components/parameters-manager'
 import { StatusManager } from '@/components/status-manager'
 import { useLanguage } from '@/contexts/LanguageContext'
@@ -43,19 +42,10 @@ interface DictionaryItem {
 export function DictionariesSection() {
 	const { t } = useLanguage()
 	const [expandedItems, setExpandedItems] = useState<Set<string>>(
-		new Set(['categories'])
+		new Set(['parameters'])
 	)
 
 	const dictionaries: DictionaryItem[] = [
-		{
-			id: 'categories',
-			name: 'Категории продуктов',
-			nameIt: 'Categorie prodotti',
-			icon: <Package className='h-5 w-5' />,
-			description: 'Управление категориями товаров',
-			descriptionIt: 'Gestione categorie prodotti',
-			component: ProductCategoriesManager,
-		},
 		{
 			id: 'parameters',
 			name: 'Параметры',

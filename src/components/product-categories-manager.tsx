@@ -210,9 +210,9 @@ interface ProductCategoriesManagerProps {
 	onCategoryDeleted?: () => void
 }
 
-export function ProductCategoriesManager({ 
-	onCategorySaved, 
-	onCategoryDeleted 
+export function ProductCategoriesManager({
+	onCategorySaved,
+	onCategoryDeleted,
 }: ProductCategoriesManagerProps = {}) {
 	const { t } = useLanguage()
 	const [categories, setCategories] = useState<ProductCategory[]>([])
@@ -329,18 +329,15 @@ export function ProductCategoriesManager({
 		}
 
 		try {
-			const response = await fetch(
-				`/api/categories/${editingCategory.id}`,
-				{
-					method: 'PUT',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({
-						name: formData.name,
-						icon: selectedIcon,
-						description: formData.description,
-					}),
-				}
-			)
+			const response = await fetch(`/api/categories/${editingCategory.id}`, {
+				method: 'PUT',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					name: formData.name,
+					icon: selectedIcon,
+					description: formData.description,
+				}),
+			})
 
 			if (response.ok) {
 				const updatedCategory = await response.json()

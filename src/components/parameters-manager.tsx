@@ -3,30 +3,33 @@
 import React, { useState, useEffect } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from '@/components/ui/select'
-import { Plus, Edit, Trash2, X } from 'lucide-react'
+import { Plus, Edit, Trash2 } from 'lucide-react'
 import { useLanguage } from '@/contexts/LanguageContext'
 import ParameterEditForm from './parameter-edit-form'
+
+interface ParameterValue {
+	id?: string
+	value: string
+	valueIt: string
+	displayName?: string
+	hexColor?: string
+	ralCode?: string
+	icon?: string
+	order: number
+	isActive: boolean
+}
 
 interface Parameter {
 	id: string
 	name: string
-	nameIt: string
-	type: string
+	nameIt?: string
+	type: 'TEXT' | 'NUMBER' | 'SELECT' | 'COLOR' | 'BOOLEAN'
 	description?: string
 	unit?: string
 	minValue?: number
 	maxValue?: number
-	values: any[]
+	step?: number
+	values?: ParameterValue[]
 	_count: {
 		categoryParameters: number
 		supplierOverrides: number
@@ -84,7 +87,7 @@ export function ParametersManager() {
 		}
 	}
 
-	const handleSave = async (data: any) => {
+	const handleSave = async (data: Record<string, unknown>) => {
 		try {
 			const url = selectedParameter
 				? `/api/parameters/${selectedParameter.id}`
@@ -107,13 +110,13 @@ export function ParametersManager() {
 			await fetchParameters()
 			setShowAddModal(false)
 			setSelectedParameter(null)
-		} catch (error: any) {
+		} catch (error: unknown) {
 			throw error
 		}
 	}
 
 	const getTypeLabel = (type: string) => {
-		const types = {
+		const types: Record<string, string> = {
 			TEXT: 'Текст / Testo',
 			NUMBER: 'Число / Numero',
 			SELECT: 'Выбор / Selezione',
@@ -132,7 +135,10 @@ export function ParametersManager() {
 
 	return (
 		<div className='space-y-4'>
-			<div className='flex items-center justify-end'>
+			<div className='flex items-center justify-between'>
+				<h2 className='text-xl font-semibold'>
+					Параметры продуктов / Parametri prodotti
+				</h2>
 				<Button
 					onClick={() => setShowAddModal(true)}
 					className='bg-green-600 hover:bg-green-700 text-white'
@@ -153,7 +159,7 @@ export function ParametersManager() {
 							<div className='flex-1'>
 								<div className='flex items-center gap-3'>
 									<h3 className='font-semibold text-lg'>
-										{locale === 'ru' ? param.name : param.nameIt}
+										{locale === 'ru' ? param.name : param.nameIt || param.name}
 									</h3>
 									<span className='px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded'>
 										{getTypeLabel(param.type)}
@@ -216,7 +222,7 @@ export function ParametersManager() {
 															: undefined
 													}
 												>
-													{locale === 'ru' ? v.value : v.valueIt}
+													{locale === 'ru' ? v.value : v.valueIt || v.value}
 													{v.ralCode && ` (${v.ralCode})`}
 												</span>
 											))}
@@ -299,7 +305,9 @@ export function ParametersManager() {
 						<p className='text-gray-600 mb-6'>
 							{locale === 'ru'
 								? `Удалить параметр "${parameterToDelete.name}"?`
-								: `Eliminare il parametro "${parameterToDelete.nameIt}"?`}
+								: `Eliminare il parametro "${
+										parameterToDelete.nameIt || parameterToDelete.name
+								  }"?`}
 							<br />
 							<br />
 							{parameterToDelete._count.categoryParameters > 0 && (
