@@ -1,64 +1,64 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
-// POST /api/parameter-values/quick-add
-// Быстрое добавление значения параметра прямо из конфигуратора
 export async function POST(request: NextRequest) {
 	try {
-		const data = await request.json()
-		const { parameterId, value, valueIt, hexColor, ralCode, createdBy } = data
+		console.log('➕ Adding new parameter value...')
+
+		const body = await request.json()
+		const { parameterId, value } = body
 
 		if (!parameterId || !value) {
 			return NextResponse.json(
-				{ error: 'parameterId and value are required' },
+				{ error: 'Parameter ID and value are required' },
 				{ status: 400 }
 			)
 		}
 
-		// Проверяем, не существует ли уже такое значение
-		const existing = await prisma.parameterValue.findFirst({
+		// Проверяем, что параметр существует
+		const parameter = await prisma.parameterTemplate.findUnique({
+			where: { id: parameterId },
+		})
+
+		if (!parameter) {
+			return NextResponse.json(
+				{ error: 'Parameter not found' },
+				{ status: 404 }
+			)
+		}
+
+		// Проверяем, что значение еще не существует
+		const existingValue = await prisma.parameterValue.findFirst({
 			where: {
-				parameterId,
-				value,
+				parameterId: parameterId,
+				value: value,
 			},
 		})
 
-		if (existing) {
+		if (existingValue) {
 			return NextResponse.json(
-				{ error: 'This value already exists' },
+				{ error: 'Value already exists' },
 				{ status: 409 }
 			)
 		}
 
-		// Определяем статус: если admin - сразу approved, иначе - pending
-		const approvalStatus = createdBy === 'admin' ? 'approved' : 'pending'
-
-		// Создаём новое значение
+		// Добавляем новое значение
 		const newValue = await prisma.parameterValue.create({
 			data: {
-				parameterId,
-				value,
-				valueIt: valueIt || value,
-				hexColor: hexColor || null,
-				ralCode: ralCode || null,
-				createdBy: createdBy || 'user',
-				approvalStatus,
-				approvedBy: approvalStatus === 'approved' ? 'admin' : null,
-				approvedAt: approvalStatus === 'approved' ? new Date() : null,
+				parameterId: parameterId,
+				value: value,
+				displayName: value,
+				order: 0,
 				isActive: true,
-				order: 999, // В конец списка
 			},
 		})
 
-		console.log(
-			`✅ Created parameter value: ${value} (${approvalStatus}) for parameter ${parameterId}`
-		)
-
-		return NextResponse.json(newValue, { status: 201 })
+		console.log(`✅ Added new value "${value}" for parameter ${parameterId}`)
+		return NextResponse.json(newValue)
 	} catch (error) {
-		console.error('❌ Error creating parameter value:', error)
+		console.error('❌ Error adding parameter value:', error)
 		return NextResponse.json(
-			{ error: 'Failed to create parameter value' },
+			{ error: 'Failed to add parameter value', details: String(error) },
 			{ status: 500 }
 		)
 	}

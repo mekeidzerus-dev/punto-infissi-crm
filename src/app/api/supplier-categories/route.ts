@@ -45,9 +45,9 @@ export async function POST(request: NextRequest) {
 		const body = await request.json()
 		const { supplierId, categoryId, parameters } = body
 
-		if (!supplierId || !categoryId || !parameters) {
+		if (!supplierId || !categoryId) {
 			return NextResponse.json(
-				{ error: 'Supplier ID, Category ID and parameters are required' },
+				{ error: 'Supplier ID and Category ID are required' },
 				{ status: 400 }
 			)
 		}
@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
 			data: {
 				supplierId: parseInt(supplierId),
 				categoryId,
-				parameters,
+				parameters: parameters || [],
 			},
 			include: {
 				supplier: true,
@@ -72,6 +72,38 @@ export async function POST(request: NextRequest) {
 		console.error('❌ Error creating supplier category:', error)
 		return NextResponse.json(
 			{ error: 'Failed to create supplier category', details: String(error) },
+			{ status: 500 }
+		)
+	}
+}
+
+export async function DELETE(request: NextRequest) {
+	try {
+		console.log('🗑️ Deleting supplier category...')
+
+		const body = await request.json()
+		const { supplierId, categoryId } = body
+
+		if (!supplierId || !categoryId) {
+			return NextResponse.json(
+				{ error: 'Supplier ID and Category ID are required' },
+				{ status: 400 }
+			)
+		}
+
+		const deleted = await prisma.supplierProductCategory.deleteMany({
+			where: {
+				supplierId: parseInt(supplierId),
+				categoryId,
+			},
+		})
+
+		console.log(`✅ Deleted ${deleted.count} supplier category relations`)
+		return NextResponse.json({ success: true, deletedCount: deleted.count })
+	} catch (error) {
+		console.error('❌ Error deleting supplier category:', error)
+		return NextResponse.json(
+			{ error: 'Failed to delete supplier category', details: String(error) },
 			{ status: 500 }
 		)
 	}

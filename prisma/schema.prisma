@@ -121,6 +121,7 @@ model Supplier {
   // Связи
   productCategories SupplierProductCategory[]
   parameterOverrides SupplierParameterOverride[]
+  configuratorDrafts ConfiguratorDraft[]
   
   @@unique([name])
   @@index([status])
@@ -281,6 +282,7 @@ model ProductCategory {
   supplierCategories SupplierProductCategory[]
   proposalPositions  ProposalPosition[]
   categoryParameters CategoryParameter[]
+  configuratorDrafts ConfiguratorDraft[]
   
   @@unique([name])
   @@index([isActive])
@@ -554,24 +556,14 @@ model ParameterTemplate {
   updatedAt   DateTime @updatedAt
   createdBy   String?  // userId создателя или 'admin'
   
-  // Система согласования
-  approvalStatus  String   @default("approved") // approved, pending, rejected
-  approvedBy      String?
-  approvedAt      DateTime?
-  rejectedBy      String?
-  rejectedAt      DateTime?
-  rejectionReason String?
-  
   // Связи
   values              ParameterValue[]
   categoryParameters  CategoryParameter[]
   supplierOverrides   SupplierParameterOverride[]
-  userSuggestions     UserSuggestion[]
   
   @@unique([name])
   @@index([type])
   @@index([isActive])
-  @@index([approvalStatus])
 }
 
 // Возможные значения для параметров типа SELECT
@@ -594,17 +586,8 @@ model ParameterValue {
   updatedAt   DateTime @updatedAt
   createdBy   String?  // userId создателя или 'admin'
   
-  // Система согласования
-  approvalStatus  String   @default("approved") // approved, pending, rejected
-  approvedBy      String?
-  approvedAt      DateTime?
-  rejectedBy      String?
-  rejectedAt      DateTime?
-  rejectionReason String?
-  
   @@index([parameterId])
   @@index([isActive])
-  @@index([approvalStatus])
 }
 
 // Привязка параметров к категориям продуктов
@@ -658,44 +641,6 @@ model SupplierParameterOverride {
   @@index([parameterId])
 }
 
-// Предложения пользователей для новых значений или параметров
-model UserSuggestion {
-  id             String   @id @default(cuid())
-  userId         String?  // Авторизованный пользователь
-  sessionId      String?  // Анонимный пользователь
-  
-  // Тип предложения
-  type           SuggestionType
-  
-  // Контекст предложения
-  categoryId     String?
-  parameterId    String?
-  parameter      ParameterTemplate? @relation(fields: [parameterId], references: [id])
-  supplierId     Int?
-  
-  // Данные предложения
-  suggestedValue   String   // Предлагаемое значение
-  suggestedValueIt String?  // Итальянский перевод
-  suggestedName    String?  // Предлагаемое название (для нового параметра)
-  description      String?  // Описание/обоснование
-  metadata         Json?    // Дополнительные данные
-  
-  // Статус и модерация
-  status           SuggestionStatus @default(PENDING)
-  adminNotes       String?
-  rejectionReason  String?  // Причина отклонения
-  reviewedAt       DateTime?
-  reviewedBy       String?
-  
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-  
-  @@index([status])
-  @@index([type])
-  @@index([parameterId])
-  @@index([createdAt])
-}
-
 // Типы параметров
 enum ParameterType {
   TEXT          // Текстовое поле
@@ -708,17 +653,36 @@ enum ParameterType {
   RANGE         // Диапазон значений
 }
 
-// Типы предложений
-enum SuggestionType {
-  PARAMETER_VALUE    // Новое значение для существующего параметра
-  NEW_PARAMETER      // Совершенно новый параметр
-  PARAMETER_EDIT     // Редактирование существующего параметра
-}
+// ============================================
+// ЧЕРНОВИКИ КОНФИГУРАТОРА ПРОДУКТОВ
+// ============================================
 
-// Статусы предложений
-enum SuggestionStatus {
-  PENDING   // Ожидает рассмотрения
-  APPROVED  // Одобрено
-  REJECTED  // Отклонено
-  APPLIED   // Применено к системе
+model ConfiguratorDraft {
+  id                String   @id @default(cuid())
+  
+  // Идентификация пользователя
+  userId            String?  // Для авторизованных пользователей
+  sessionId         String?  // Для неавторизованных пользователей
+  
+  // Текущее состояние конфигурации
+  currentStep       Int      @default(1) // 1, 2, 3
+  selectedCategoryId String?
+  selectedSupplierId Int?
+  
+  // Сохраненная конфигурация
+  configuration     Json?    // Все выбранные параметры и значения
+  
+  // Метаданные
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  
+  // Связи
+  category          ProductCategory? @relation(fields: [selectedCategoryId], references: [id])
+  supplier          Supplier? @relation(fields: [selectedSupplierId], references: [id])
+  
+  @@index([userId])
+  @@index([sessionId])
+  @@index([currentStep])
+  @@index([selectedCategoryId])
+  @@index([selectedSupplierId])
 }

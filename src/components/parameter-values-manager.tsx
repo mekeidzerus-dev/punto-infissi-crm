@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Plus, Edit, Trash2, Check, X, Save } from 'lucide-react'
-import { ApprovalStatusBadge } from './approval-status-badge'
 import { useLanguage } from '@/contexts/LanguageContext'
 import { hexToRAL } from '@/lib/hex-to-ral'
 import {
@@ -29,7 +28,6 @@ interface ParameterValue {
 	valueIt?: string
 	hexColor?: string
 	ralCode?: string
-	approvalStatus: string
 	createdBy?: string
 	order: number
 	isActive: boolean
@@ -437,9 +435,6 @@ export function ParameterValuesManager({
 											</TableCell>
 										</>
 									)}
-									<TableCell>
-										<ApprovalStatusBadge status={val.approvalStatus} />
-									</TableCell>
 									<TableCell>
 										{editingId === val.id ? (
 											<div className='flex gap-1'>

@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import packageJson from '../../../../package.json'
 
 export async function GET() {
 	try {
@@ -17,7 +16,7 @@ export async function GET() {
 			{
 				status: 'healthy',
 				timestamp: new Date().toISOString(),
-				version: packageJson.version,
+				version: '1.1.0',
 				uptime: Math.round(uptime) + 's',
 				memory: {
 					used: Math.round(memUsage.heapUsed / 1024 / 1024) + ' MB',

@@ -10,7 +10,7 @@ export async function PUT(
 	try {
 		const { id: categoryId } = await params
 		const body = await request.json()
-		const { parameters } = body // Массив { parameterId, isRequired, isVisible, defaultValue, displayName, helpText, unit }
+		const { parameters } = body // Массив { parameterId, isRequired, isVisible, defaultValue, displayName, helpText }
 
 		if (!Array.isArray(parameters)) {
 			return NextResponse.json(
@@ -49,7 +49,6 @@ export async function PUT(
 					displayName:
 						data.displayName !== undefined ? data.displayName : undefined,
 					helpText: data.helpText !== undefined ? data.helpText : undefined,
-					unit: data.unit !== undefined ? data.unit : undefined,
 				},
 				create: {
 					categoryId: categoryId,
@@ -59,7 +58,6 @@ export async function PUT(
 					defaultValue: data.defaultValue || null,
 					displayName: data.displayName || null,
 					helpText: data.helpText || null,
-					unit: data.unit || null,
 				},
 			})
 		})

@@ -121,3 +121,32 @@
 		@apply bg-background text-foreground;
 	}
 }
+
+/* Settings Navigation Styles */
+.settings-nav {
+	@apply bg-white border border-gray-200 rounded-lg p-1 shadow-sm;
+}
+
+.settings-nav-items {
+	@apply flex items-center gap-1;
+}
+
+.settings-nav-item {
+	@apply flex-1 justify-start px-4 py-2 text-sm font-medium transition-colors;
+}
+
+.settings-nav-item:hover {
+	@apply bg-gray-50;
+}
+
+.settings-nav-item[data-state="active"] {
+	@apply bg-blue-600 text-white shadow-sm;
+}
+
+.settings-nav-item[data-state="active"]:hover {
+	@apply bg-blue-700;
+}
+
+.settings-nav-divider {
+	@apply w-px h-6 bg-gray-300 mx-1;
+}

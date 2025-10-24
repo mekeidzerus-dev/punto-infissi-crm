@@ -1,14 +1,61 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
-// GET - получить всех поставщиков
-export async function GET() {
+// GET /api/suppliers - получить всех поставщиков
+export async function GET(request: NextRequest) {
 	try {
 		const suppliers = await prisma.supplier.findMany({
-			orderBy: { createdAt: 'desc' },
+			select: {
+				id: true,
+				name: true,
+				rating: true,
+				notes: true,
+				paymentTerms: true,
+				deliveryDays: true,
+				minOrderAmount: true,
+				contactPerson: true,
+				email: true,
+				phone: true,
+				address: true,
+				status: true,
+				// Подсчитываем количество переопределений параметров
+				parameterOverrides: {
+					select: {
+						id: true,
+					},
+				},
+				// Подсчитываем количество связанных категорий
+				productCategories: {
+					select: {
+						id: true,
+					},
+				},
+			},
+			orderBy: {
+				name: 'asc',
+			},
 		})
 
-		return NextResponse.json(suppliers)
+		// Формируем ответ с полной информацией
+		const suppliersWithFullData = suppliers.map(supplier => ({
+			id: supplier.id,
+			name: supplier.name,
+			rating: supplier.rating || 0,
+			logo: null, // Пока нет поля logo в схеме
+			notes: supplier.notes || '',
+			paymentTerms: supplier.paymentTerms || '',
+			deliveryDays: supplier.deliveryDays || 0,
+			minOrderAmount: supplier.minOrderAmount || 0,
+			contactPerson: supplier.contactPerson || '',
+			email: supplier.email || '',
+			phone: supplier.phone || '',
+			address: supplier.address || '',
+			status: supplier.status || 'active',
+			parametersCount: supplier.parameterOverrides.length,
+			categoriesCount: supplier.productCategories.length,
+		}))
+
+		return NextResponse.json(suppliersWithFullData)
 	} catch (error) {
 		console.error('Error fetching suppliers:', error)
 		return NextResponse.json(
@@ -18,35 +65,58 @@ export async function GET() {
 	}
 }
 
-// POST - создать поставщика
+// POST /api/suppliers - создать нового поставщика
 export async function POST(request: NextRequest) {
 	try {
 		const body = await request.json()
+		const {
+			name,
+			phone,
+			email,
+			contactPerson,
+			address,
+			codiceFiscale,
+			partitaIVA,
+			legalAddress,
+			paymentTerms,
+			deliveryDays,
+			minOrderAmount,
+			rating,
+			status,
+			notes,
+		} = body
 
-		const supplier = await prisma.supplier.create({
+		// Валидация обязательных полей
+		if (!name || !phone || !email) {
+			return NextResponse.json(
+				{ error: 'Name, phone, and email are required' },
+				{ status: 400 }
+			)
+		}
+
+		const newSupplier = await prisma.supplier.create({
 			data: {
-				name: body.name,
-				phone: body.phone,
-				email: body.email,
-				contactPerson: body.contactPerson,
-				address: body.address,
-				codiceFiscale: body.codiceFiscale,
-				partitaIVA: body.partitaIVA,
-				legalAddress: body.legalAddress,
-				paymentTerms: body.paymentTerms,
-				deliveryDays: body.deliveryDays ? parseInt(body.deliveryDays) : null,
-				minOrderAmount: body.minOrderAmount
-					? parseFloat(body.minOrderAmount)
-					: null,
-				rating: body.rating ? parseInt(body.rating) : 5,
-				status: body.status || 'active',
-				notes: body.notes,
+				name,
+				phone,
+				email,
+				contactPerson: contactPerson || '',
+				address: address || '',
+				codiceFiscale: codiceFiscale || '',
+				partitaIVA: partitaIVA || null,
+				legalAddress: legalAddress || '',
+				paymentTerms: paymentTerms || '',
+				deliveryDays: deliveryDays ? parseInt(deliveryDays) : 0,
+				minOrderAmount: minOrderAmount ? parseFloat(minOrderAmount) : 0,
+				rating: rating ? parseInt(rating) : 0,
+				status: status || 'active',
+				notes: notes || '',
 			},
 		})
 
-		return NextResponse.json(supplier, { status: 201 })
+		console.log(`✅ Created supplier: ${newSupplier.name}`)
+		return NextResponse.json(newSupplier, { status: 201 })
 	} catch (error) {
-		console.error('Error creating supplier:', error)
+		console.error('❌ Error creating supplier:', error)
 		return NextResponse.json(
 			{ error: 'Failed to create supplier' },
 			{ status: 500 }
@@ -54,37 +124,74 @@ export async function POST(request: NextRequest) {
 	}
 }
 
-// PUT - обновить поставщика
+// PUT /api/suppliers - обновить существующего поставщика
 export async function PUT(request: NextRequest) {
 	try {
 		const body = await request.json()
-		const { id, ...data } = body
+		const {
+			id,
+			name,
+			phone,
+			email,
+			contactPerson,
+			address,
+			codiceFiscale,
+			partitaIVA,
+			legalAddress,
+			paymentTerms,
+			deliveryDays,
+			minOrderAmount,
+			rating,
+			status,
+			notes,
+		} = body
 
-		const supplier = await prisma.supplier.update({
+		// Валидация ID
+		if (!id) {
+			return NextResponse.json(
+				{ error: 'Supplier ID is required' },
+				{ status: 400 }
+			)
+		}
+
+		// Проверяем существование поставщика
+		const existingSupplier = await prisma.supplier.findUnique({
+			where: { id: parseInt(id) },
+		})
+
+		if (!existingSupplier) {
+			return NextResponse.json({ error: 'Supplier not found' }, { status: 404 })
+		}
+
+		// Обновляем поставщика
+		const updatedSupplier = await prisma.supplier.update({
 			where: { id: parseInt(id) },
 			data: {
-				name: data.name,
-				phone: data.phone,
-				email: data.email,
-				contactPerson: data.contactPerson,
-				address: data.address,
-				codiceFiscale: data.codiceFiscale,
-				partitaIVA: data.partitaIVA,
-				legalAddress: data.legalAddress,
-				paymentTerms: data.paymentTerms,
-				deliveryDays: data.deliveryDays ? parseInt(data.deliveryDays) : null,
-				minOrderAmount: data.minOrderAmount
-					? parseFloat(data.minOrderAmount)
-					: null,
-				rating: data.rating ? parseInt(data.rating) : 5,
-				status: data.status,
-				notes: data.notes,
+				name: name || existingSupplier.name,
+				phone: phone || existingSupplier.phone,
+				email: email || existingSupplier.email,
+				contactPerson: contactPerson || existingSupplier.contactPerson,
+				address: address || existingSupplier.address,
+				codiceFiscale: codiceFiscale || existingSupplier.codiceFiscale,
+				partitaIVA: partitaIVA || existingSupplier.partitaIVA,
+				legalAddress: legalAddress || existingSupplier.legalAddress,
+				paymentTerms: paymentTerms || existingSupplier.paymentTerms,
+				deliveryDays: deliveryDays
+					? parseInt(deliveryDays)
+					: existingSupplier.deliveryDays,
+				minOrderAmount: minOrderAmount
+					? parseFloat(minOrderAmount)
+					: existingSupplier.minOrderAmount,
+				rating: rating ? parseInt(rating) : existingSupplier.rating,
+				status: status || existingSupplier.status,
+				notes: notes || existingSupplier.notes,
 			},
 		})
 
-		return NextResponse.json(supplier)
+		console.log(`✅ Updated supplier: ${updatedSupplier.name}`)
+		return NextResponse.json(updatedSupplier)
 	} catch (error) {
-		console.error('Error updating supplier:', error)
+		console.error('❌ Error updating supplier:', error)
 		return NextResponse.json(
 			{ error: 'Failed to update supplier' },
 			{ status: 500 }
@@ -92,23 +199,37 @@ export async function PUT(request: NextRequest) {
 	}
 }
 
-// DELETE - удалить поставщика
+// DELETE /api/suppliers - удалить поставщика
 export async function DELETE(request: NextRequest) {
 	try {
 		const { searchParams } = new URL(request.url)
 		const id = searchParams.get('id')
 
 		if (!id) {
-			return NextResponse.json({ error: 'ID is required' }, { status: 400 })
+			return NextResponse.json(
+				{ error: 'Supplier ID is required' },
+				{ status: 400 }
+			)
 		}
 
+		// Проверяем существование поставщика
+		const existingSupplier = await prisma.supplier.findUnique({
+			where: { id: parseInt(id) },
+		})
+
+		if (!existingSupplier) {
+			return NextResponse.json({ error: 'Supplier not found' }, { status: 404 })
+		}
+
+		// Удаляем поставщика (каскадное удаление связей)
 		await prisma.supplier.delete({
 			where: { id: parseInt(id) },
 		})
 
+		console.log(`✅ Deleted supplier: ${existingSupplier.name}`)
 		return NextResponse.json({ success: true })
 	} catch (error) {
-		console.error('Error deleting supplier:', error)
+		console.error('❌ Error deleting supplier:', error)
 		return NextResponse.json(
 			{ error: 'Failed to delete supplier' },
 			{ status: 500 }

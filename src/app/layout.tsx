@@ -4,6 +4,7 @@ import { FaviconUpdater } from '@/components/favicon-updater'
 import { LogoUpdater } from '@/components/logo-updater'
 import { LanguageProvider } from '@/contexts/LanguageContext'
 import { Footer } from '@/components/footer'
+import { Toaster } from 'sonner'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -33,6 +34,7 @@ export default function RootLayout({
 					<LogoUpdater />
 					<div className='flex-grow'>{children}</div>
 					<Footer />
+					<Toaster position='top-center' richColors />
 				</LanguageProvider>
 			</body>
 		</html>

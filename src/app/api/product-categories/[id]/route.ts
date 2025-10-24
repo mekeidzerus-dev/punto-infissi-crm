@@ -114,16 +114,28 @@ export async function DELETE(
 			where: { categoryId },
 		})
 
+		// Если есть связанные записи, удаляем их сначала
 		if (supplierCategories.length > 0) {
 			console.log(
-				`❌ Cannot delete category with ${supplierCategories.length} supplier relationships`
+				`🗑️ Deleting ${supplierCategories.length} supplier relationships first`
 			)
-			return NextResponse.json(
-				{
-					error: 'Cannot delete category with existing supplier relationships',
-				},
-				{ status: 400 }
+			await prisma.supplierProductCategory.deleteMany({
+				where: { categoryId },
+			})
+		}
+
+		// Также удаляем связанные параметры категории
+		const categoryParameters = await prisma.categoryParameter.findMany({
+			where: { categoryId },
+		})
+
+		if (categoryParameters.length > 0) {
+			console.log(
+				`🗑️ Deleting ${categoryParameters.length} category parameters`
 			)
+			await prisma.categoryParameter.deleteMany({
+				where: { categoryId },
+			})
 		}
 
 		// Удаляем категорию

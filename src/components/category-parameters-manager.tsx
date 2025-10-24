@@ -221,7 +221,9 @@ export default function CategoryParametersManager({
 										<div className='flex-1'>
 											<div className='flex items-center gap-3'>
 												<h4 className='font-semibold'>
-													{locale === 'ru' ? param.name : param.nameIt}
+													{locale === 'ru'
+														? param.name
+														: param.nameIt || param.name}
 												</h4>
 												<span className='px-2 py-0.5 bg-blue-100 text-blue-700 text-xs rounded'>
 													{param.type}
@@ -322,7 +324,9 @@ export default function CategoryParametersManager({
 								<div className='space-y-4'>
 									<div className='flex items-center justify-between'>
 										<h4 className='font-semibold'>
-											{locale === 'ru' ? param.name : param.nameIt}
+											{locale === 'ru'
+												? param.name
+												: param.nameIt || param.name}
 										</h4>
 										<div className='flex gap-2'>
 											<Button
@@ -360,7 +364,9 @@ export default function CategoryParametersManager({
 													})
 												}
 												placeholder={
-													locale === 'ru' ? param.name : param.nameIt
+													locale === 'ru'
+														? param.name
+														: param.nameIt || param.name
 												}
 											/>
 											<p className='text-xs text-gray-500 mt-1'>
@@ -492,7 +498,7 @@ export default function CategoryParametersManager({
 							>
 								<div className='text-sm'>
 									<div className='font-medium'>
-										{locale === 'ru' ? param.name : param.nameIt}
+										{locale === 'ru' ? param.name : param.nameIt || param.name}
 									</div>
 									<div className='text-xs text-gray-500'>{param.type}</div>
 								</div>

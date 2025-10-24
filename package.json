@@ -1,6 +1,6 @@
 {
 	"name": "punto-infissi-crm",
-  "version": "1.0.1",
+	"version": "1.1.0",
 	"description": "Professional CRM system for windows and doors sales management with advanced product configurator, HEX→RAL conversion, and bilingual support (IT/RU)",
 	"author": "Ruslan Mekeidze",
 	"private": true,
@@ -13,7 +13,8 @@
 		"test:headed": "playwright test --headed",
 		"test:ui": "playwright test --ui",
 		"test:report": "playwright show-report",
-		"test:favicon": "playwright test tests/favicon.spec.ts"
+		"test:favicon": "playwright test tests/favicon.spec.ts",
+		"seed:dev": "npx tsx prisma/seed-dev.ts"
 	},
 	"dependencies": {
 		"@auth/prisma-adapter": "2.10.0",
@@ -45,6 +46,7 @@
 		"react": "19.1.0",
 		"react-dom": "19.1.0",
 		"sharp": "0.34.4",
+		"sonner": "2.0.7",
 		"tailwind-merge": "3.3.1"
 	},
 	"devDependencies": {

@@ -32,9 +32,7 @@ import {
 	LegacyProductVisualizer,
 } from '@/components/product-visualizer-enhanced'
 import { ColorSelector, getColorScheme } from '@/components/color-selector'
-import { UserSuggestion } from '@/components/user-suggestion'
 import { FeatureGate } from '@/lib/feature-flags'
-import { ApprovalStatusBadge } from '@/components/approval-status-badge'
 import { InlineAddSelectValue } from '@/components/inline-add-select-value'
 import { ParameterValuesManager } from '@/components/parameter-values-manager'
 
@@ -598,14 +596,6 @@ export function ProductConfigurator({
 												{v.ralCode && ` (${v.ralCode})`}
 											</span>
 											<div className='flex items-center gap-1'>
-												{v.approvalStatus &&
-													v.approvalStatus !== 'approved' && (
-														<ApprovalStatusBadge
-															status={v.approvalStatus}
-															size='sm'
-															showText={false}
-														/>
-													)}
 												<button
 													onClick={e => {
 														e.preventDefault()
@@ -669,14 +659,6 @@ export function ProductConfigurator({
 																: v.valueIt || v.value}
 															{v.ralCode && ` (${v.ralCode})`}
 														</span>
-														{v.approvalStatus &&
-															v.approvalStatus !== 'approved' && (
-																<ApprovalStatusBadge
-																	status={v.approvalStatus}
-																	size='sm'
-																	showText={false}
-																/>
-															)}
 													</div>
 												</SelectItem>
 											))}
@@ -707,7 +689,6 @@ export function ProductConfigurator({
 													: v.valueIt || v.value,
 											hex: v.hexColor,
 											ral: v.ralCode,
-											approvalStatus: v.approvalStatus,
 										})) || []
 									}
 									selectedColor={String(value)}

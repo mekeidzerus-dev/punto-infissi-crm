@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -11,7 +11,6 @@ import {
 	DialogContent,
 	DialogHeader,
 	DialogTitle,
-	DialogDescription,
 } from '@/components/ui/dialog'
 import { Plus, Save, X } from 'lucide-react'
 import { useLanguage } from '@/contexts/LanguageContext'
@@ -67,9 +66,9 @@ const DEFAULT_ICONS = [
 		description: 'Tende e tendaggi',
 		svg: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
 			<rect x="3" y="4" width="18" height="16" rx="1"/>
-			<path d="M3 8h18"/>
-			<path d="M3 12h18"/>
-			<path d="M3 16h18"/>
+			<line x1="3" y1="8" x2="21" y2="8"/>
+			<line x1="3" y1="12" x2="21" y2="12"/>
+			<line x1="3" y1="16" x2="21" y2="16"/>
 		</svg>`,
 	},
 	{
@@ -93,29 +92,8 @@ const DEFAULT_ICONS = [
 		description: 'Porte blindate e portoncini',
 		svg: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
 			<rect x="4" y="4" width="16" height="16" rx="1"/>
-			<circle cx="12" cy="12" r="1.5"/>
-			<path d="M12 2v4"/>
-			<path d="M12 18v4"/>
-		</svg>`,
-	},
-	{
-		name: 'Falso Telaio',
-		icon: '🪟',
-		description: 'Falsi telai e strutture',
-		svg: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
-			<rect x="3" y="3" width="18" height="18" rx="1"/>
-			<rect x="7" y="7" width="10" height="10" rx="0.5"/>
-			<rect x="10" y="10" width="4" height="4" rx="0.5"/>
-		</svg>`,
-	},
-	{
-		name: 'Porte Interne',
-		icon: '🚪',
-		description: 'Porte interne e divisorie',
-		svg: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
-			<rect x="4" y="4" width="16" height="16" rx="1"/>
-			<circle cx="12" cy="12" r="1.5"/>
-			<path d="M12 2v4"/>
+			<circle cx="12" cy="12" r="2"/>
+			<path d="M8 12h8"/>
 		</svg>`,
 	},
 	{
@@ -135,20 +113,10 @@ const DEFAULT_ICONS = [
 		icon: '📦',
 		description: 'Accessori e componenti',
 		svg: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
-			<rect x="4" y="4" width="16" height="16" rx="1"/>
-			<path d="M10 10h4v4h-4z"/>
-			<path d="M10 2v4"/>
-			<path d="M14 2v4"/>
-			<path d="M10 18v4"/>
-			<path d="M14 18v4"/>
-		</svg>`,
-	},
-	{
-		name: 'Servizi / Attività',
-		icon: '🔧',
-		description: 'Servizi e attività',
-		svg: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
-			<path d="M15.5 6.5a1 1 0 0 0 0 1.4l1.4 1.4a1 1 0 0 0 1.4 0l3.5-3.5a5 5 0 0 1-6.5 6.5l-6 6a1.5 1.5 0 0 1-2-2l6-6a5 5 0 0 1 6.5-6.5l-3.5 3.5z"/>
+			<rect x="3" y="3" width="18" height="18" rx="1"/>
+			<circle cx="9" cy="9" r="2"/>
+			<circle cx="15" cy="15" r="2"/>
+			<line x1="9" y1="9" x2="15" y2="15"/>
 		</svg>`,
 	},
 	{
@@ -209,120 +177,180 @@ const DEFAULT_ICONS = [
 interface AddCategoryModalProps {
 	isOpen: boolean
 	onClose: () => void
-	onSave: (category: {
-		name: string
-		icon: string
-		description?: string
-	}) => void
-	initialData?: {
-		name: string
-		icon: string
-		description?: string
-	}
+	onCategorySaved?: () => void
+	editingCategory?: any
 }
 
 export function AddCategoryModal({
 	isOpen,
 	onClose,
-	onSave,
-	initialData,
+	onCategorySaved,
+	editingCategory,
 }: AddCategoryModalProps) {
 	const { t } = useLanguage()
 	const [formData, setFormData] = useState({
-		name: initialData?.name || '',
-		icon: initialData?.icon || '',
-		description: initialData?.description || '',
+		name: '',
+		icon: '',
+		description: '',
 	})
-	const [selectedIcon, setSelectedIcon] = useState(initialData?.icon || '')
+	const [selectedIcon, setSelectedIcon] = useState('')
 
-	const handleSave = () => {
+	// Обновляем форму при изменении editingCategory
+	useEffect(() => {
+		if (editingCategory) {
+			setFormData({
+				name: editingCategory.name || '',
+				icon: editingCategory.icon || '',
+				description: editingCategory.description || '',
+			})
+			setSelectedIcon(editingCategory.icon || '')
+		} else {
+			setFormData({ name: '', icon: '', description: '' })
+			setSelectedIcon('')
+		}
+	}, [editingCategory, isOpen])
+
+	const handleSave = async () => {
 		if (!formData.name.trim()) {
-			alert('Nome categoria è obbligatorio')
+			alert('Название категории обязательно')
 			return
 		}
 
 		if (!selectedIcon) {
-			alert("Seleziona un'icona")
+			alert('Выберите иконку')
 			return
 		}
 
-		onSave({
-			name: formData.name,
-			icon: selectedIcon,
-			description: formData.description,
-		})
+		try {
+			const categoryData = {
+				name: formData.name,
+				icon: selectedIcon,
+				description: formData.description,
+			}
 
-		// Reset form
-		setFormData({ name: '', icon: '', description: '' })
-		setSelectedIcon('')
-		onClose()
+			if (editingCategory) {
+				// Редактирование существующей категории
+				const response = await fetch(
+					`/api/product-categories/${editingCategory.id}`,
+					{
+						method: 'PUT',
+						headers: {
+							'Content-Type': 'application/json',
+						},
+						body: JSON.stringify(categoryData),
+					}
+				)
+
+				if (!response.ok) {
+					throw new Error('Failed to update category')
+				}
+			} else {
+				// Создание новой категории
+				const response = await fetch('/api/product-categories', {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json',
+					},
+					body: JSON.stringify(categoryData),
+				})
+
+				if (!response.ok) {
+					throw new Error('Failed to create category')
+				}
+			}
+
+			// Уведомляем родительский компонент
+			if (onCategorySaved) {
+				onCategorySaved()
+			}
+
+			// Reset form
+			setFormData({ name: '', icon: '', description: '' })
+			setSelectedIcon('')
+			onClose()
+		} catch (error) {
+			console.error('Error saving category:', error)
+			alert('Ошибка при сохранении категории')
+		}
 	}
 
 	return (
 		<Dialog open={isOpen} onOpenChange={onClose}>
-			<DialogContent className='max-w-4xl w-[95vw] max-h-[90vh] overflow-y-auto'>
-				<DialogHeader>
-					<DialogTitle className='flex items-center gap-2'>
-						<Plus className='h-5 w-5' />
-						{initialData ? 'Modifica Categoria' : 'Aggiungi Nuova Categoria'}
+			<DialogContent className='max-w-2xl w-[90vw] max-h-[90vh] overflow-y-auto'>
+				<DialogHeader className='pb-4'>
+					<DialogTitle className='text-xl font-semibold'>
+						{editingCategory ? 'Редактировать категорию' : 'Добавить категорию'}
 					</DialogTitle>
-					<DialogDescription>
-						{initialData
-							? 'Modifica i dettagli della categoria esistente'
-							: 'Crea una nuova categoria di prodotti con icona personalizzata'}
-					</DialogDescription>
 				</DialogHeader>
 
-				<div className='space-y-6 py-4'>
-					{/* Nome categoria */}
-					<div>
-						<Label htmlFor='categoryName'>Nome Categoria *</Label>
-						<Input
-							id='categoryName'
-							value={formData.name}
-							onChange={e =>
-								setFormData(prev => ({ ...prev, name: e.target.value }))
-							}
-							placeholder='Es: Serramenti, Cassonetti, Avvolgibile...'
-							className='mt-1'
-						/>
+				<div className='space-y-6'>
+					{/* Основные поля в сетке */}
+					<div className='grid grid-cols-1 gap-4'>
+						{/* Название категории */}
+						<div>
+							<Label
+								htmlFor='categoryName'
+								className='text-sm font-medium text-gray-700'
+							>
+								Название категории *
+							</Label>
+							<Input
+								id='categoryName'
+								value={formData.name}
+								onChange={e =>
+									setFormData(prev => ({ ...prev, name: e.target.value }))
+								}
+								placeholder='Например: Окна, Двери, Роллеты...'
+								className='mt-1'
+							/>
+						</div>
+
+						{/* Описание */}
+						<div>
+							<Label
+								htmlFor='categoryDescription'
+								className='text-sm font-medium text-gray-700'
+							>
+								Описание
+							</Label>
+							<Textarea
+								id='categoryDescription'
+								value={formData.description}
+								onChange={e =>
+									setFormData(prev => ({
+										...prev,
+										description: e.target.value,
+									}))
+								}
+								placeholder='Краткое описание категории...'
+								className='mt-1'
+								rows={2}
+							/>
+						</div>
 					</div>
 
-					{/* Descrizione */}
+					{/* Выбор иконки */}
 					<div>
-						<Label htmlFor='categoryDescription'>Descrizione</Label>
-						<Textarea
-							id='categoryDescription'
-							value={formData.description}
-							onChange={e =>
-								setFormData(prev => ({ ...prev, description: e.target.value }))
-							}
-							placeholder='Descrizione opzionale della categoria...'
-							className='mt-1'
-							rows={3}
-						/>
-					</div>
-
-					{/* Selezione icona */}
-					<div>
-						<Label>Seleziona Icona *</Label>
-						<div className='mt-3 grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-3'>
+						<Label className='text-sm font-medium text-gray-700'>
+							Выберите иконку *
+						</Label>
+						<div className='mt-3 grid grid-cols-6 gap-3'>
 							{DEFAULT_ICONS.map((iconData, index) => (
 								<Card
 									key={index}
-									className={`p-3 cursor-pointer transition-all hover:shadow-md ${
+									className={`p-3 cursor-pointer transition-all hover:shadow-md aspect-square ${
 										selectedIcon === iconData.svg
 											? 'ring-2 ring-blue-500 bg-blue-50'
 											: 'hover:bg-gray-50'
 									}`}
 									onClick={() => setSelectedIcon(iconData.svg)}
 								>
-									<div className='flex flex-col items-center space-y-2'>
+									<div className='flex flex-col items-center justify-center h-full text-center'>
 										<div
-											className='w-8 h-8 flex items-center justify-center'
+											className='w-6 h-6 flex items-center justify-center mb-1'
 											dangerouslySetInnerHTML={{ __html: iconData.svg }}
 										/>
-										<div className='text-xs text-center text-gray-600'>
+										<div className='text-xs text-gray-600 leading-tight'>
 											{iconData.name}
 										</div>
 									</div>
@@ -331,9 +359,14 @@ export function AddCategoryModal({
 						</div>
 					</div>
 
-					{/* Icona personalizzata */}
+					{/* Кастомная иконка */}
 					<div>
-						<Label htmlFor='customIcon'>Icona Personalizzata (SVG)</Label>
+						<Label
+							htmlFor='customIcon'
+							className='text-sm font-medium text-gray-700'
+						>
+							Или введите SVG код
+						</Label>
 						<Textarea
 							id='customIcon'
 							value={formData.icon}
@@ -341,15 +374,15 @@ export function AddCategoryModal({
 								setFormData(prev => ({ ...prev, icon: e.target.value }))
 								setSelectedIcon(e.target.value)
 							}}
-							placeholder='Incolla qui il codice SVG personalizzato...'
+							placeholder='<svg>...</svg>'
 							className='mt-1 font-mono text-sm'
-							rows={4}
+							rows={3}
 						/>
 						{formData.icon && (
-							<div className='mt-2 p-3 border rounded-lg bg-gray-50'>
-								<div className='text-sm text-gray-600 mb-2'>Anteprima:</div>
+							<div className='mt-2 p-3 border border-gray-200 rounded-lg bg-gray-50'>
+								<div className='text-xs text-gray-500 mb-2'>Предпросмотр:</div>
 								<div
-									className='w-12 h-12 flex items-center justify-center'
+									className='w-8 h-8 flex items-center justify-center'
 									dangerouslySetInnerHTML={{ __html: formData.icon }}
 								/>
 							</div>
@@ -357,18 +390,20 @@ export function AddCategoryModal({
 					</div>
 				</div>
 
-				{/* Azioni */}
-				<div className='flex justify-end gap-3 pt-4 border-t'>
-					<Button variant='outline' onClick={onClose}>
-						<X className='h-4 w-4 mr-2' />
-						Annulla
+				{/* Кнопки */}
+				<div className='flex items-center justify-end space-x-3 pt-4'>
+					<Button
+						variant='outline'
+						onClick={onClose}
+						className='border-gray-300 text-gray-700 hover:bg-gray-50'
+					>
+						Отмена
 					</Button>
 					<Button
 						onClick={handleSave}
-						className='bg-green-600 hover:bg-green-700'
+						className='bg-green-600 hover:bg-green-700 text-white'
 					>
-						<Save className='h-4 w-4 mr-2' />
-						{initialData ? 'Salva Modifiche' : 'Salva Categoria'}
+						{editingCategory ? 'Сохранить изменения' : 'Создать категорию'}
 					</Button>
 				</div>
 			</DialogContent>

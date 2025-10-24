@@ -16,6 +16,9 @@ export const FEATURE_FLAGS = {
 
 	// Дополнительные заметки
 	CUSTOM_NOTES: process.env.NEXT_PUBLIC_CUSTOM_NOTES === 'true',
+
+	// Новый конфигуратор продуктов v2
+	NEW_CONFIGURATOR: process.env.NEXT_PUBLIC_NEW_CONFIGURATOR === 'true',
 } as const
 
 // Функция для проверки доступности функции

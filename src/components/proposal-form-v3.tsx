@@ -24,6 +24,8 @@ import {
 	ProductConfigurator,
 	Configuration,
 } from '@/components/product-configurator'
+import { ProductConfiguratorV2 } from '@/components/product-configurator-v2'
+import { isFeatureEnabled } from '@/lib/feature-flags'
 import { ClientFormModal } from '@/components/client-form-modal'
 import {
 	Plus,
@@ -540,6 +542,22 @@ export function ProposalFormV3({
 
 		setShowConfigurator(false)
 		setCurrentGroupIndex(null)
+	}
+
+	// Адаптер для нового конфигуратора v2
+	const handleConfiguratorV2Complete = async (product: any) => {
+		if (currentGroupIndex === null) return
+
+		// Преобразуем данные из нового конфигуратора в формат Configuration
+		const config: Configuration = {
+			categoryId: product.category?.id || '',
+			supplierCategoryId: '', // TODO: Получить из выбранного поставщика
+			parameters: product.configuration || {},
+			customNotes: '', // TODO: Добавить поле для заметок в новом конфигураторе
+		}
+
+		// Используем существующую функцию обработки
+		await handleConfiguratorComplete(config)
 	}
 
 	const generateDescription = (config: Configuration): string => {
@@ -1485,20 +1503,14 @@ export function ProposalFormV3({
 			</div>
 
 			{/* Конфигуратор */}
-			<Dialog open={showConfigurator} onOpenChange={setShowConfigurator}>
-				<DialogContent className='max-w-6xl max-h-[90vh] overflow-y-auto'>
-					<DialogHeader>
-						<DialogTitle>{t('productConfigurator')}</DialogTitle>
-					</DialogHeader>
-					<ProductConfigurator
-						onComplete={handleConfiguratorComplete}
-						onCancel={() => {
-							setShowConfigurator(false)
-							setCurrentGroupIndex(null)
-						}}
-					/>
-				</DialogContent>
-			</Dialog>
+			<ProductConfiguratorV2
+				isOpen={showConfigurator}
+				onClose={() => {
+					setShowConfigurator(false)
+					setCurrentGroupIndex(null)
+				}}
+				onProductCreated={handleConfiguratorV2Complete}
+			/>
 
 			{/* Модальное окно создания клиента */}
 			<ClientFormModal
