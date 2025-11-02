@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 
 export async function GET() {
 	try {
-		console.log('🔍 Fetching proposals...')
+		logger.info('🔍 Fetching proposals...')
 
 		const proposals = await prisma.proposalDocument.findMany({
 			include: {
@@ -28,10 +29,10 @@ export async function GET() {
 			orderBy: { createdAt: 'desc' },
 		})
 
-		console.log(`✅ Found ${proposals.length} proposals`)
+		logger.info(`✅ Found ${proposals.length} proposals`)
 		return NextResponse.json(proposals)
 	} catch (error) {
-		console.error('❌ Error fetching proposals:', error)
+		logger.error('❌ Error fetching proposals:', error)
 		return NextResponse.json(
 			{ error: 'Failed to fetch proposals', details: String(error) },
 			{ status: 500 }
@@ -41,7 +42,7 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
 	try {
-		console.log('📝 Creating proposal...')
+		logger.info('📝 Creating proposal...')
 
 		const body = await request.json()
 		const {
@@ -78,16 +79,31 @@ export async function POST(request: NextRequest) {
 				vatRate: vatRate || 22.0,
 				notes,
 				groups: {
-					create: groups?.map((group: any, groupIndex: number) => ({
+					create: groups?.map((group: Record<string, unknown>, groupIndex: number) => ({
 						name: group.name,
 						description: group.description,
 						sortOrder: groupIndex,
 						positions: {
 							create: group.positions?.map(
-								(position: any, positionIndex: number) => ({
+								(position: Record<string, unknown>, positionIndex: number) => ({
 									categoryId: position.categoryId,
 									supplierCategoryId: position.supplierCategoryId,
-									configuration: position.configuration,
+									// Расширенная configuration с данными для локализации
+									configuration: {
+										...position.configuration,
+										// Сохраняем локализованные данные для последующего использования
+										_metadata: {
+											categoryNameRu: position.categoryNameRu,
+											categoryNameIt: position.categoryNameIt,
+											supplierShortNameRu: position.supplierShortNameRu,
+											supplierShortNameIt: position.supplierShortNameIt,
+											supplierFullName: position.supplier?.name,
+											modelValueRu: position.modelValueRu,
+											modelValueIt: position.modelValueIt,
+											parameters: position.parameters || [],
+											customNotes: position.customNotes,
+										},
+									},
 									unitPrice: position.unitPrice || 0,
 									quantity: position.quantity || 1,
 									discount: position.discount || 0,
@@ -126,10 +142,10 @@ export async function POST(request: NextRequest) {
 		// Пересчитываем итоги
 		await recalculateProposalTotals(proposal.id)
 
-		console.log(`✅ Created proposal: ${proposal.number}`)
+		logger.info(`✅ Created proposal: ${proposal.number}`)
 		return NextResponse.json(proposal, { status: 201 })
 	} catch (error) {
-		console.error('❌ Error creating proposal:', error)
+		logger.error('❌ Error creating proposal:', error)
 		return NextResponse.json(
 			{ error: 'Failed to create proposal', details: String(error) },
 			{ status: 500 }
@@ -213,8 +229,8 @@ async function recalculateProposalTotals(proposalId: string) {
 			},
 		})
 
-		console.log(`✅ Recalculated totals for proposal ${proposalId}`)
+		logger.info(`✅ Recalculated totals for proposal ${proposalId}`)
 	} catch (error) {
-		console.error('❌ Error recalculating totals:', error)
+		logger.error('❌ Error recalculating totals:', error)
 	}
 }

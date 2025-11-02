@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 
 // GET /api/suppliers - получить всех поставщиков
 export async function GET(request: NextRequest) {
@@ -8,6 +9,8 @@ export async function GET(request: NextRequest) {
 			select: {
 				id: true,
 				name: true,
+				shortName: true,
+				shortNameIt: true,
 				rating: true,
 				notes: true,
 				paymentTerms: true,
@@ -40,6 +43,8 @@ export async function GET(request: NextRequest) {
 		const suppliersWithFullData = suppliers.map(supplier => ({
 			id: supplier.id,
 			name: supplier.name,
+			shortName: supplier.shortName || null,
+			shortNameIt: supplier.shortNameIt || null,
 			rating: supplier.rating || 0,
 			logo: null, // Пока нет поля logo в схеме
 			notes: supplier.notes || '',
@@ -57,7 +62,7 @@ export async function GET(request: NextRequest) {
 
 		return NextResponse.json(suppliersWithFullData)
 	} catch (error) {
-		console.error('Error fetching suppliers:', error)
+		logger.error('Error fetching suppliers:', error)
 		return NextResponse.json(
 			{ error: 'Failed to fetch suppliers' },
 			{ status: 500 }
@@ -71,6 +76,8 @@ export async function POST(request: NextRequest) {
 		const body = await request.json()
 		const {
 			name,
+			shortName,
+			shortNameIt,
 			phone,
 			email,
 			contactPerson,
@@ -97,6 +104,8 @@ export async function POST(request: NextRequest) {
 		const newSupplier = await prisma.supplier.create({
 			data: {
 				name,
+				shortName: shortName || null,
+				shortNameIt: shortNameIt || null,
 				phone,
 				email,
 				contactPerson: contactPerson || '',
@@ -113,10 +122,10 @@ export async function POST(request: NextRequest) {
 			},
 		})
 
-		console.log(`✅ Created supplier: ${newSupplier.name}`)
+		logger.info(`✅ Created supplier: ${newSupplier.name}`)
 		return NextResponse.json(newSupplier, { status: 201 })
 	} catch (error) {
-		console.error('❌ Error creating supplier:', error)
+		logger.error('❌ Error creating supplier:', error)
 		return NextResponse.json(
 			{ error: 'Failed to create supplier' },
 			{ status: 500 }
@@ -131,6 +140,8 @@ export async function PUT(request: NextRequest) {
 		const {
 			id,
 			name,
+			shortName,
+			shortNameIt,
 			phone,
 			email,
 			contactPerson,
@@ -168,6 +179,14 @@ export async function PUT(request: NextRequest) {
 			where: { id: parseInt(id) },
 			data: {
 				name: name || existingSupplier.name,
+				shortName:
+					shortName !== undefined
+						? shortName || null
+						: existingSupplier.shortName,
+				shortNameIt:
+					shortNameIt !== undefined
+						? shortNameIt || null
+						: existingSupplier.shortNameIt,
 				phone: phone || existingSupplier.phone,
 				email: email || existingSupplier.email,
 				contactPerson: contactPerson || existingSupplier.contactPerson,
@@ -188,10 +207,10 @@ export async function PUT(request: NextRequest) {
 			},
 		})
 
-		console.log(`✅ Updated supplier: ${updatedSupplier.name}`)
+		logger.info(`✅ Updated supplier: ${updatedSupplier.name}`)
 		return NextResponse.json(updatedSupplier)
 	} catch (error) {
-		console.error('❌ Error updating supplier:', error)
+		logger.error('❌ Error updating supplier:', error)
 		return NextResponse.json(
 			{ error: 'Failed to update supplier' },
 			{ status: 500 }
@@ -226,10 +245,10 @@ export async function DELETE(request: NextRequest) {
 			where: { id: parseInt(id) },
 		})
 
-		console.log(`✅ Deleted supplier: ${existingSupplier.name}`)
+		logger.info(`✅ Deleted supplier: ${existingSupplier.name}`)
 		return NextResponse.json({ success: true })
 	} catch (error) {
-		console.error('❌ Error deleting supplier:', error)
+		logger.error('❌ Error deleting supplier:', error)
 		return NextResponse.json(
 			{ error: 'Failed to delete supplier' },
 			{ status: 500 }

@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { Plus, Check, X, Clock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { logger } from '@/lib/logger'
 
 interface QuickAddValueProps {
 	parameterId: string
@@ -52,7 +53,7 @@ export function QuickAddValue({
 				alert(error.error || 'Ошибка при добавлении значения')
 			}
 		} catch (error) {
-			console.error('Error adding value:', error)
+			logger.error('Error adding value:', error)
 			alert('Ошибка при добавлении значения')
 		} finally {
 			setIsSubmitting(false)

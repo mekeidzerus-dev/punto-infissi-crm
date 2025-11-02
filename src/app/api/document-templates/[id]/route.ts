@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 
 export async function PUT(
 	request: NextRequest,
-	{ params }: { params: { id: string } }
+	{ params }: { params: Promise<{ id: string }> }
 ) {
 	try {
+		const { id } = await params
 		const body = await request.json()
 		const { name, type, contentRu, contentIt, isDefault, isActive } = body
 
@@ -22,7 +24,7 @@ export async function PUT(
 		}
 
 		const template = await prisma.documentTemplate.update({
-			where: { id: params.id },
+			where: { id },
 			data: {
 				...(name && { name }),
 				...(type && { type }),
@@ -33,10 +35,10 @@ export async function PUT(
 			},
 		})
 
-		console.log(`✅ Updated template: ${template.name}`)
+		logger.info(`✅ Updated template: ${template.name}`)
 		return NextResponse.json(template)
 	} catch (error) {
-		console.error('❌ Error updating template:', error)
+		logger.error('❌ Error updating template:', error)
 		return NextResponse.json(
 			{ error: 'Failed to update template', details: String(error) },
 			{ status: 500 }
@@ -53,10 +55,10 @@ export async function DELETE(
 			where: { id: params.id },
 		})
 
-		console.log(`✅ Deleted template: ${params.id}`)
+		logger.info(`✅ Deleted template: ${params.id}`)
 		return NextResponse.json({ success: true })
 	} catch (error) {
-		console.error('❌ Error deleting template:', error)
+		logger.error('❌ Error deleting template:', error)
 		return NextResponse.json(
 			{ error: 'Failed to delete template', details: String(error) },
 			{ status: 500 }

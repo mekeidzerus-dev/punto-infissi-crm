@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { PhoneInput } from '@/components/ui/phone-input'
+import { logger } from '@/lib/logger'
 import {
 	Dialog,
 	DialogContent,
@@ -96,7 +97,7 @@ export function ClientFormModal({
 				setSources(data.filter((s: any) => s.isActive))
 			}
 		} catch (error) {
-			console.error('Error fetching sources:', error)
+			logger.error('Error fetching sources:', error)
 		}
 	}
 

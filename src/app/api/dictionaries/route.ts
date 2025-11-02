@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 
 // GET - получить справочники по типу
 export async function GET(request: NextRequest) {
@@ -16,7 +17,7 @@ export async function GET(request: NextRequest) {
 
 		return NextResponse.json(dictionaries)
 	} catch (error) {
-		console.error('Error fetching dictionaries:', error)
+		logger.error('Error fetching dictionaries:', error)
 		return NextResponse.json(
 			{ error: 'Failed to fetch dictionaries' },
 			{ status: 500 }
@@ -39,7 +40,7 @@ export async function POST(request: NextRequest) {
 
 		return NextResponse.json(dictionary, { status: 201 })
 	} catch (error) {
-		console.error('Error creating dictionary:', error)
+		logger.error('Error creating dictionary:', error)
 		return NextResponse.json(
 			{ error: 'Failed to create dictionary' },
 			{ status: 500 }
@@ -63,7 +64,7 @@ export async function PUT(request: NextRequest) {
 
 		return NextResponse.json(dictionary)
 	} catch (error) {
-		console.error('Error updating dictionary:', error)
+		logger.error('Error updating dictionary:', error)
 		return NextResponse.json(
 			{ error: 'Failed to update dictionary' },
 			{ status: 500 }
@@ -87,7 +88,7 @@ export async function DELETE(request: NextRequest) {
 
 		return NextResponse.json({ success: true })
 	} catch (error) {
-		console.error('Error deleting dictionary:', error)
+		logger.error('Error deleting dictionary:', error)
 		return NextResponse.json(
 			{ error: 'Failed to delete dictionary' },
 			{ status: 500 }

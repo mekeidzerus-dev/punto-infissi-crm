@@ -1,15 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 
 // GET /api/supplier-parameter-overrides/[id]
 // Получить конкретное переопределение
 export async function GET(
 	request: NextRequest,
-	{ params }: { params: { id: string } }
+	{ params }: { params: Promise<{ id: string }> }
 ) {
 	try {
+		const { id } = await params
 		const override = await prisma.supplierParameterOverride.findUnique({
-			where: { id: params.id },
+			where: { id },
 			include: {
 				parameter: {
 					include: {
@@ -32,7 +34,7 @@ export async function GET(
 
 		return NextResponse.json(override)
 	} catch (error) {
-		console.error('❌ Error fetching parameter override:', error)
+		logger.error('❌ Error fetching parameter override:', error)
 		return NextResponse.json(
 			{ error: 'Failed to fetch parameter override' },
 			{ status: 500 }
@@ -93,11 +95,11 @@ export async function PUT(
 			},
 		})
 
-		console.log(`✅ Updated parameter override: ${params.id}`)
+		logger.info(`✅ Updated parameter override: ${params.id}`)
 
 		return NextResponse.json(override)
 	} catch (error) {
-		console.error('❌ Error updating parameter override:', error)
+		logger.error('❌ Error updating parameter override:', error)
 		return NextResponse.json(
 			{ error: 'Failed to update parameter override' },
 			{ status: 500 }
@@ -129,11 +131,11 @@ export async function DELETE(
 			where: { id: params.id },
 		})
 
-		console.log(`🗑️ Deleted parameter override: ${params.id}`)
+		logger.info(`🗑️ Deleted parameter override: ${params.id}`)
 
 		return NextResponse.json({ success: true })
 	} catch (error) {
-		console.error('❌ Error deleting parameter override:', error)
+		logger.error('❌ Error deleting parameter override:', error)
 		return NextResponse.json(
 			{ error: 'Failed to delete parameter override' },
 			{ status: 500 }

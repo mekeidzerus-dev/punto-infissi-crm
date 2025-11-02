@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
+import { syncParameterGlobalStatus } from '@/lib/parameter-utils'
 
 // GET - получить все параметры
 export async function GET(request: NextRequest) {
@@ -10,7 +12,7 @@ export async function GET(request: NextRequest) {
 
 		const parameters = await prisma.parameterTemplate.findMany({
 			where: {
-				...(type && { type: type as any }),
+				...(type && { type: type as 'TEXT' | 'NUMBER' | 'COLOR' | 'SELECT' | 'BOOLEAN' }),
 				...(isActive !== null && { isActive: isActive === 'true' }),
 			},
 			include: {
@@ -28,10 +30,10 @@ export async function GET(request: NextRequest) {
 			orderBy: { createdAt: 'desc' },
 		})
 
-		console.log(`✅ Found ${parameters.length} parameters`)
+		logger.info(`✅ Found ${parameters.length} parameters`)
 		return NextResponse.json(parameters)
 	} catch (error) {
-		console.error('❌ Error fetching parameters:', error)
+		logger.error('❌ Error fetching parameters:', error)
 		return NextResponse.json(
 			{ error: 'Failed to fetch parameters' },
 			{ status: 500 }
@@ -52,6 +54,7 @@ export async function POST(request: NextRequest) {
 			minValue,
 			maxValue,
 			step,
+			isGlobal,
 			values, // массив значений для SELECT типов
 		} = body
 
@@ -64,6 +67,7 @@ export async function POST(request: NextRequest) {
 		}
 
 		// Создаем параметр с значениями
+		// isGlobal устанавливается автоматически после создания на основе связей с категориями
 		const parameter = await prisma.parameterTemplate.create({
 			data: {
 				name,
@@ -74,9 +78,10 @@ export async function POST(request: NextRequest) {
 				minValue: minValue ? parseFloat(minValue) : null,
 				maxValue: maxValue ? parseFloat(maxValue) : null,
 				step: step ? parseFloat(step) : null,
+				isGlobal: true, // По умолчанию глобальный, пока нет связей
 				values: values
 					? {
-							create: values.map((v: any, index: number) => ({
+							create: values.map((v: Record<string, unknown>, index: number) => ({
 								value: v.value,
 								valueIt: v.valueIt,
 								displayName: v.displayName,
@@ -92,11 +97,22 @@ export async function POST(request: NextRequest) {
 			},
 		})
 
-		console.log(`✅ Created parameter: ${parameter.name}`)
-		return NextResponse.json(parameter)
-	} catch (error: any) {
-		console.error('❌ Error creating parameter:', error)
-		if (error.code === 'P2002') {
+		// Синхронизируем статус isGlobal после создания
+		await syncParameterGlobalStatus(parameter.id)
+
+		// Перезагружаем параметр с актуальным isGlobal
+		const updatedParameter = await prisma.parameterTemplate.findUnique({
+			where: { id: parameter.id },
+			include: {
+				values: true,
+			},
+		})
+
+		logger.info(`✅ Created parameter: ${updatedParameter?.name}`)
+		return NextResponse.json(updatedParameter)
+	} catch (error: unknown) {
+		logger.error('❌ Error creating parameter:', error)
+		if (error && typeof error === 'object' && 'code' in error && error.code === 'P2002') {
 			return NextResponse.json(
 				{ error: 'Parameter with this name already exists' },
 				{ status: 400 }

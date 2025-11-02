@@ -1,11 +1,12 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { DashboardLayoutStickerV2 } from '@/components/dashboard-layout-sticker-v2'
+import { AppLayout } from '@/components/app-layout'
 import { UnifiedNavV2 } from '@/components/unified-nav-v2'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { logger } from '@/lib/logger'
 import {
 	Dialog,
 	DialogContent,
@@ -82,7 +83,7 @@ export default function ProposalsPage() {
 			const data = await response.json()
 			setProposals(data)
 		} catch (error) {
-			console.error('Error fetching proposals:', error)
+			logger.error('Error fetching proposals:', error)
 		} finally {
 			setIsLoading(false)
 		}
@@ -109,24 +110,24 @@ export default function ProposalsPage() {
 				setEditingProposal(undefined)
 			} else {
 				const error = await response.json()
-				console.error('Error saving proposal:', error)
+				logger.error('Error saving proposal:', error)
 				alert(t('errorOccurred') + ': ' + (error.error || 'Unknown error'))
 			}
 		} catch (error) {
-			console.error('Error saving proposal:', error)
+			logger.error('Error saving proposal:', error)
 			alert(t('errorOccurred'))
 		}
 	}
 
 	const handleEdit = async (proposal: ProposalDocumentView) => {
 		try {
-			console.log('📝 Loading proposal for edit:', proposal.id)
+			logger.info('📝 Loading proposal for edit:', proposal.id)
 
 			// Загружаем полные данные предложения с API
 			const response = await fetch(`/api/proposals/${proposal.id}`)
 			if (response.ok) {
 				const apiData = await response.json()
-				console.log('✅ Loaded proposal data:', apiData)
+				logger.info('✅ Loaded proposal data:', apiData)
 
 				// Нормализуем данные: преобразуем Decimal (строки) в numbers
 				const normalizedProposal = {
@@ -144,27 +145,56 @@ export default function ProposalsPage() {
 							discount: Number(group.discount || 0),
 							total: Number(group.total || 0),
 							positions:
-								group.positions?.map((pos: any) => ({
-									...pos,
-									unitPrice: Number(pos.unitPrice || 0),
-									quantity: Number(pos.quantity || 1),
-									discount: Number(pos.discount || 0),
-									vatRate: Number(pos.vatRate || 22),
-									vatAmount: Number(pos.vatAmount || 0),
-									total: Number(pos.total || 0),
-								})) || [],
+								group.positions?.map((pos: any) => {
+									// Извлекаем метаданные из configuration._metadata если они есть
+									const config = pos.configuration || {}
+									const metadata = config._metadata || {}
+
+									return {
+										...pos,
+										unitPrice: Number(pos.unitPrice || 0),
+										quantity: Number(pos.quantity || 1),
+										discount: Number(pos.discount || 0),
+										vatRate: Number(pos.vatRate || 22),
+										vatAmount: Number(pos.vatAmount || 0),
+										total: Number(pos.total || 0),
+										// Восстанавливаем поля локализации из metadata
+										categoryNameRu:
+											metadata.categoryNameRu || pos.category?.name || '',
+										categoryNameIt:
+											metadata.categoryNameIt || pos.category?.name || '',
+										supplierShortNameRu:
+											metadata.supplierShortNameRu ||
+											pos.supplierCategory?.supplier?.shortName ||
+											null,
+										supplierShortNameIt:
+											metadata.supplierShortNameIt ||
+											pos.supplierCategory?.supplier?.shortNameIt ||
+											null,
+										supplier: {
+											name:
+												metadata.supplierFullName ||
+												pos.supplierCategory?.supplier?.name ||
+												'',
+										},
+										modelValueRu: metadata.modelValueRu || '',
+										modelValueIt: metadata.modelValueIt || '',
+										parameters: metadata.parameters || [],
+										customNotes: metadata.customNotes || null,
+									}
+								}) || [],
 						})) || [],
 				}
 
-				console.log('✅ Normalized proposal:', normalizedProposal)
+				logger.info('✅ Normalized proposal:', normalizedProposal)
 				setEditingProposal(normalizedProposal)
 				setShowForm(true)
 			} else {
-				console.error('❌ Error loading proposal for edit')
+				logger.error('❌ Error loading proposal for edit')
 				alert(t('errorOccurred'))
 			}
 		} catch (error) {
-			console.error('❌ Error loading proposal:', error)
+			logger.error('❌ Error loading proposal:', error)
 			alert(t('errorOccurred'))
 		}
 	}
@@ -188,11 +218,11 @@ export default function ProposalsPage() {
 				await fetchProposals()
 			} else {
 				const error = await response.json()
-				console.error('Error deleting proposal:', error)
+				logger.error('Error deleting proposal:', error)
 				alert(t('errorOccurred') + ': ' + (error.error || 'Unknown error'))
 			}
 		} catch (error) {
-			console.error('Error deleting proposal:', error)
+			logger.error('Error deleting proposal:', error)
 			alert(t('errorOccurred'))
 		}
 	}
@@ -250,7 +280,7 @@ export default function ProposalsPage() {
 	]
 
 	return (
-		<DashboardLayoutStickerV2>
+		<AppLayout>
 			<div className='space-y-6'>
 				{/* Заголовок с навигацией */}
 				<UnifiedNavV2
@@ -437,6 +467,6 @@ export default function ProposalsPage() {
 					}}
 				/>
 			)}
-		</DashboardLayoutStickerV2>
+		</AppLayout>
 	)
 }

@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { logger } from '@/lib/logger'
 import {
 	Select,
 	SelectContent,
@@ -90,7 +91,7 @@ export function GeneralSettings() {
 				}
 			}
 		} catch (error) {
-			console.error('Error loading organization data:', error)
+			logger.error('Error loading organization data:', error)
 		}
 	}
 
@@ -116,7 +117,7 @@ export function GeneralSettings() {
 				alert('Ошибка сохранения настроек')
 			}
 		} catch (error) {
-			console.error('Error saving settings:', error)
+			logger.error('Error saving settings:', error)
 			alert('Ошибка сохранения настроек')
 		} finally {
 			setIsSaving(false)
@@ -159,7 +160,7 @@ export function GeneralSettings() {
 				setFaviconPreview('')
 			}
 		} catch (error) {
-			console.error('Ошибка загрузки фавикона:', error)
+			logger.error('Ошибка загрузки фавикона:', error)
 			alert('Ошибка загрузки файла на сервер')
 		}
 	}
@@ -198,7 +199,7 @@ export function GeneralSettings() {
 				setLogoPreview('')
 			}
 		} catch (error) {
-			console.error('Ошибка загрузки логотипа:', error)
+			logger.error('Ошибка загрузки логотипа:', error)
 			alert('Ошибка загрузки файла на сервер')
 		}
 	}

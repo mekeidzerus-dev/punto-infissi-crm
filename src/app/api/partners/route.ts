@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 
 // GET - получить всех партнеров
 export async function GET() {
@@ -10,7 +11,7 @@ export async function GET() {
 
 		return NextResponse.json(partners)
 	} catch (error) {
-		console.error('Error fetching partners:', error)
+		logger.error('Error fetching partners:', error)
 		return NextResponse.json(
 			{ error: 'Failed to fetch partners' },
 			{ status: 500 }
@@ -43,7 +44,7 @@ export async function POST(request: NextRequest) {
 
 		return NextResponse.json(partner, { status: 201 })
 	} catch (error) {
-		console.error('Error creating partner:', error)
+		logger.error('Error creating partner:', error)
 		return NextResponse.json(
 			{ error: 'Failed to create partner' },
 			{ status: 500 }
@@ -78,7 +79,7 @@ export async function PUT(request: NextRequest) {
 
 		return NextResponse.json(partner)
 	} catch (error) {
-		console.error('Error updating partner:', error)
+		logger.error('Error updating partner:', error)
 		return NextResponse.json(
 			{ error: 'Failed to update partner' },
 			{ status: 500 }
@@ -102,7 +103,7 @@ export async function DELETE(request: NextRequest) {
 
 		return NextResponse.json({ success: true })
 	} catch (error) {
-		console.error('Error deleting partner:', error)
+		logger.error('Error deleting partner:', error)
 		return NextResponse.json(
 			{ error: 'Failed to delete partner' },
 			{ status: 500 }

@@ -64,6 +64,18 @@ async function main() {
 	// 3. Создание параметров для категории
 	console.log('⚙️ Создание параметров...')
 
+	// Параметр: Модель (обязательный для всех продуктов)
+	const modelParam = await prisma.parameterTemplate.create({
+		data: {
+			name: 'Модель',
+			nameIt: 'Modello',
+			type: 'TEXT',
+			description: 'Название модели продукта',
+			isGlobal: true,
+			isActive: true,
+		},
+	})
+
 	// Параметр: Материал
 	const materialParam = await prisma.parameterTemplate.create({
 		data: {
@@ -227,6 +239,13 @@ async function main() {
 	// Привязка параметров к категории
 	await prisma.categoryParameter.createMany({
 		data: [
+			{
+				categoryId: category.id,
+				parameterId: modelParam.id,
+				isRequired: true,
+				order: 0,
+				displayNameIt: 'Modello',
+			},
 			{
 				categoryId: category.id,
 				parameterId: materialParam.id,

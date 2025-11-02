@@ -2,6 +2,7 @@ import { createHash } from 'crypto'
 import { writeFile, unlink, readdir } from 'fs/promises'
 import { join } from 'path'
 import { existsSync } from 'fs'
+import { logger } from '@/lib/logger'
 
 export interface StorageResult {
 	success: boolean
@@ -36,7 +37,7 @@ export async function saveFaviconFile(
 
 		// Проверяем, не существует ли уже файл с таким хешем
 		if (existsSync(publicPath)) {
-			console.log(`Файл с хешем ${hash} уже существует, используем его`)
+			logger.info(`Файл с хешем ${hash} уже существует, используем его`)
 			return {
 				success: true,
 				path: `/${fileName}`,
@@ -51,7 +52,7 @@ export async function saveFaviconFile(
 		// Сохраняем файл
 		await writeFile(publicPath, buffer)
 
-		console.log(`Фавикон сохранен: ${fileName} (hash: ${hash})`)
+		logger.info(`Фавикон сохранен: ${fileName} (hash: ${hash})`)
 
 		return {
 			success: true,
@@ -63,7 +64,7 @@ export async function saveFaviconFile(
 			},
 		}
 	} catch (error) {
-		console.error('Ошибка сохранения фавикона:', error)
+		logger.error('Ошибка сохранения фавикона:', error)
 		return {
 			success: false,
 			error: 'Не удалось сохранить файл на сервере',
@@ -102,16 +103,16 @@ export async function cleanupOldFavicons(
 			try {
 				await unlink(join(publicPath, file))
 				deleted++
-				console.log(`Удален старый фавикон: ${file}`)
+				logger.info(`Удален старый фавикон: ${file}`)
 			} catch (error) {
 				errors++
-				console.error(`Ошибка удаления ${file}:`, error)
+				logger.error(`Ошибка удаления ${file}:`, error)
 			}
 		}
 
 		return { deleted, errors }
 	} catch (error) {
-		console.error('Ошибка очистки старых фавиконов:', error)
+		logger.error('Ошибка очистки старых фавиконов:', error)
 		return { deleted: 0, errors: 1 }
 	}
 }
@@ -133,11 +134,11 @@ export async function deleteFaviconFile(
 		}
 
 		await unlink(filePath)
-		console.log(`Фавикон удален: ${fileName}`)
+		logger.info(`Фавикон удален: ${fileName}`)
 
 		return { success: true }
 	} catch (error) {
-		console.error('Ошибка удаления фавикона:', error)
+		logger.error('Ошибка удаления фавикона:', error)
 		return {
 			success: false,
 			error: 'Не удалось удалить файл',
@@ -161,7 +162,7 @@ export async function listFaviconFiles(): Promise<string[]> {
 					file.endsWith('.svg'))
 		)
 	} catch (error) {
-		console.error('Ошибка получения списка фавиконов:', error)
+		logger.error('Ошибка получения списка фавиконов:', error)
 		return []
 	}
 }
@@ -208,9 +209,9 @@ export async function optimizeFaviconStorage(
 			try {
 				await unlink(join(publicPath, file.name))
 				deleted++
-				console.log(`Удален старый фавикон при оптимизации: ${file.name}`)
+				logger.info(`Удален старый фавикон при оптимизации: ${file.name}`)
 			} catch (error) {
-				console.error(`Ошибка удаления ${file.name}:`, error)
+				logger.error(`Ошибка удаления ${file.name}:`, error)
 			}
 		}
 
@@ -219,7 +220,7 @@ export async function optimizeFaviconStorage(
 			deleted,
 		}
 	} catch (error) {
-		console.error('Ошибка оптимизации хранилища:', error)
+		logger.error('Ошибка оптимизации хранилища:', error)
 		return { kept: 0, deleted: 0 }
 	}
 }

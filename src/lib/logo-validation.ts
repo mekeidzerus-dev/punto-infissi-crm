@@ -1,4 +1,5 @@
 import sharp from 'sharp'
+import { logger } from '@/lib/logger'
 
 export interface LogoValidationResult {
 	valid: boolean
@@ -135,7 +136,7 @@ export async function validateLogoBuffer(
 
 		// Предупреждение о соотношении сторон, но не блокируем
 		if (aspectRatio > 5 || aspectRatio < 0.5) {
-			console.warn(
+			logger.warn(
 				`Логотип имеет необычное соотношение сторон: ${aspectRatio.toFixed(
 					2
 				)}:1`
@@ -158,7 +159,7 @@ export async function validateLogoBuffer(
 			},
 		}
 	} catch (error) {
-		console.error('Ошибка валидации логотипа:', error)
+		logger.error('Ошибка валидации логотипа:', error)
 		return {
 			valid: false,
 			error: 'Ошибка при обработке файла изображения',
@@ -179,7 +180,7 @@ export async function optimizeLogoForPrint(buffer: Buffer): Promise<Buffer> {
 			})
 			.toBuffer()
 	} catch (error) {
-		console.error('Ошибка оптимизации логотипа:', error)
+		logger.error('Ошибка оптимизации логотипа:', error)
 		throw new Error('Не удалось оптимизировать логотип для печати')
 	}
 }

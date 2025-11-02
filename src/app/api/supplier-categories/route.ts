@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 
 export async function GET(request: NextRequest) {
 	try {
@@ -7,9 +8,9 @@ export async function GET(request: NextRequest) {
 		const supplierId = searchParams.get('supplierId')
 		const categoryId = searchParams.get('categoryId')
 
-		console.log('🔍 Fetching supplier categories...')
+		logger.info('🔍 Fetching supplier categories...')
 
-		let whereClause: any = { isActive: true }
+		const whereClause: Record<string, unknown> = { isActive: true }
 
 		if (supplierId) {
 			whereClause.supplierId = parseInt(supplierId)
@@ -21,16 +22,26 @@ export async function GET(request: NextRequest) {
 		const supplierCategories = await prisma.supplierProductCategory.findMany({
 			where: whereClause,
 			include: {
-				supplier: true,
+				supplier: {
+					select: {
+						id: true,
+						name: true,
+						shortName: true,
+						shortNameIt: true,
+						phone: true,
+						email: true,
+						status: true,
+					},
+				},
 				category: true,
 			},
 			orderBy: [{ supplier: { name: 'asc' } }, { category: { name: 'asc' } }],
 		})
 
-		console.log(`✅ Found ${supplierCategories.length} supplier categories`)
+		logger.info(`✅ Found ${supplierCategories.length} supplier categories`)
 		return NextResponse.json(supplierCategories)
 	} catch (error) {
-		console.error('❌ Error fetching supplier categories:', error)
+		logger.error('❌ Error fetching supplier categories:', error)
 		return NextResponse.json(
 			{ error: 'Failed to fetch supplier categories', details: String(error) },
 			{ status: 500 }
@@ -40,7 +51,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
 	try {
-		console.log('📝 Creating supplier category...')
+		logger.info('📝 Creating supplier category...')
 
 		const body = await request.json()
 		const { supplierId, categoryId, parameters } = body
@@ -64,12 +75,12 @@ export async function POST(request: NextRequest) {
 			},
 		})
 
-		console.log(
+		logger.info(
 			`✅ Created supplier category: ${supplierCategory.supplier.name} + ${supplierCategory.category.name}`
 		)
 		return NextResponse.json(supplierCategory, { status: 201 })
 	} catch (error) {
-		console.error('❌ Error creating supplier category:', error)
+		logger.error('❌ Error creating supplier category:', error)
 		return NextResponse.json(
 			{ error: 'Failed to create supplier category', details: String(error) },
 			{ status: 500 }
@@ -79,7 +90,7 @@ export async function POST(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
 	try {
-		console.log('🗑️ Deleting supplier category...')
+		logger.info('🗑️ Deleting supplier category...')
 
 		const body = await request.json()
 		const { supplierId, categoryId } = body
@@ -98,10 +109,10 @@ export async function DELETE(request: NextRequest) {
 			},
 		})
 
-		console.log(`✅ Deleted ${deleted.count} supplier category relations`)
+		logger.info(`✅ Deleted ${deleted.count} supplier category relations`)
 		return NextResponse.json({ success: true, deletedCount: deleted.count })
 	} catch (error) {
-		console.error('❌ Error deleting supplier category:', error)
+		logger.error('❌ Error deleting supplier category:', error)
 		return NextResponse.json(
 			{ error: 'Failed to delete supplier category', details: String(error) },
 			{ status: 500 }

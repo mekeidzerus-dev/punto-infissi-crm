@@ -5,6 +5,7 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { logger } from '@/lib/logger'
 import {
 	Dialog,
 	DialogContent,
@@ -48,7 +49,7 @@ export function VATRatesManager() {
 			const data = await response.json()
 			setVatRates(data)
 		} catch (error) {
-			console.error('Error fetching VAT rates:', error)
+			logger.error('Error fetching VAT rates:', error)
 		} finally {
 			setIsLoading(false)
 		}
@@ -85,7 +86,7 @@ export function VATRatesManager() {
 			await fetchVatRates()
 			handleClose()
 		} catch (error) {
-			console.error('Error saving VAT rate:', error)
+			logger.error('Error saving VAT rate:', error)
 		}
 	}
 
@@ -111,7 +112,7 @@ export function VATRatesManager() {
 			})
 			await fetchVatRates()
 		} catch (error) {
-			console.error('Error deleting VAT rate:', error)
+			logger.error('Error deleting VAT rate:', error)
 		}
 	}
 
@@ -124,7 +125,7 @@ export function VATRatesManager() {
 			})
 			await fetchVatRates()
 		} catch (error) {
-			console.error('Error setting default VAT rate:', error)
+			logger.error('Error setting default VAT rate:', error)
 		}
 	}
 
@@ -188,7 +189,16 @@ export function VATRatesManager() {
 							<tbody>
 								{vatRates.map(rate => (
 									<tr key={rate.id} className='border-b hover:bg-gray-50'>
-										<td className='py-3 px-4'>{rate.name}</td>
+										<td className='py-3 px-4'>
+											<div className='flex items-center gap-2'>
+												{rate.name}
+												{rate.isSystem && (
+													<span className='px-2 py-1 bg-purple-100 text-purple-700 text-xs rounded font-medium'>
+														{t('system') || '🔒 Sistema'}
+													</span>
+												)}
+											</div>
+										</td>
 										<td className='py-3 px-4 font-medium'>
 											{Number(rate.percentage).toFixed(2)}%
 										</td>
@@ -222,7 +232,7 @@ export function VATRatesManager() {
 													variant='outline'
 													size='sm'
 													onClick={() => handleDelete(rate.id)}
-													disabled={rate.isDefault}
+													disabled={rate.isDefault || rate.isSystem}
 													className='text-red-600 hover:bg-red-50 disabled:opacity-50 disabled:text-gray-400'
 												>
 													<Trash2 className='w-4 h-4' />

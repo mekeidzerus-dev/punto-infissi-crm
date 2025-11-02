@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 
 // GET - получить настройки организации
 export async function GET() {
@@ -29,13 +30,13 @@ export async function GET() {
 				},
 			})
 
-			console.log('✅ Created default organization')
+			logger.info('✅ Created default organization')
 			return NextResponse.json(newOrg)
 		}
 
 		return NextResponse.json(organization)
 	} catch (error) {
-		console.error('❌ Error fetching organization:', error)
+		logger.error('❌ Error fetching organization:', error)
 		return NextResponse.json(
 			{
 				error: 'Failed to fetch organization',
@@ -50,8 +51,7 @@ export async function GET() {
 export async function PUT(request: NextRequest) {
 	try {
 		const body = await request.json()
-		const { name, logoUrl, faviconUrl, primaryColor, phone, email, address } =
-			body
+		const { name, logoUrl, faviconUrl, primaryColor } = body
 
 		// Получаем существующую организацию
 		const existing = await prisma.organization.findFirst()
@@ -71,7 +71,7 @@ export async function PUT(request: NextRequest) {
 				},
 			})
 
-			console.log('✅ Created new organization')
+			logger.info('✅ Created new organization')
 			return NextResponse.json(newOrg)
 		}
 
@@ -86,10 +86,10 @@ export async function PUT(request: NextRequest) {
 			},
 		})
 
-		console.log('✅ Updated organization:', updated.name)
+		logger.info('✅ Updated organization:', updated.name)
 		return NextResponse.json(updated)
 	} catch (error) {
-		console.error('❌ Error updating organization:', error)
+		logger.error('❌ Error updating organization:', error)
 		return NextResponse.json(
 			{
 				error: 'Failed to update organization',

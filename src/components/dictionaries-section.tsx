@@ -19,12 +19,10 @@ import {
 	Globe,
 	Users,
 	Package,
-	Settings,
 	Database,
 } from 'lucide-react'
 import { DictionariesManager } from '@/components/dictionaries-manager'
 import { VATRatesManager } from '@/components/vat-rates-manager'
-import { ParametersManager } from '@/components/parameters-manager'
 import { StatusManager } from '@/components/status-manager'
 import { useLanguage } from '@/contexts/LanguageContext'
 
@@ -42,19 +40,10 @@ interface DictionaryItem {
 export function DictionariesSection() {
 	const { t } = useLanguage()
 	const [expandedItems, setExpandedItems] = useState<Set<string>>(
-		new Set(['parameters'])
+		new Set(['statuses'])
 	)
 
 	const dictionaries: DictionaryItem[] = [
-		{
-			id: 'parameters',
-			name: 'Параметры',
-			nameIt: 'Parametri',
-			icon: <Settings className='h-5 w-5' />,
-			description: 'Настройка параметров товаров',
-			descriptionIt: 'Configurazione parametri prodotti',
-			component: ParametersManager,
-		},
 		{
 			id: 'statuses',
 			name: 'Статусы',

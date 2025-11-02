@@ -1,4 +1,5 @@
 import sharp from 'sharp'
+import { logger } from '@/lib/logger'
 
 export const FAVICON_CONFIG = {
 	MAX_FILE_SIZE: 2 * 1024 * 1024, // 2MB
@@ -115,7 +116,7 @@ export async function validateFaviconFile(
 
 		// Рекомендация квадратного формата
 		if (metadata.width !== metadata.height) {
-			console.warn(
+			logger.warn(
 				`Фавикон не квадратный (${metadata.width}x${metadata.height}). Рекомендуется квадратный формат.`
 			)
 		}

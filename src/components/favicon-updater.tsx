@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
+import { logger } from '@/lib/logger'
 
 export function FaviconUpdater() {
 	useEffect(() => {
@@ -38,7 +39,7 @@ export function FaviconUpdater() {
 			linkApple.href = `${finalPath}?v=${timestamp}`
 			document.head.appendChild(linkApple)
 
-			console.log('✅ Фавикон обновлен:', finalPath)
+			logger.info('✅ Фавикон обновлен:', finalPath)
 		}
 
 		// Обновляем фавикон при загрузке страницы

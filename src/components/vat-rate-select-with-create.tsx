@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { logger } from '@/lib/logger'
 import {
 	Select,
 	SelectContent,
@@ -61,7 +62,7 @@ export function VATRateSelectWithCreate({
 			const data = await response.json()
 			setVatRates(data)
 		} catch (error) {
-			console.error('Error fetching VAT rates:', error)
+			logger.error('Error fetching VAT rates:', error)
 		}
 	}
 
@@ -89,7 +90,7 @@ export function VATRateSelectWithCreate({
 				handleClose()
 			}
 		} catch (error) {
-			console.error('Error creating VAT rate:', error)
+			logger.error('Error creating VAT rate:', error)
 		} finally {
 			setIsLoading(false)
 		}

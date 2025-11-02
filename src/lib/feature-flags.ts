@@ -1,24 +1,8 @@
 // Система управления функциями (Feature Flags)
 import React from 'react'
 export const FEATURE_FLAGS = {
-	// Новая система параметров
-	ADVANCED_PARAMETERS: process.env.NEXT_PUBLIC_ADVANCED_PARAMETERS === 'true',
-
-	// Система предложений пользователей
-	USER_SUGGESTIONS: process.env.NEXT_PUBLIC_USER_SUGGESTIONS === 'true',
-
-	// Инфографическая визуализация
-	PRODUCT_VISUALIZATION:
-		process.env.NEXT_PUBLIC_PRODUCT_VISUALIZATION === 'true',
-
 	// Цветовые квадратики
 	COLOR_SQUARES: process.env.NEXT_PUBLIC_COLOR_SQUARES === 'true',
-
-	// Дополнительные заметки
-	CUSTOM_NOTES: process.env.NEXT_PUBLIC_CUSTOM_NOTES === 'true',
-
-	// Новый конфигуратор продуктов v2
-	NEW_CONFIGURATOR: process.env.NEXT_PUBLIC_NEW_CONFIGURATOR === 'true',
 } as const
 
 // Функция для проверки доступности функции

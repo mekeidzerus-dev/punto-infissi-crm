@@ -4,11 +4,9 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
+import { logger } from '@/lib/logger'
 import {
-	LayoutDashboard,
 	Users,
-	Package,
-	ShoppingCart,
 	FileText,
 	Settings,
 	GripVertical,
@@ -51,20 +49,12 @@ interface NavigationItem {
 
 const getNavigationItems = (t: any): NavigationItem[] => [
 	{
-		id: 'dashboard',
-		name: t('dashboard'),
-		href: '/dashboard',
-		icon: LayoutDashboard,
-	},
-	{
 		id: 'counterparties',
 		name: t('counterparties'),
 		href: '/clients',
 		icon: Users,
 	},
-	{ id: 'products', name: t('products'), href: '/products', icon: Package },
 	{ id: 'proposals', name: t('proposals'), href: '/proposals', icon: FileText },
-	{ id: 'orders', name: t('orders'), href: '/orders', icon: ShoppingCart },
 	{ id: 'categories', name: t('categories'), href: '/categories', icon: Tags },
 	{ id: 'settings', name: t('settings'), href: '/settings', icon: Settings },
 ]
@@ -174,7 +164,7 @@ export function Sidebar() {
 				const parsed = JSON.parse(savedOrder)
 				setNavigation(parsed)
 			} catch (e) {
-				console.error('Failed to parse saved menu order', e)
+				logger.error('Failed to parse saved menu order', e)
 			}
 		}
 	}, [])

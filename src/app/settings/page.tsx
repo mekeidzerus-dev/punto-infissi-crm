@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { DashboardLayoutStickerV2 } from '@/components/dashboard-layout-sticker-v2'
+import { AppLayout } from '@/components/app-layout'
 import { SettingsNav } from '@/components/settings-nav'
 import { GeneralSettings } from '@/components/general-settings'
 import { DictionariesSection } from '@/components/dictionaries-section'
@@ -12,7 +12,7 @@ export default function SettingsPage() {
 	)
 
 	return (
-		<DashboardLayoutStickerV2 hideTopNav={true}>
+		<AppLayout hideTopNav={true}>
 			<div className='space-y-6'>
 				{/* Панель навигации */}
 				<SettingsNav activeTab={activeTab} onTabChange={setActiveTab} />
@@ -21,6 +21,6 @@ export default function SettingsPage() {
 				{activeTab === 'general' && <GeneralSettings />}
 				{activeTab === 'dictionaries' && <DictionariesSection />}
 			</div>
-		</DashboardLayoutStickerV2>
+		</AppLayout>
 	)
 }

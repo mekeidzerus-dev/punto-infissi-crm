@@ -32,6 +32,8 @@ import SupplierParameterOverrides from '@/components/supplier-parameter-override
 interface SupplierFormData {
 	id?: number
 	name: string
+	shortName?: string // Короткое название на русском
+	shortNameIt?: string // Короткое название на итальянском
 	phone: string
 	email: string
 	contactPerson: string
@@ -60,10 +62,12 @@ export function SupplierFormModal({
 	onSave,
 	initialData,
 }: SupplierFormModalProps) {
-	const { t } = useLanguage()
+	const { t, locale } = useLanguage()
 	const [formData, setFormData] = useState<SupplierFormData>({
 		id: undefined,
 		name: '',
+		shortName: '',
+		shortNameIt: '',
 		phone: '+39 ',
 		email: '',
 		contactPerson: '',
@@ -88,6 +92,8 @@ export function SupplierFormModal({
 			// Преобразуем null в пустые строки
 			const sanitizedData = {
 				...initialData,
+				shortName: initialData.shortName ?? '',
+				shortNameIt: initialData.shortNameIt ?? '',
 				email: initialData.email ?? '',
 				contactPerson: initialData.contactPerson ?? '',
 				address: initialData.address ?? '',
@@ -157,6 +163,8 @@ export function SupplierFormModal({
 		setFormData({
 			id: undefined,
 			name: '',
+			shortName: '',
+			shortNameIt: '',
 			phone: '+39 ',
 			email: '',
 			contactPerson: '',
@@ -204,6 +212,40 @@ export function SupplierFormModal({
 								{errors.name && (
 									<p className='text-xs text-red-600 mt-1'>{errors.name}</p>
 								)}
+							</div>
+
+							{/* Короткое название (RU) */}
+							<div>
+								<Input
+									id='shortName'
+									value={formData.shortName || ''}
+									onChange={e =>
+										setFormData({ ...formData, shortName: e.target.value })
+									}
+									placeholder={
+										locale === 'ru'
+											? 'Короткое название (RU)'
+											: 'Nome breve (RU)'
+									}
+									maxLength={50}
+								/>
+							</div>
+
+							{/* Короткое название (IT) */}
+							<div>
+								<Input
+									id='shortNameIt'
+									value={formData.shortNameIt || ''}
+									onChange={e =>
+										setFormData({ ...formData, shortNameIt: e.target.value })
+									}
+									placeholder={
+										locale === 'ru'
+											? 'Короткое название (IT)'
+											: 'Nome breve (IT)'
+									}
+									maxLength={50}
+								/>
 							</div>
 
 							{/* Телефон */}

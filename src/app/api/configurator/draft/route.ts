@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 
 // GET - загрузка черновика пользователя
 export async function GET(request: NextRequest) {
@@ -36,10 +37,10 @@ export async function GET(request: NextRequest) {
 			return NextResponse.json(null) // Нет черновика
 		}
 
-		console.log(`✅ Loaded configurator draft: ${draft.id}`)
+		logger.info(`✅ Loaded configurator draft: ${draft.id}`)
 		return NextResponse.json(draft)
 	} catch (error) {
-		console.error('❌ Error loading configurator draft:', error)
+		logger.error('❌ Error loading configurator draft:', error)
 		return NextResponse.json(
 			{ error: 'Failed to load draft', details: String(error) },
 			{ status: 500 }
@@ -97,7 +98,7 @@ export async function POST(request: NextRequest) {
 					supplier: true,
 				},
 			})
-			console.log(`✅ Updated configurator draft: ${draft.id}`)
+			logger.info(`✅ Updated configurator draft: ${draft.id}`)
 		} else {
 			// Создаем новый черновик
 			draft = await prisma.configuratorDraft.create({
@@ -114,12 +115,12 @@ export async function POST(request: NextRequest) {
 					supplier: true,
 				},
 			})
-			console.log(`✅ Created configurator draft: ${draft.id}`)
+			logger.info(`✅ Created configurator draft: ${draft.id}`)
 		}
 
 		return NextResponse.json(draft)
 	} catch (error) {
-		console.error('❌ Error saving configurator draft:', error)
+		logger.error('❌ Error saving configurator draft:', error)
 		return NextResponse.json(
 			{ error: 'Failed to save draft', details: String(error) },
 			{ status: 500 }
@@ -151,13 +152,13 @@ export async function DELETE(request: NextRequest) {
 			},
 		})
 
-		console.log(`✅ Deleted ${result.count} configurator drafts`)
+		logger.info(`✅ Deleted ${result.count} configurator drafts`)
 		return NextResponse.json({
 			success: true,
 			deletedCount: result.count,
 		})
 	} catch (error) {
-		console.error('❌ Error deleting configurator draft:', error)
+		logger.error('❌ Error deleting configurator draft:', error)
 		return NextResponse.json(
 			{ error: 'Failed to delete draft', details: String(error) },
 			{ status: 500 }

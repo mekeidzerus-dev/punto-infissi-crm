@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { validateFaviconBuffer } from '@/lib/favicon-validation'
+import { logger } from '@/lib/logger'
 import {
 	saveFaviconFile,
 	cleanupOldFavicons,
@@ -77,7 +78,7 @@ export async function POST(request: NextRequest) {
 		// 6. Очистка старых файлов (опционально, можно настроить)
 		// Оставляем только последние 3 версии
 		const cleanup = await optimizeFaviconStorage(3)
-		console.log(
+		logger.info(
 			`Очистка завершена: сохранено ${cleanup.kept}, удалено ${cleanup.deleted}`
 		)
 
@@ -101,7 +102,7 @@ export async function POST(request: NextRequest) {
 			}
 		)
 	} catch (error) {
-		console.error('Ошибка загрузки фавикона:', error)
+		logger.error('Ошибка загрузки фавикона:', error)
 		return NextResponse.json(
 			{
 				error: 'Внутренняя ошибка сервера',
@@ -137,7 +138,7 @@ export async function DELETE(request: NextRequest) {
 		// 2. Удаление всех файлов фавиконов (с версионированием)
 		const cleanup = await cleanupOldFavicons()
 
-		console.log(
+		logger.info(
 			`Удалено ${cleanup.deleted} фавиконов, ошибок: ${cleanup.errors}`
 		)
 
@@ -156,7 +157,7 @@ export async function DELETE(request: NextRequest) {
 			}
 		)
 	} catch (error) {
-		console.error('Ошибка удаления фавикона:', error)
+		logger.error('Ошибка удаления фавикона:', error)
 		return NextResponse.json(
 			{
 				error: 'Внутренняя ошибка сервера',

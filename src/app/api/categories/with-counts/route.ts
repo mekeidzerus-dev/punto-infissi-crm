@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 
 // GET - получение категорий с счетчиками параметров и поставщиков
-export async function GET(request: NextRequest) {
+export async function GET() {
 	try {
 		const categories = await prisma.productCategory.findMany({
 			where: { isActive: true },
@@ -48,12 +49,12 @@ export async function GET(request: NextRequest) {
 			})),
 		}))
 
-		console.log(
+		logger.info(
 			`✅ Found ${categoriesWithCounts.length} categories with counts`
 		)
 		return NextResponse.json(categoriesWithCounts)
 	} catch (error) {
-		console.error('❌ Error fetching categories with counts:', error)
+		logger.error('❌ Error fetching categories with counts:', error)
 		return NextResponse.json(
 			{ error: 'Failed to fetch categories', details: String(error) },
 			{ status: 500 }

@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
+import { syncParameterGlobalStatus } from '@/lib/parameter-utils'
 
 // GET - получить конкретный параметр
 export async function GET(
@@ -42,7 +44,7 @@ export async function GET(
 
 		return NextResponse.json(parameter)
 	} catch (error) {
-		console.error('❌ Error fetching parameter:', error)
+		logger.error('❌ Error fetching parameter:', error)
 		return NextResponse.json(
 			{ error: 'Failed to fetch parameter' },
 			{ status: 500 }
@@ -67,6 +69,7 @@ export async function PUT(
 			maxValue,
 			step,
 			isActive,
+			// isGlobal удален - теперь определяется автоматически
 		} = body
 
 		const parameter = await prisma.parameterTemplate.update({
@@ -80,17 +83,29 @@ export async function PUT(
 				maxValue: maxValue ? parseFloat(maxValue) : null,
 				step: step ? parseFloat(step) : null,
 				isActive,
+				// isGlobal не обновляется здесь - определяется автоматически
 			},
 			include: {
 				values: true,
 			},
 		})
 
-		console.log(`✅ Updated parameter: ${parameter.name}`)
-		return NextResponse.json(parameter)
-	} catch (error: any) {
-		console.error('❌ Error updating parameter:', error)
-		if (error.code === 'P2002') {
+		// Синхронизируем статус isGlobal после обновления
+		await syncParameterGlobalStatus(parameter.id)
+
+		// Перезагружаем параметр с актуальным isGlobal
+		const updatedParameter = await prisma.parameterTemplate.findUnique({
+			where: { id },
+			include: {
+				values: true,
+			},
+		})
+
+		logger.info(`✅ Updated parameter: ${updatedParameter?.name}`)
+		return NextResponse.json(updatedParameter)
+	} catch (error: unknown) {
+		logger.error('❌ Error updating parameter:', error)
+		if (error && typeof error === 'object' && 'code' in error && error.code === 'P2002') {
 			return NextResponse.json(
 				{ error: 'Parameter with this name already exists' },
 				{ status: 400 }
@@ -111,6 +126,32 @@ export async function DELETE(
 	try {
 		const { id } = await params
 
+		// Проверяем существует ли параметр
+		const existingParameter = await prisma.parameterTemplate.findUnique({
+			where: { id },
+		})
+
+		if (!existingParameter) {
+			return NextResponse.json(
+				{ error: 'Parameter not found' },
+				{ status: 404 }
+			)
+		}
+
+		// Защита от удаления системного параметра "Модель"
+		if (
+			existingParameter.name === 'Модель' ||
+			existingParameter.nameIt === 'Modello'
+		) {
+			return NextResponse.json(
+				{
+					error:
+						'Невозможно удалить системный параметр "Модель". Этот параметр обязателен для всех товаров.',
+				},
+				{ status: 400 }
+			)
+		}
+
 		// Проверяем используется ли параметр
 		const usageCount = await prisma.categoryParameter.count({
 			where: { parameterId: id },
@@ -129,10 +170,10 @@ export async function DELETE(
 			where: { id },
 		})
 
-		console.log(`✅ Deleted parameter: ${id}`)
+		logger.info(`✅ Deleted parameter: ${id}`)
 		return NextResponse.json({ success: true })
 	} catch (error) {
-		console.error('❌ Error deleting parameter:', error)
+		logger.error('❌ Error deleting parameter:', error)
 		return NextResponse.json(
 			{ error: 'Failed to delete parameter' },
 			{ status: 500 }

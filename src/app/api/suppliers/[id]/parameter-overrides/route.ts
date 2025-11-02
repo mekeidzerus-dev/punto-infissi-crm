@@ -1,14 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 
 // GET /api/suppliers/[id]/parameter-overrides
 // Получить все переопределения параметров для поставщика
 export async function GET(
 	request: NextRequest,
-	{ params }: { params: { id: string } }
+	{ params }: { params: Promise<{ id: string }> }
 ) {
 	try {
-		const supplierId = parseInt(params.id)
+		const { id } = await params
+		const supplierId = parseInt(id)
 
 		if (isNaN(supplierId)) {
 			return NextResponse.json(
@@ -48,13 +50,13 @@ export async function GET(
 			},
 		})
 
-		console.log(
+		logger.info(
 			`✅ Found ${overrides.length} parameter overrides for supplier ${supplierId}`
 		)
 
 		return NextResponse.json(overrides)
 	} catch (error) {
-		console.error('❌ Error fetching supplier parameter overrides:', error)
+		logger.error('❌ Error fetching supplier parameter overrides:', error)
 		return NextResponse.json(
 			{ error: 'Failed to fetch parameter overrides' },
 			{ status: 500 }
@@ -147,13 +149,13 @@ export async function POST(
 			},
 		})
 
-		console.log(
+		logger.info(
 			`✅ Created parameter override for supplier ${supplierId}, parameter ${parameterId}`
 		)
 
 		return NextResponse.json(override, { status: 201 })
 	} catch (error) {
-		console.error('❌ Error creating supplier parameter override:', error)
+		logger.error('❌ Error creating supplier parameter override:', error)
 		return NextResponse.json(
 			{ error: 'Failed to create parameter override' },
 			{ status: 500 }

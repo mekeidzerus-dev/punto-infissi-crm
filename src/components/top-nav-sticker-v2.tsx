@@ -3,7 +3,11 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
-import { TopNavItem } from './top-nav'
+export interface TopNavItem {
+	id: string
+	name: string
+	href: string
+}
 
 interface TopNavStickerV2Props {
 	items: TopNavItem[]

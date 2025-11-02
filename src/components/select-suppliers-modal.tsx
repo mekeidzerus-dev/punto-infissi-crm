@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { logger } from '@/lib/logger'
 import {
 	Dialog,
 	DialogContent,
@@ -88,7 +89,7 @@ export function SelectSuppliersModal({
 			const supplierIds = categorySuppliers.map((item: any) => item.supplierId)
 			setSelectedSuppliers(supplierIds)
 		} catch (error) {
-			console.error('Error loading modal data:', error)
+			logger.error('Error loading modal data:', error)
 		} finally {
 			setLoading(false)
 		}
@@ -121,7 +122,7 @@ export function SelectSuppliersModal({
 			// НЕ закрываем модалку - позволяем выбирать несколько
 			// НЕ вызываем onSuppliersSelected - изменения уже применены
 		} catch (error) {
-			console.error('Error toggling supplier:', error)
+			logger.error('Error toggling supplier:', error)
 		}
 	}
 
@@ -237,7 +238,7 @@ export function SelectSuppliersModal({
 							setShowEditModal(false)
 							setEditingSupplier(null)
 						} catch (error) {
-							console.error('Error saving supplier:', error)
+							logger.error('Error saving supplier:', error)
 						}
 					}}
 					initialData={editingSupplier}

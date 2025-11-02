@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 
 // GET - получить всех монтажников
 export async function GET() {
@@ -10,7 +11,7 @@ export async function GET() {
 
 		return NextResponse.json(installers)
 	} catch (error) {
-		console.error('Error fetching installers:', error)
+		logger.error('Error fetching installers:', error)
 		return NextResponse.json(
 			{ error: 'Failed to fetch installers' },
 			{ status: 500 }
@@ -45,7 +46,7 @@ export async function POST(request: NextRequest) {
 
 		return NextResponse.json(installer, { status: 201 })
 	} catch (error) {
-		console.error('Error creating installer:', error)
+		logger.error('Error creating installer:', error)
 		return NextResponse.json(
 			{ error: 'Failed to create installer' },
 			{ status: 500 }
@@ -82,7 +83,7 @@ export async function PUT(request: NextRequest) {
 
 		return NextResponse.json(installer)
 	} catch (error) {
-		console.error('Error updating installer:', error)
+		logger.error('Error updating installer:', error)
 		return NextResponse.json(
 			{ error: 'Failed to update installer' },
 			{ status: 500 }
@@ -106,7 +107,7 @@ export async function DELETE(request: NextRequest) {
 
 		return NextResponse.json({ success: true })
 	} catch (error) {
-		console.error('Error deleting installer:', error)
+		logger.error('Error deleting installer:', error)
 		return NextResponse.json(
 			{ error: 'Failed to delete installer' },
 			{ status: 500 }

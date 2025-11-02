@@ -112,8 +112,10 @@ export function SupplierCard({
 						<span className='text-gray-400'>•</span>
 						<MapPin className='h-3 w-3 text-gray-400' />
 						<span className='text-gray-500'>
-							{supplier.address.split(',').slice(-2, -1)[0]?.trim() ||
-								'Город не указан'}
+							{supplier.address
+								? supplier.address.split(',').slice(-2, -1)[0]?.trim() ||
+								  'Город не указан'
+								: 'Город не указан'}
 						</span>
 					</div>
 					<div className='flex items-center gap-2'>

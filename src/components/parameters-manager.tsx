@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button'
 import { Plus, Edit, Trash2 } from 'lucide-react'
 import { useLanguage } from '@/contexts/LanguageContext'
 import ParameterEditForm from './parameter-edit-form'
+import { ConfirmDeleteDialog } from './confirm-delete-dialog'
+import { logger } from '@/lib/logger'
 
 interface ParameterValue {
 	id?: string
@@ -48,6 +50,7 @@ export function ParametersManager() {
 	const [parameterToDelete, setParameterToDelete] = useState<Parameter | null>(
 		null
 	)
+	const [isDeleting, setIsDeleting] = useState(false)
 
 	useEffect(() => {
 		fetchParameters()
@@ -59,7 +62,7 @@ export function ParametersManager() {
 			const data = await response.json()
 			setParameters(data)
 		} catch (error) {
-			console.error('Error fetching parameters:', error)
+			logger.error('Error fetching parameters:', error)
 		} finally {
 			setLoading(false)
 		}
@@ -68,6 +71,7 @@ export function ParametersManager() {
 	const handleDelete = async () => {
 		if (!parameterToDelete) return
 
+		setIsDeleting(true)
 		try {
 			const response = await fetch(`/api/parameters/${parameterToDelete.id}`, {
 				method: 'DELETE',
@@ -82,8 +86,10 @@ export function ParametersManager() {
 				alert(error.error || t('errorDeleting'))
 			}
 		} catch (error) {
-			console.error('Error deleting parameter:', error)
+			logger.error('Error deleting parameter:', error)
 			alert(t('errorDeleting'))
+		} finally {
+			setIsDeleting(false)
 		}
 	}
 
@@ -164,6 +170,11 @@ export function ParametersManager() {
 									<span className='px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded'>
 										{getTypeLabel(param.type)}
 									</span>
+									{param.isSystem && (
+										<span className='px-2 py-1 bg-purple-100 text-purple-700 text-xs rounded font-medium'>
+											{locale === 'ru' ? '🔒 Системный' : '🔒 Sistema'}
+										</span>
+									)}
 								</div>
 
 								{param.description && (
@@ -250,18 +261,20 @@ export function ParametersManager() {
 								>
 									<Edit className='h-4 w-4' />
 								</Button>
-								<Button
-									variant='outline'
-									size='sm'
-									className='hover:bg-red-50 text-red-600'
-									onClick={() => {
-										setParameterToDelete(param)
-										setShowDeleteModal(true)
-									}}
-									title={t('delete')}
-								>
-									<Trash2 className='h-4 w-4' />
-								</Button>
+								{!param.isSystem && (
+									<Button
+										variant='outline'
+										size='sm'
+										className='hover:bg-red-50 text-red-600'
+										onClick={() => {
+											setParameterToDelete(param)
+											setShowDeleteModal(true)
+										}}
+										title={t('delete')}
+									>
+										<Trash2 className='h-4 w-4' />
+									</Button>
+								)}
 							</div>
 						</div>
 					</Card>
@@ -286,61 +299,28 @@ export function ParametersManager() {
 				/>
 			)}
 
-			{/* Модальное окно удаления */}
-			{showDeleteModal && parameterToDelete && (
-				<div
-					className='fixed inset-0 bg-gray-900 bg-opacity-75 backdrop-blur-sm flex items-center justify-center z-50'
-					onClick={() => {
-						setShowDeleteModal(false)
-						setParameterToDelete(null)
-					}}
-				>
-					<Card
-						className='p-6 max-w-md w-full mx-4'
-						onClick={e => e.stopPropagation()}
-					>
-						<h3 className='text-lg font-semibold mb-4 text-red-700'>
-							{t('delete')} / Elimina
-						</h3>
-						<p className='text-gray-600 mb-6'>
-							{locale === 'ru'
-								? `Удалить параметр "${parameterToDelete.name}"?`
-								: `Eliminare il parametro "${
-										parameterToDelete.nameIt || parameterToDelete.name
-								  }"?`}
-							<br />
-							<br />
-							{parameterToDelete._count.categoryParameters > 0 && (
-								<span className='text-red-600 font-medium'>
-									⚠️ {parameterToDelete._count.categoryParameters}{' '}
-									{locale === 'ru'
-										? 'категорий используют этот параметр!'
-										: 'categorie usano questo parametro!'}
-								</span>
-							)}
-						</p>
-						<div className='flex justify-end gap-3'>
-							<Button
-								variant='outline'
-								onClick={() => {
-									setShowDeleteModal(false)
-									setParameterToDelete(null)
-								}}
-								className='border-gray-300 text-gray-700 hover:bg-gray-50'
-							>
-								{t('cancel')}
-							</Button>
-							<Button
-								onClick={handleDelete}
-								className='bg-red-600 hover:bg-red-700 text-white'
-							>
-								<Trash2 className='h-4 w-4 mr-2' />
-								{t('delete')}
-							</Button>
-						</div>
-					</Card>
-				</div>
-			)}
+			{/* Модальное окно подтверждения удаления */}
+			<ConfirmDeleteDialog
+				isOpen={showDeleteModal}
+				onClose={() => {
+					setShowDeleteModal(false)
+					setParameterToDelete(null)
+				}}
+				onConfirm={handleDelete}
+				title={
+					locale === 'ru' ? 'Удаление параметра' : 'Eliminazione parametro'
+				}
+				itemName={parameterToDelete?.name || ''}
+				itemType={locale === 'ru' ? 'параметр' : 'parametro'}
+				warningMessage={
+					parameterToDelete?._count.categoryParameters > 0
+						? locale === 'ru'
+							? `Параметр используется в ${parameterToDelete._count.categoryParameters} категориях. Удаление может повлиять на конфигуратор.`
+							: `Il parametro è utilizzato in ${parameterToDelete._count.categoryParameters} categorie. L'eliminazione potrebbe influire sul configuratore.`
+						: undefined
+				}
+				isLoading={isDeleting}
+			/>
 		</div>
 	)
 }

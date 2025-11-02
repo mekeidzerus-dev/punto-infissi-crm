@@ -32,12 +32,9 @@ export const translations = {
 		updated: 'Обновлено',
 
 		// ============ МЕНЮ ============
-		dashboard: 'Панель управления',
 		counterparties: 'Контрагенты',
 		clients: 'Клиенты',
-		products: 'Товары',
 		proposals: 'Предложения',
-		orders: 'Заказы',
 		categories: 'Категории',
 		logoPlaceholder: 'Логотип',
 		clickToUploadLogo: 'Нажмите, чтобы загрузить логотип',
@@ -515,12 +512,9 @@ export const translations = {
 		updated: 'Aggiornato',
 
 		// ============ MENU ============
-		dashboard: 'Dashboard',
 		counterparties: 'Controparti',
 		clients: 'Clienti',
-		products: 'Prodotti',
 		proposals: 'Preventivi',
-		orders: 'Ordini',
 		categories: 'Categorie',
 		logoPlaceholder: 'Logo',
 		clickToUploadLogo: 'Clicca per caricare il logo',

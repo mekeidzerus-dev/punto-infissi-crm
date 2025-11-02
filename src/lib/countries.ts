@@ -124,7 +124,7 @@ export function formatPhoneForCountry(phone: string, country: Country): string {
 	}
 
 	// Получаем цифры после кода страны
-	let digits = cleaned.substring(country.dialCode.length).replace(/\s/g, '')
+	const digits = cleaned.substring(country.dialCode.length).replace(/\s/g, '')
 
 	// Базовое форматирование (можно расширить для каждой страны)
 	if (country.code === 'IT') {

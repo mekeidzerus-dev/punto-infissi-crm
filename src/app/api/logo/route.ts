@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { validateLogoBuffer } from '@/lib/logo-validation'
+import { logger } from '@/lib/logger'
 import {
 	saveLogoFile,
 	cleanupOldLogos,
@@ -76,7 +77,7 @@ export async function POST(request: NextRequest) {
 
 		// 6. Очистка старых файлов
 		const cleanup = await optimizeLogoStorage(1) // Оставляем только последний логотип
-		console.log(
+		logger.info(
 			`Очистка логотипов завершена: сохранено ${cleanup.kept}, удалено ${cleanup.deleted}`
 		)
 
@@ -92,7 +93,7 @@ export async function POST(request: NextRequest) {
 					where: { id: existing.id },
 					data: { logoUrl: saveResult.path },
 				})
-				console.log('✅ Logo path saved to database:', saveResult.path)
+				logger.info('✅ Logo path saved to database:', saveResult.path)
 			} else {
 				await prisma.organization.create({
 					data: {
@@ -104,10 +105,10 @@ export async function POST(request: NextRequest) {
 						language: 'it',
 					},
 				})
-				console.log('✅ Created organization with logo:', saveResult.path)
+				logger.info('✅ Created organization with logo:', saveResult.path)
 			}
 		} catch (dbError) {
-			console.error('⚠️ Failed to save logo to database:', dbError)
+			logger.error('⚠️ Failed to save logo to database:', dbError)
 			// Не прерываем выполнение, файл уже сохранен
 		}
 
@@ -131,7 +132,7 @@ export async function POST(request: NextRequest) {
 			}
 		)
 	} catch (error) {
-		console.error('Ошибка загрузки логотипа:', error)
+		logger.error('Ошибка загрузки логотипа:', error)
 		return NextResponse.json(
 			{
 				error: 'Внутренняя ошибка сервера',
@@ -167,7 +168,7 @@ export async function DELETE(request: NextRequest) {
 		// 2. Удаление всех логотипов
 		const cleanup = await cleanupOldLogos()
 
-		console.log(
+		logger.info(
 			`Удалено ${cleanup.deleted} логотипов, ошибок: ${cleanup.errors}`
 		)
 
@@ -181,10 +182,10 @@ export async function DELETE(request: NextRequest) {
 					where: { id: existing.id },
 					data: { logoUrl: null },
 				})
-				console.log('✅ Logo path removed from database')
+				logger.info('✅ Logo path removed from database')
 			}
 		} catch (dbError) {
-			console.error('⚠️ Failed to remove logo from database:', dbError)
+			logger.error('⚠️ Failed to remove logo from database:', dbError)
 		}
 
 		return NextResponse.json(
@@ -202,7 +203,7 @@ export async function DELETE(request: NextRequest) {
 			}
 		)
 	} catch (error) {
-		console.error('Ошибка удаления логотипа:', error)
+		logger.error('Ошибка удаления логотипа:', error)
 		return NextResponse.json(
 			{
 				error: 'Внутренняя ошибка сервера',

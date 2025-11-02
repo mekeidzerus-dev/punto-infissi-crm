@@ -22,7 +22,7 @@ export function containsAllWords(text: string, searchWords: string[]): boolean {
  * @param fields - массив полей объекта для проверки
  * @returns true если объект содержит все слова
  */
-export function itemMatchesAllWords<T extends Record<string, any>>(
+export function itemMatchesAllWords<T extends Record<string, unknown>>(
 	item: T,
 	searchWords: string[],
 	fields: (keyof T)[]
@@ -56,7 +56,7 @@ export function parseSearchTerms(searchTerm: string): string[] {
  * @param fields - массив полей для поиска
  * @returns отфильтрованный массив
  */
-export function multiSearch<T extends Record<string, any>>(
+export function multiSearch<T extends Record<string, unknown>>(
 	items: T[],
 	searchTerm: string,
 	fields: (keyof T)[]

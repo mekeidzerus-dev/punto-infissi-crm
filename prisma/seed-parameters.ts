@@ -260,6 +260,20 @@ async function seedParameters() {
 		},
 	})
 
+	// 8. Модель (обязательный параметр для всех продуктов)
+	const modelParam = await prisma.parameterTemplate.upsert({
+		where: { name: 'Модель' },
+		update: {},
+		create: {
+			name: 'Модель',
+			nameIt: 'Modello',
+			type: 'TEXT',
+			description: 'Название модели продукта',
+			isGlobal: true,
+			isActive: true,
+		},
+	})
+
 	console.log('✅ Parameters seeded!')
 
 	// Привязываем параметры к категориям
@@ -271,6 +285,13 @@ async function seedParameters() {
 	for (const category of categories) {
 		// Для всех категорий добавляем базовые параметры
 		const baseParams = [
+			{
+				parameterId: modelParam.id,
+				isRequired: true,
+				order: -1, // Модель всегда первая
+				displayName: 'Модель',
+				displayNameIt: 'Modello',
+			},
 			{
 				parameterId: widthParam.id,
 				isRequired: true,

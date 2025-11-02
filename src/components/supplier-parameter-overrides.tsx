@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react'
 import { Plus, Edit, Trash2, Check, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useLanguage } from '@/contexts/LanguageContext'
+import { logger } from '@/lib/logger'
 
 interface ParameterValue {
 	id: string
@@ -87,7 +88,7 @@ export default function SupplierParameterOverrides({
 				setAllParameters(Array.from(uniqueParams.values()))
 			}
 		} catch (error) {
-			console.error('Error fetching data:', error)
+			logger.error('Error fetching data:', error)
 		} finally {
 			setLoading(false)
 		}
@@ -116,7 +117,7 @@ export default function SupplierParameterOverrides({
 				alert(error.error || 'Ошибка при создании переопределения')
 			}
 		} catch (error) {
-			console.error('Error creating override:', error)
+			logger.error('Error creating override:', error)
 			alert('Ошибка при создании переопределения')
 		}
 	}
@@ -143,7 +144,7 @@ export default function SupplierParameterOverrides({
 				alert(error.error || 'Ошибка при обновлении переопределения')
 			}
 		} catch (error) {
-			console.error('Error updating override:', error)
+			logger.error('Error updating override:', error)
 			alert('Ошибка при обновлении переопределения')
 		}
 	}
@@ -166,7 +167,7 @@ export default function SupplierParameterOverrides({
 				alert(error.error || 'Ошибка при удалении переопределения')
 			}
 		} catch (error) {
-			console.error('Error deleting override:', error)
+			logger.error('Error deleting override:', error)
 			alert('Ошибка при удалении переопределения')
 		}
 	}

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 
 export async function GET(
 	request: NextRequest,
@@ -8,7 +9,7 @@ export async function GET(
 	try {
 		const { id } = await params
 
-		console.log('🔍 Fetching proposal:', id)
+		logger.info('🔍 Fetching proposal:', id)
 
 		const proposal = await prisma.proposalDocument.findUnique({
 			where: { id },
@@ -42,10 +43,10 @@ export async function GET(
 			return NextResponse.json({ error: 'Proposal not found' }, { status: 404 })
 		}
 
-		console.log(`✅ Found proposal: ${proposal.number}`)
+		logger.info(`✅ Found proposal: ${proposal.number}`)
 		return NextResponse.json(proposal)
 	} catch (error) {
-		console.error('❌ Error fetching proposal:', error)
+		logger.error('❌ Error fetching proposal:', error)
 		return NextResponse.json(
 			{ error: 'Failed to fetch proposal', details: String(error) },
 			{ status: 500 }
@@ -61,7 +62,7 @@ export async function PUT(
 		const { id } = await params
 		const body = await request.json()
 
-		console.log('📝 Updating proposal:', id)
+		logger.info('📝 Updating proposal:', id)
 
 		// Удаляем все старые группы и позиции
 		await prisma.proposalGroup.deleteMany({
@@ -86,13 +87,13 @@ export async function PUT(
 				...(body.notes !== undefined && { notes: body.notes }),
 				...(body.vatRate !== undefined && { vatRate: body.vatRate }),
 				groups: {
-					create: body.groups?.map((group: any, groupIndex: number) => ({
+					create: body.groups?.map((group: Record<string, unknown>, groupIndex: number) => ({
 						name: group.name,
 						description: group.description,
 						sortOrder: groupIndex,
 						positions: {
 							create: group.positions?.map(
-								(position: any, positionIndex: number) => ({
+								(position: Record<string, unknown>, positionIndex: number) => ({
 									categoryId: position.categoryId,
 									supplierCategoryId: position.supplierCategoryId,
 									configuration: position.configuration,
@@ -134,10 +135,10 @@ export async function PUT(
 		// Пересчитываем итоги
 		await recalculateProposalTotals(proposal.id)
 
-		console.log(`✅ Updated proposal: ${proposal.number}`)
+		logger.info(`✅ Updated proposal: ${proposal.number}`)
 		return NextResponse.json(proposal)
 	} catch (error) {
-		console.error('❌ Error updating proposal:', error)
+		logger.error('❌ Error updating proposal:', error)
 		return NextResponse.json(
 			{ error: 'Failed to update proposal', details: String(error) },
 			{ status: 500 }
@@ -152,16 +153,16 @@ export async function DELETE(
 	try {
 		const { id } = await params
 
-		console.log('🗑️ Deleting proposal:', id)
+		logger.info('🗑️ Deleting proposal:', id)
 
 		await prisma.proposalDocument.delete({
 			where: { id },
 		})
 
-		console.log('✅ Deleted proposal')
+		logger.info('✅ Deleted proposal')
 		return NextResponse.json({ success: true })
 	} catch (error) {
-		console.error('❌ Error deleting proposal:', error)
+		logger.error('❌ Error deleting proposal:', error)
 		return NextResponse.json(
 			{ error: 'Failed to delete proposal', details: String(error) },
 			{ status: 500 }
@@ -246,8 +247,8 @@ async function recalculateProposalTotals(proposalId: string) {
 			},
 		})
 
-		console.log(`✅ Recalculated totals for proposal ${proposalId}`)
+		logger.info(`✅ Recalculated totals for proposal ${proposalId}`)
 	} catch (error) {
-		console.error('❌ Error recalculating totals:', error)
+		logger.error('❌ Error recalculating totals:', error)
 	}
 }

@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Building2, Plus, Edit, Trash2, Search, X } from 'lucide-react'
 import { useLanguage } from '@/contexts/LanguageContext'
+import { logger } from '@/lib/logger'
 import {
 	Dialog,
 	DialogContent,
@@ -94,7 +95,7 @@ export function CategorySuppliersManager({
 			)
 			setAvailableSuppliers(available)
 		} catch (error) {
-			console.error('Error fetching data:', error)
+			logger.error('Error fetching data:', error)
 		} finally {
 			setLoading(false)
 		}
@@ -146,7 +147,7 @@ export function CategorySuppliersManager({
 				alert(t('errorUpdating'))
 			}
 		} catch (error) {
-			console.error('Error adding suppliers:', error)
+			logger.error('Error adding suppliers:', error)
 			alert(t('errorUpdating'))
 		} finally {
 			setLoading(false)
@@ -204,7 +205,7 @@ export function CategorySuppliersManager({
 				onSuppliersChange(updatedSupplierIds)
 			}
 		} catch (error) {
-			console.error('Error removing supplier:', error)
+			logger.error('Error removing supplier:', error)
 			alert(t('errorDeleting'))
 		}
 	}

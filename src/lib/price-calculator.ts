@@ -1,6 +1,6 @@
 /**
  * PRICE CALCULATOR - Автоматический расчет цены продуктов
- * 
+ *
  * Система расчета цены на основе параметров продукта:
  * - Размеры (площадь)
  * - Материал
@@ -35,10 +35,10 @@ interface SupplierPricing {
 // ============================================
 
 const SUPPLIER_PRICING: SupplierPricing[] = [
-	// Venus Design - Премиум окна и двери
+	// Fenestra Italia SPA - Премиум окна и двери
 	{
-		supplierId: 1,
-		categoryId: 'okna', // ID категории "Окна"
+		supplierId: 6,
+		categoryId: 'cmh5fbbo90018shfmbz6xkqxl', // ID категории "Finestre"
 		basePricePerSqm: 250, // €250 за м²
 		materialMultipliers: {
 			PVC: 1.0, // Базовый материал
@@ -65,9 +65,10 @@ const SUPPLIER_PRICING: SupplierPricing[] = [
 			smart: 200, // Умная фурнитура +€200
 		},
 	},
+	// Legno & Design SRL - Деревянные окна
 	{
-		supplierId: 1,
-		categoryId: 'dveri', // ID категории "Двери"
+		supplierId: 7,
+		categoryId: 'cmh5fbbo90018shfmbz6xkqxl', // ID категории "Finestre"
 		basePricePerSqm: 400, // €400 за м²
 		materialMultipliers: {
 			PVC: 1.0,
@@ -92,10 +93,10 @@ const SUPPLIER_PRICING: SupplierPricing[] = [
 			'security-class': 200, // Класс безопасности +€200
 		},
 	},
-	// Alco Windows - Средний сегмент
+	// Базовый поставщик для всех категорий
 	{
-		supplierId: 2,
-		categoryId: 'okna',
+		supplierId: 3,
+		categoryId: 'cmh5fbbo90018shfmbz6xkqxl', // ID категории "Finestre"
 		basePricePerSqm: 180, // €180 за м²
 		materialMultipliers: {
 			PVC: 1.0,
@@ -112,25 +113,6 @@ const SUPPLIER_PRICING: SupplierPricing[] = [
 			'triple-glass': 60,
 		},
 	},
-	// PVC Master - Бюджетный сегмент
-	{
-		supplierId: 3,
-		categoryId: 'okna',
-		basePricePerSqm: 120, // €120 за м²
-		materialMultipliers: {
-			PVC: 1.0,
-			Aluminum: 1.3,
-		},
-		optionPrices: {
-			casement: 0,
-			'tilt-turn': 30,
-			sliding: 60,
-			fixed: -15,
-			'single-glass': -30,
-			'double-glass': 0,
-			'triple-glass': 50,
-		},
-	},
 ]
 
 // ============================================
@@ -141,38 +123,78 @@ const SUPPLIER_PRICING: SupplierPricing[] = [
  * Рассчитывает цену продукта на основе конфигурации
  */
 export function calculateProductPrice(
-	config: Configuration
+	config: Configuration,
+	parameters?: Record<string, unknown>[]
 ): PriceBreakdown {
 	const details: string[] = []
 
 	// 1. Найти ценовую таблицу для поставщика и категории
 	const pricing = SUPPLIER_PRICING.find(
-		p => p.supplierId === config.supplierId && p.categoryId === config.categoryId
+		p =>
+			p.supplierId === config.supplierId && p.categoryId === config.categoryId
 	)
 
 	if (!pricing) {
-		// Если нет ценовой таблицы, возвращаем 0
+		// Если нет ценовой таблицы, возвращаем базовую цену
+		const basePrice = 200 // Базовая цена €200
+		details.push('⚠️ Нет ценовой таблицы для данного поставщика и категории')
+		details.push(`💰 Базовая цена: €${basePrice}`)
 		return {
-			basePrice: 0,
-			sizePrice: 0,
+			basePrice,
+			sizePrice: basePrice,
 			materialSurcharge: 0,
 			optionsSurcharge: 0,
-			total: 0,
-			details: ['⚠️ Нет ценовой таблицы для данного поставщика и категории'],
+			total: basePrice,
+			details,
 		}
 	}
 
 	// 2. Рассчитать площадь (если есть размеры)
-	const width = getParameterValue(config, ['width', 'ширина', 'larghezza'])
-	const height = getParameterValue(config, ['height', 'высота', 'altezza'])
+	let width = 0
+	let height = 0
+
+	// Ищем размеры по ID параметров, если они переданы
+	if (parameters && parameters.length > 0) {
+		const widthParam = parameters.find(
+			p =>
+				p.name?.toLowerCase().includes('larghezza') ||
+				p.name?.toLowerCase().includes('width') ||
+				p.name?.toLowerCase().includes('ширина')
+		)
+		const heightParam = parameters.find(
+			p =>
+				p.name?.toLowerCase().includes('altezza') ||
+				p.name?.toLowerCase().includes('height') ||
+				p.name?.toLowerCase().includes('высота')
+		)
+
+		if (widthParam && config.parameters[widthParam.id]) {
+			width = parseFloat(config.parameters[widthParam.id]) || 0
+		}
+		if (heightParam && config.parameters[heightParam.id]) {
+			height = parseFloat(config.parameters[heightParam.id]) || 0
+		}
+	}
+
+	// Fallback: ищем по названиям параметров
+	if (!width) {
+		width =
+			parseFloat(
+				getParameterValue(config, ['width', 'ширина', 'larghezza']) as string
+			) || 0
+	}
+	if (!height) {
+		height =
+			parseFloat(
+				getParameterValue(config, ['height', 'высота', 'altezza']) as string
+			) || 0
+	}
 
 	let area = 0
 	if (width && height) {
 		// Размеры в мм, переводим в м²
 		area = (width / 1000) * (height / 1000)
-		details.push(
-			`📐 Размеры: ${width}×${height} мм = ${area.toFixed(2)} м²`
-		)
+		details.push(`📐 Размеры: ${width}×${height} мм = ${area.toFixed(2)} м²`)
 	} else {
 		// Если размеры не указаны, используем средний размер 1.2м × 1.5м = 1.8м²
 		area = 1.8
@@ -182,7 +204,9 @@ export function calculateProductPrice(
 	// 3. Базовая цена за площадь
 	const basePrice = pricing.basePricePerSqm * area
 	details.push(
-		`💰 Базовая цена: €${pricing.basePricePerSqm}/м² × ${area.toFixed(2)} м² = €${basePrice.toFixed(2)}`
+		`💰 Базовая цена: €${pricing.basePricePerSqm}/м² × ${area.toFixed(
+			2
+		)} м² = €${basePrice.toFixed(2)}`
 	)
 
 	// 4. Надбавка за материал
@@ -195,13 +219,13 @@ export function calculateProductPrice(
 	const materialMultiplier = pricing.materialMultipliers[materialKey] || 1.0
 
 	const materialSurcharge =
-		materialMultiplier > 1.0
-			? basePrice * (materialMultiplier - 1.0)
-			: 0
+		materialMultiplier > 1.0 ? basePrice * (materialMultiplier - 1.0) : 0
 
 	if (material) {
 		details.push(
-			`🔧 Материал: ${material} (×${materialMultiplier}) = ${materialSurcharge > 0 ? `+€${materialSurcharge.toFixed(2)}` : 'базовый'}`
+			`🔧 Материал: ${material} (×${materialMultiplier}) = ${
+				materialSurcharge > 0 ? `+€${materialSurcharge.toFixed(2)}` : 'базовый'
+			}`
 		)
 	}
 
@@ -216,7 +240,9 @@ export function calculateProductPrice(
 		if (optionPrice !== undefined && optionPrice !== 0) {
 			optionsSurcharge += optionPrice
 			details.push(
-				`✨ ${key}: ${value} = ${optionPrice > 0 ? '+' : ''}€${optionPrice.toFixed(2)}`
+				`✨ ${key}: ${value} = ${
+					optionPrice > 0 ? '+' : ''
+				}€${optionPrice.toFixed(2)}`
 			)
 		}
 	})
@@ -247,16 +273,31 @@ function getParameterValue(
 	config: Configuration,
 	possibleKeys: string[]
 ): number | string | null {
+	// Сначала ищем по точному совпадению ключа
 	for (const key of possibleKeys) {
-		// Ищем по точному совпадению ключа
 		if (config.parameters[key] !== undefined) {
 			return config.parameters[key]
 		}
+	}
 
-		// Ищем по частичному совпадению (case-insensitive)
+	// Если не найдено, ищем по частичному совпадению (case-insensitive)
+	for (const key of possibleKeys) {
 		const foundKey = Object.keys(config.parameters).find(k =>
 			k.toLowerCase().includes(key.toLowerCase())
 		)
+
+		if (foundKey) {
+			return config.parameters[foundKey]
+		}
+	}
+
+	// Если все еще не найдено, ищем по значениям параметров
+	// Это для случая когда параметры хранятся по ID, а не по названиям
+	for (const key of possibleKeys) {
+		const foundKey = Object.keys(config.parameters).find(k => {
+			const value = config.parameters[k]
+			return value && String(value).toLowerCase().includes(key.toLowerCase())
+		})
 
 		if (foundKey) {
 			return config.parameters[foundKey]
@@ -324,6 +365,3 @@ export function hasSupplierPricing(
 export function formatPriceBreakdown(breakdown: PriceBreakdown): string {
 	return breakdown.details.join('\n')
 }
-
-
-

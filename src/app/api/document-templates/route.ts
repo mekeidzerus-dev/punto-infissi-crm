@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 
 export async function GET(request: NextRequest) {
 	try {
 		const { searchParams } = new URL(request.url)
 		const type = searchParams.get('type') // privacy_policy, sales_terms, warranty
 
-		console.log('🔍 Fetching document templates...')
+		logger.info('🔍 Fetching document templates...')
 
 		const templates = await prisma.documentTemplate.findMany({
 			where: {
@@ -19,10 +20,10 @@ export async function GET(request: NextRequest) {
 			],
 		})
 
-		console.log(`✅ Found ${templates.length} document templates`)
+		logger.info(`✅ Found ${templates.length} document templates`)
 		return NextResponse.json(templates)
 	} catch (error) {
-		console.error('❌ Error fetching document templates:', error)
+		logger.error('❌ Error fetching document templates:', error)
 		return NextResponse.json(
 			{ error: 'Failed to fetch document templates', details: String(error) },
 			{ status: 500 }
@@ -32,7 +33,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
 	try {
-		console.log('📝 Creating document template...')
+		logger.info('📝 Creating document template...')
 
 		const body = await request.json()
 		const { name, type, contentRu, contentIt, isDefault } = body
@@ -69,10 +70,10 @@ export async function POST(request: NextRequest) {
 			},
 		})
 
-		console.log(`✅ Created document template: ${template.name}`)
+		logger.info(`✅ Created document template: ${template.name}`)
 		return NextResponse.json(template, { status: 201 })
 	} catch (error) {
-		console.error('❌ Error creating document template:', error)
+		logger.error('❌ Error creating document template:', error)
 		return NextResponse.json(
 			{ error: 'Failed to create document template', details: String(error) },
 			{ status: 500 }

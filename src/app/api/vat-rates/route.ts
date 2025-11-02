@@ -1,19 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 
 export async function GET() {
 	try {
-		console.log('🔍 Fetching VAT rates...')
+		logger.info('🔍 Fetching VAT rates...')
 
 		const vatRates = await prisma.vATRate.findMany({
 			where: { isActive: true },
 			orderBy: { percentage: 'asc' },
 		})
 
-		console.log(`✅ Found ${vatRates.length} VAT rates`)
+		logger.info(`✅ Found ${vatRates.length} VAT rates`)
 		return NextResponse.json(vatRates)
 	} catch (error) {
-		console.error('❌ Error fetching VAT rates:', error)
+		logger.error('❌ Error fetching VAT rates:', error)
 		return NextResponse.json(
 			{ error: 'Failed to fetch VAT rates', details: String(error) },
 			{ status: 500 }
@@ -23,7 +24,7 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
 	try {
-		console.log('📝 Creating VAT rate...')
+		logger.info('📝 Creating VAT rate...')
 
 		const body = await request.json()
 		const { name, percentage, description, isDefault } = body
@@ -52,10 +53,10 @@ export async function POST(request: NextRequest) {
 			},
 		})
 
-		console.log(`✅ Created VAT rate: ${vatRate.name}`)
+		logger.info(`✅ Created VAT rate: ${vatRate.name}`)
 		return NextResponse.json(vatRate, { status: 201 })
 	} catch (error) {
-		console.error('❌ Error creating VAT rate:', error)
+		logger.error('❌ Error creating VAT rate:', error)
 		return NextResponse.json(
 			{ error: 'Failed to create VAT rate', details: String(error) },
 			{ status: 500 }

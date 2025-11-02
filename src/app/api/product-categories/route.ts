@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 
 export async function GET() {
 	try {
-		console.log('🔍 Fetching product categories...')
+		logger.info('🔍 Fetching product categories...')
 
 		const categories = await prisma.productCategory.findMany({
 			where: { isActive: true },
@@ -17,10 +18,10 @@ export async function GET() {
 			},
 		})
 
-		console.log(`✅ Found ${categories.length} product categories`)
+		logger.info(`✅ Found ${categories.length} product categories`)
 		return NextResponse.json(categories)
 	} catch (error) {
-		console.error('❌ Error fetching product categories:', error)
+		logger.error('❌ Error fetching product categories:', error)
 		return NextResponse.json(
 			{ error: 'Failed to fetch product categories', details: String(error) },
 			{ status: 500 }
@@ -30,7 +31,7 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
 	try {
-		console.log('📝 Creating product category...')
+		logger.info('📝 Creating product category...')
 
 		const body = await request.json()
 		const { name, icon, description } = body
@@ -50,10 +51,10 @@ export async function POST(request: NextRequest) {
 			},
 		})
 
-		console.log(`✅ Created product category: ${category.name}`)
+		logger.info(`✅ Created product category: ${category.name}`)
 		return NextResponse.json(category, { status: 201 })
 	} catch (error) {
-		console.error('❌ Error creating product category:', error)
+		logger.error('❌ Error creating product category:', error)
 		return NextResponse.json(
 			{ error: 'Failed to create product category', details: String(error) },
 			{ status: 500 }

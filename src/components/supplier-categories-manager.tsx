@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Plus, Edit, Trash2, Tag } from 'lucide-react'
 import { useLanguage } from '@/contexts/LanguageContext'
+import { logger } from '@/lib/logger'
 
 interface ProductCategory {
 	id: string
@@ -69,7 +70,7 @@ export function SupplierCategoriesManager({
 				onCategoriesChange(categoryIds)
 			}
 		} catch (error) {
-			console.error('Error fetching data:', error)
+			logger.error('Error fetching data:', error)
 		} finally {
 			setLoading(false)
 		}
@@ -152,7 +153,7 @@ export function SupplierCategoriesManager({
 				onCategoriesChange(newSelectedIds)
 			}
 		} catch (error) {
-			console.error('Error toggling category:', error)
+			logger.error('Error toggling category:', error)
 			alert(t('errorUpdating'))
 		}
 	}

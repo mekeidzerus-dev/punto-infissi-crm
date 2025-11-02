@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Plus, Edit, Trash2, Settings } from 'lucide-react'
 import { useLanguage } from '@/contexts/LanguageContext'
 import { AddCategoryModal } from '@/components/add-category-modal'
+import { logger } from '@/lib/logger'
 
 // Функция для безопасного рендеринга иконки (SVG из базы)
 const renderIcon = (icon: string) => {
@@ -94,10 +95,10 @@ export function CategorySelection({
 				const data = await response.json()
 				setCategories(data)
 			} else {
-				console.error('Failed to load categories')
+				logger.error('Failed to load categories')
 			}
 		} catch (error) {
-			console.error('Error loading categories:', error)
+			logger.error('Error loading categories:', error)
 		} finally {
 			setIsLoading(false)
 		}
@@ -138,10 +139,10 @@ export function CategorySelection({
 						onDeleteCategory(categoryId)
 					}
 				} else {
-					console.error('Failed to delete category')
+					logger.error('Failed to delete category')
 				}
 			} catch (error) {
-				console.error('Error deleting category:', error)
+				logger.error('Error deleting category:', error)
 			}
 		}
 	}

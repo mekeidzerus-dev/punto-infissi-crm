@@ -1,11 +1,12 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { DashboardLayoutStickerV2 } from '@/components/dashboard-layout-sticker-v2'
+import { AppLayout } from '@/components/app-layout'
 import { UnifiedNavV2 } from '@/components/unified-nav-v2'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Building2 } from 'lucide-react'
+import { logger } from '@/lib/logger'
 import {
 	Card,
 	CardContent,
@@ -52,7 +53,7 @@ export default function SuppliersPage() {
 				setSuppliers(data)
 			}
 		} catch (error) {
-			console.error('Error fetching suppliers:', error)
+			logger.error('Error fetching suppliers:', error)
 		} finally {
 			setIsLoading(false)
 		}
@@ -90,7 +91,7 @@ export default function SuppliersPage() {
 			await fetchSuppliers()
 			setEditingSupplier(null)
 		} catch (error) {
-			console.error('Error saving supplier:', error)
+			logger.error('Error saving supplier:', error)
 			alert(t('errorSaving'))
 		}
 	}
@@ -107,13 +108,13 @@ export default function SuppliersPage() {
 			await fetch(`/api/suppliers?id=${id}`, { method: 'DELETE' })
 			await fetchSuppliers()
 		} catch (error) {
-			console.error('Error deleting supplier:', error)
+			logger.error('Error deleting supplier:', error)
 			alert(t('errorDeleting'))
 		}
 	}
 
 	return (
-		<DashboardLayoutStickerV2 hideTopNav={true}>
+		<AppLayout hideTopNav={true}>
 			<div className='space-y-4'>
 				<UnifiedNavV2
 					items={[
@@ -244,6 +245,6 @@ export default function SuppliersPage() {
 					</Table>
 				</div>
 			</div>
-		</DashboardLayoutStickerV2>
+		</AppLayout>
 	)
 }

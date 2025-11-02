@@ -1,11 +1,12 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { DashboardLayoutStickerV2 } from '@/components/dashboard-layout-sticker-v2'
+import { AppLayout } from '@/components/app-layout'
 import { UnifiedNavV2 } from '@/components/unified-nav-v2'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Hammer } from 'lucide-react'
+import { logger } from '@/lib/logger'
 import {
 	Card,
 	CardContent,
@@ -64,7 +65,7 @@ export default function InstallersPage() {
 				setInstallers(await response.json())
 			}
 		} catch (error) {
-			console.error('Error fetching installers:', error)
+			logger.error('Error fetching installers:', error)
 		} finally {
 			setIsLoading(false)
 		}
@@ -116,7 +117,7 @@ export default function InstallersPage() {
 			await fetchInstallers()
 			setEditingInstaller(null)
 		} catch (error) {
-			console.error('Error saving installer:', error)
+			logger.error('Error saving installer:', error)
 			alert(t('errorSaving'))
 		}
 	}
@@ -133,13 +134,13 @@ export default function InstallersPage() {
 			await fetch(`/api/installers?id=${id}`, { method: 'DELETE' })
 			await fetchInstallers()
 		} catch (error) {
-			console.error('Error deleting installer:', error)
+			logger.error('Error deleting installer:', error)
 			alert(t('errorDeleting'))
 		}
 	}
 
 	return (
-		<DashboardLayoutStickerV2 hideTopNav={true}>
+		<AppLayout hideTopNav={true}>
 			<div className='space-y-4'>
 				<UnifiedNavV2
 					items={[
@@ -281,6 +282,6 @@ export default function InstallersPage() {
 					</Table>
 				</div>
 			</div>
-		</DashboardLayoutStickerV2>
+		</AppLayout>
 	)
 }

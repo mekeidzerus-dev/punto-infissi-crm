@@ -1,23 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 
 // GET - получить всех клиентов
 export async function GET() {
 	try {
-		console.log('🔍 Fetching clients from database...')
+		logger.info('🔍 Fetching clients from database...')
 		const clients = await prisma.client.findMany({
-			orderBy: { createdAt: 'desc' },
 			include: {
 				_count: {
-					select: { orders: true },
+					select: {
+						orders: true,
+					},
 				},
 			},
+			orderBy: { createdAt: 'desc' },
 		})
 
-		console.log(`✅ Found ${clients.length} clients`)
+		logger.info(`✅ Found ${clients.length} clients`)
 		return NextResponse.json(clients)
 	} catch (error) {
-		console.error('❌ Error fetching clients:', error)
+		logger.error('❌ Error fetching clients:', error)
 		return NextResponse.json(
 			{ error: 'Failed to fetch clients', details: String(error) },
 			{ status: 500 }
@@ -29,7 +32,7 @@ export async function GET() {
 export async function POST(request: NextRequest) {
 	try {
 		const body = await request.json()
-		console.log('📝 Creating client with data:', body)
+		logger.info('📝 Creating client with data:', body)
 
 		const client = await prisma.client.create({
 			data: {
@@ -51,7 +54,7 @@ export async function POST(request: NextRequest) {
 
 		return NextResponse.json(client, { status: 201 })
 	} catch (error) {
-		console.error('Error creating client:', error)
+		logger.error('Error creating client:', error)
 		return NextResponse.json(
 			{ error: 'Failed to create client' },
 			{ status: 500 }
@@ -86,7 +89,7 @@ export async function PUT(request: NextRequest) {
 
 		return NextResponse.json(client)
 	} catch (error) {
-		console.error('Error updating client:', error)
+		logger.error('Error updating client:', error)
 		return NextResponse.json(
 			{ error: 'Failed to update client' },
 			{ status: 500 }
@@ -110,7 +113,7 @@ export async function DELETE(request: NextRequest) {
 
 		return NextResponse.json({ success: true })
 	} catch (error) {
-		console.error('Error deleting client:', error)
+		logger.error('Error deleting client:', error)
 		return NextResponse.json(
 			{ error: 'Failed to delete client' },
 			{ status: 500 }

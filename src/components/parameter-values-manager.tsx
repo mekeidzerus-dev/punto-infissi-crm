@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Plus, Edit, Trash2, Check, X, Save } from 'lucide-react'
 import { useLanguage } from '@/contexts/LanguageContext'
 import { hexToRAL } from '@/lib/hex-to-ral'
+import { logger } from '@/lib/logger'
 import {
 	Dialog,
 	DialogContent,
@@ -72,14 +73,14 @@ export function ParameterValuesManager({
 			if (response.ok) {
 				const data = await response.json()
 				setValues(data)
-				console.log(
+				logger.info(
 					`✅ Loaded ${data.length} values for parameter ${parameterId}`
 				)
 			} else {
 				setValues([])
 			}
 		} catch (error) {
-			console.error('Error fetching values:', error)
+			logger.error('Error fetching values:', error)
 			setValues([])
 		} finally {
 			setLoading(false)
@@ -124,7 +125,7 @@ export function ParameterValuesManager({
 				onValuesChanged()
 			}
 		} catch (error) {
-			console.error('Error adding value:', error)
+			logger.error('Error adding value:', error)
 		}
 	}
 
@@ -157,7 +158,7 @@ export function ParameterValuesManager({
 				onValuesChanged()
 			}
 		} catch (error) {
-			console.error('Error editing value:', error)
+			logger.error('Error editing value:', error)
 		}
 	}
 
@@ -174,7 +175,7 @@ export function ParameterValuesManager({
 				onValuesChanged()
 			}
 		} catch (error) {
-			console.error('Error deleting value:', error)
+			logger.error('Error deleting value:', error)
 		}
 	}
 

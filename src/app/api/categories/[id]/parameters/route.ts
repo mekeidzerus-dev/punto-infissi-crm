@@ -1,98 +1,95 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
+import { syncParameterGlobalStatus } from '@/lib/parameter-utils'
 
-// PUT /api/categories/[id]/parameters
-// Массовое обновление параметров категории
-export async function PUT(
+// POST /api/categories/[id]/parameters - привязать параметр к категории
+export async function POST(
 	request: NextRequest,
 	{ params }: { params: Promise<{ id: string }> }
 ) {
 	try {
 		const { id: categoryId } = await params
 		const body = await request.json()
-		const { parameters } = body // Массив { parameterId, isRequired, isVisible, defaultValue, displayName, helpText }
+		const {
+			parameterId,
+			isRequired = false,
+			isVisible = true,
+			order = 0,
+		} = body
 
-		if (!Array.isArray(parameters)) {
+		// Проверяем, существует ли уже связь
+		const existingLink = await prisma.categoryParameter.findFirst({
+			where: {
+				categoryId,
+				parameterId,
+			},
+		})
+
+		if (existingLink) {
 			return NextResponse.json(
-				{ error: 'Parameters must be an array' },
+				{ error: 'Parameter already linked to category' },
 				{ status: 400 }
 			)
 		}
 
-		// Проверяем существование категории
-		const category = await prisma.productCategory.findUnique({
-			where: { id: categoryId },
+		// Создаем связь
+		const categoryParameter = await prisma.categoryParameter.create({
+			data: {
+				categoryId,
+				parameterId,
+				isRequired,
+				isVisible,
+				order,
+			},
 		})
 
-		if (!category) {
-			return NextResponse.json({ error: 'Category not found' }, { status: 404 })
+		// Синхронизируем статус isGlobal параметра после привязки
+		await syncParameterGlobalStatus(parameterId)
+
+		return NextResponse.json(categoryParameter)
+	} catch (error) {
+		logger.error('Error linking parameter to category:', error)
+		return NextResponse.json(
+			{ error: 'Failed to link parameter to category' },
+			{ status: 500 }
+		)
+	}
+}
+
+// DELETE /api/categories/[id]/parameters - отвязать параметр от категории
+export async function DELETE(
+	request: NextRequest,
+	{ params }: { params: Promise<{ id: string }> }
+) {
+	try {
+		const { id: categoryId } = await params
+		const { searchParams } = new URL(request.url)
+		const parameterId = searchParams.get('parameterId')
+
+		if (!parameterId) {
+			return NextResponse.json(
+				{ error: 'Parameter ID is required' },
+				{ status: 400 }
+			)
 		}
 
-		// Обновляем каждый параметр
-		const updatePromises = parameters.map(param => {
-			const { parameterId, ...data } = param
-
-			// Проверяем, существует ли уже связь
-			return prisma.categoryParameter.upsert({
-				where: {
-					categoryId_parameterId: {
-						categoryId: categoryId,
-						parameterId: parameterId,
-					},
-				},
-				update: {
-					isRequired:
-						data.isRequired !== undefined ? data.isRequired : undefined,
-					isVisible: data.isVisible !== undefined ? data.isVisible : undefined,
-					defaultValue:
-						data.defaultValue !== undefined ? data.defaultValue : undefined,
-					displayName:
-						data.displayName !== undefined ? data.displayName : undefined,
-					helpText: data.helpText !== undefined ? data.helpText : undefined,
-				},
-				create: {
-					categoryId: categoryId,
-					parameterId: parameterId,
-					isRequired: data.isRequired || false,
-					isVisible: data.isVisible !== undefined ? data.isVisible : true,
-					defaultValue: data.defaultValue || null,
-					displayName: data.displayName || null,
-					helpText: data.helpText || null,
-				},
-			})
-		})
-
-		await Promise.all(updatePromises)
-
-		// Получаем обновленные параметры
-		const updatedParameters = await prisma.categoryParameter.findMany({
-			where: { categoryId: categoryId },
-			include: {
-				parameter: {
-					include: {
-						values: {
-							where: { isActive: true },
-							orderBy: { order: 'asc' },
-						},
-					},
-				},
-			},
-			orderBy: {
-				parameter: {
-					name: 'asc',
-				},
+		// Удаляем связь
+		await prisma.categoryParameter.deleteMany({
+			where: {
+				categoryId,
+				parameterId,
 			},
 		})
 
-		console.log(
-			`✅ Updated ${parameters.length} parameters for category ${categoryId}`
-		)
+		// Синхронизируем статус isGlobal параметра после отвязки
+		await syncParameterGlobalStatus(parameterId)
 
-		return NextResponse.json(updatedParameters)
+		return NextResponse.json({ success: true })
 	} catch (error) {
-		console.error('❌ Error updating category parameters:', error)
+		logger.error('Error unlinking parameter from category:', error)
 		return NextResponse.json(
-			{ error: 'Failed to update category parameters' },
+			{ error: 'Failed to unlink parameter from category' },
 			{ status: 500 }
 		)
 	}

@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { logger } from '@/lib/logger'
 import {
 	Dialog,
 	DialogContent,
@@ -269,7 +270,7 @@ export function AddCategoryModal({
 			setSelectedIcon('')
 			onClose()
 		} catch (error) {
-			console.error('Error saving category:', error)
+			logger.error('Error saving category:', error)
 			alert('Ошибка при сохранении категории')
 		}
 	}

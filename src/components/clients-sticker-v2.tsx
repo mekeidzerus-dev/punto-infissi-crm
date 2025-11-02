@@ -1,11 +1,12 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { DashboardLayoutStickerV2 } from '@/components/dashboard-layout-sticker-v2'
+import { AppLayout } from '@/components/app-layout'
 import { UnifiedNavV2 } from '@/components/unified-nav-v2'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
+import { logger } from '@/lib/logger'
 import {
 	Table,
 	TableBody,
@@ -20,19 +21,10 @@ import { useSorting } from '@/hooks/use-sorting'
 import { multiSearch } from '@/lib/multi-search'
 import { ClientFormModal } from '@/components/client-form-modal'
 import { useLanguage } from '@/contexts/LanguageContext'
+import type { Client } from '@/types/client'
 
-interface Client {
-	id: number
+interface ClientWithCount extends Client {
 	name: string
-	type?: string
-	firstName?: string
-	lastName?: string
-	companyName?: string
-	email?: string
-	phone?: string
-	company?: string
-	address?: string
-	notes?: string
 	createdAt: string
 	_count: {
 		orders: number
@@ -41,10 +33,12 @@ interface Client {
 
 export default function ClientsStickerV2() {
 	const { t } = useLanguage()
-	const [clients, setClients] = useState<Client[]>([])
+	const [clients, setClients] = useState<ClientWithCount[]>([])
 	const [searchTerm, setSearchTerm] = useState('')
 	const [isFormOpen, setIsFormOpen] = useState(false)
-	const [editingClient, setEditingClient] = useState<Client | null>(null)
+	const [editingClient, setEditingClient] = useState<ClientWithCount | null>(
+		null
+	)
 	const [isLoading, setIsLoading] = useState(true)
 
 	// Загрузка клиентов из API
@@ -70,7 +64,7 @@ export default function ClientsStickerV2() {
 				setClients(transformedData)
 			}
 		} catch (error) {
-			console.error('Error fetching clients:', error)
+			logger.error('Error fetching clients:', error)
 		} finally {
 			setIsLoading(false)
 		}
@@ -103,7 +97,7 @@ export default function ClientsStickerV2() {
 			}
 			setEditingClient(null)
 		} catch (error) {
-			console.error('Error saving client:', error)
+			logger.error('Error saving client:', error)
 			alert('Ошибка при сохранении клиента')
 		}
 	}
@@ -125,7 +119,7 @@ export default function ClientsStickerV2() {
 				await fetchClients()
 			}
 		} catch (error) {
-			console.error('Error deleting client:', error)
+			logger.error('Error deleting client:', error)
 			alert('Ошибка при удалении клиента')
 		}
 	}
@@ -146,7 +140,7 @@ export default function ClientsStickerV2() {
 	)
 
 	return (
-		<DashboardLayoutStickerV2 hideTopNav={true}>
+		<AppLayout hideTopNav={true}>
 			<div className='space-y-4'>
 				{/* Объединенная навигация с табами и кнопкой */}
 				<UnifiedNavV2
@@ -340,6 +334,6 @@ export default function ClientsStickerV2() {
 					</Table>
 				</div>
 			</div>
-		</DashboardLayoutStickerV2>
+		</AppLayout>
 	)
 }

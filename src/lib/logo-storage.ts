@@ -2,6 +2,7 @@ import { promises as fs } from 'fs'
 import path from 'path'
 import crypto from 'crypto'
 import sharp from 'sharp'
+import { logger } from '@/lib/logger'
 
 export interface LogoStorageResult {
 	success: boolean
@@ -28,7 +29,7 @@ async function ensureLogoDirectory() {
 	try {
 		await fs.mkdir(LOGO_DIR, { recursive: true })
 	} catch (error) {
-		console.error('Ошибка создания директории логотипов:', error)
+		logger.error('Ошибка создания директории логотипов:', error)
 	}
 }
 
@@ -88,11 +89,11 @@ export async function saveLogoFile(
 					.toBuffer()
 
 				optimizedSize = optimizedBuffer.length
-				console.log(
+				logger.info(
 					`Логотип оптимизирован: ${buffer.length} → ${optimizedSize} байт`
 				)
 			} catch (error) {
-				console.warn(
+				logger.warn(
 					'Не удалось оптимизировать логотип, используем оригинал:',
 					error
 				)
@@ -102,7 +103,7 @@ export async function saveLogoFile(
 		// Сохраняем файл
 		await fs.writeFile(filePath, optimizedBuffer)
 
-		console.log(`✅ Логотип сохранен: ${fileName}`)
+		logger.info(`✅ Логотип сохранен: ${fileName}`)
 
 		return {
 			success: true,
@@ -114,7 +115,7 @@ export async function saveLogoFile(
 			},
 		}
 	} catch (error) {
-		console.error('Ошибка сохранения логотипа:', error)
+		logger.error('Ошибка сохранения логотипа:', error)
 		return {
 			success: false,
 			error: error instanceof Error ? error.message : 'Неизвестная ошибка',
@@ -137,9 +138,9 @@ export async function cleanupOldLogos(): Promise<CleanupResult> {
 				const filePath = path.join(LOGO_DIR, file)
 				await fs.unlink(filePath)
 				deleted++
-				console.log(`🗑️ Удален старый логотип: ${file}`)
+				logger.info(`🗑️ Удален старый логотип: ${file}`)
 			} catch (error) {
-				console.error(`Ошибка удаления ${file}:`, error)
+				logger.error(`Ошибка удаления ${file}:`, error)
 				errors++
 			}
 		}
@@ -150,7 +151,7 @@ export async function cleanupOldLogos(): Promise<CleanupResult> {
 			errors,
 		}
 	} catch (error) {
-		console.error('Ошибка очистки логотипов:', error)
+		logger.error('Ошибка очистки логотипов:', error)
 		return {
 			deleted: 0,
 			kept: 0,
@@ -197,9 +198,9 @@ export async function optimizeLogoStorage(
 				const filePath = path.join(LOGO_DIR, file)
 				await fs.unlink(filePath)
 				deleted++
-				console.log(`🗑️ Удален старый логотип: ${file}`)
+				logger.info(`🗑️ Удален старый логотип: ${file}`)
 			} catch (error) {
-				console.error(`Ошибка удаления ${file}:`, error)
+				logger.error(`Ошибка удаления ${file}:`, error)
 				errors++
 			}
 		}
@@ -210,7 +211,7 @@ export async function optimizeLogoStorage(
 			errors,
 		}
 	} catch (error) {
-		console.error('Ошибка оптимизации хранения логотипов:', error)
+		logger.error('Ошибка оптимизации хранения логотипов:', error)
 		return {
 			deleted: 0,
 			kept: 0,
@@ -243,7 +244,7 @@ export async function getCurrentLogo(): Promise<string | null> {
 		filesWithStats.sort((a, b) => b.mtime.getTime() - a.mtime.getTime())
 		return `/logos/${filesWithStats[0].file}`
 	} catch (error) {
-		console.error('Ошибка получения текущего логотипа:', error)
+		logger.error('Ошибка получения текущего логотипа:', error)
 		return null
 	}
 }
@@ -260,7 +261,7 @@ export async function generatePrintLogo(buffer: Buffer): Promise<Buffer> {
 			.png({ quality: 100, compressionLevel: 0 })
 			.toBuffer()
 	} catch (error) {
-		console.error('Ошибка генерации логотипа для печати:', error)
+		logger.error('Ошибка генерации логотипа для печати:', error)
 		throw error
 	}
 }

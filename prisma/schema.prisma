@@ -95,6 +95,8 @@ model Client {
 model Supplier {
   id              Int      @id @default(autoincrement())
   name            String
+  shortName       String?  // Короткое название на русском
+  shortNameIt     String?  // Короткое название на итальянском
   phone           String
   email           String?
   contactPerson   String?
@@ -413,6 +415,7 @@ model VATRate {
   description String?
   isDefault   Boolean @default(false)
   isActive    Boolean @default(true)
+  isSystem    Boolean @default(false) // Системная ставка (не удаляется)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   
@@ -420,6 +423,7 @@ model VATRate {
   @@index([percentage])
   @@index([isDefault])
   @@index([isActive])
+  @@index([isSystem])
 }
 
 // ============================================
@@ -545,6 +549,7 @@ model ParameterTemplate {
   unit        String?       // Единица измерения (мм, см, кг)
   isGlobal    Boolean       @default(true) // Глобальный или специфичный
   isActive    Boolean       @default(true) // Активен ли параметр
+  isSystem    Boolean       @default(false) // Системный параметр (не удаляется)
   
   // Валидация для числовых параметров
   minValue    Float?
@@ -564,6 +569,7 @@ model ParameterTemplate {
   @@unique([name])
   @@index([type])
   @@index([isActive])
+  @@index([isSystem])
 }
 
 // Возможные значения для параметров типа SELECT

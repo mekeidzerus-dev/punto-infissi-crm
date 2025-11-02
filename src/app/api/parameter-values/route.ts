@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 
 // GET - получить значения параметра
 export async function GET(request: NextRequest) {
@@ -15,13 +16,16 @@ export async function GET(request: NextRequest) {
 		}
 
 		const values = await prisma.parameterValue.findMany({
-			where: { parameterId },
+			where: {
+				parameterId,
+				isActive: true, // Показываем только активные значения
+			},
 			orderBy: { order: 'asc' },
 		})
 
 		return NextResponse.json(values)
 	} catch (error) {
-		console.error('❌ Error fetching parameter values:', error)
+		logger.error('❌ Error fetching parameter values:', error)
 		return NextResponse.json(
 			{ error: 'Failed to fetch values' },
 			{ status: 500 }
@@ -51,23 +55,59 @@ export async function POST(request: NextRequest) {
 			)
 		}
 
-		const parameterValue = await prisma.parameterValue.create({
-			data: {
+		// Проверяем существование параметра
+		const parameter = await prisma.parameterTemplate.findUnique({
+			where: { id: parameterId },
+		})
+
+		if (!parameter) {
+			return NextResponse.json(
+				{ error: 'Parameter not found' },
+				{ status: 404 }
+			)
+		}
+
+		// Проверяем дубликаты значений для этого параметра
+		const existingValue = await prisma.parameterValue.findFirst({
+			where: {
 				parameterId,
-				value,
-				valueIt,
-				displayName,
-				hexColor,
-				ralCode,
-				icon,
-				order: order || 0,
+				value: value.trim(),
+				isActive: true,
 			},
 		})
 
-		console.log(`✅ Created parameter value: ${value}`)
+		if (existingValue) {
+			return NextResponse.json(
+				{ error: 'Value already exists for this parameter' },
+				{ status: 400 }
+			)
+		}
+
+		// Получаем максимальный order для определения позиции нового значения
+		const maxOrderValue = await prisma.parameterValue.findFirst({
+			where: { parameterId },
+			orderBy: { order: 'desc' },
+			select: { order: true },
+		})
+
+		const parameterValue = await prisma.parameterValue.create({
+			data: {
+				parameterId,
+				value: value.trim(),
+				valueIt: valueIt?.trim() || null,
+				displayName: displayName?.trim() || value.trim(),
+				hexColor: hexColor || null,
+				ralCode: ralCode || null,
+				icon: icon || null,
+				order: order !== undefined ? order : (maxOrderValue?.order ?? -1) + 1,
+				isActive: true,
+			},
+		})
+
+		logger.info(`✅ Created parameter value: ${value}`)
 		return NextResponse.json(parameterValue)
 	} catch (error) {
-		console.error('❌ Error creating parameter value:', error)
+		logger.error('❌ Error creating parameter value:', error)
 		return NextResponse.json(
 			{ error: 'Failed to create value' },
 			{ status: 500 }
@@ -92,10 +132,10 @@ export async function DELETE(request: NextRequest) {
 			where: { id },
 		})
 
-		console.log(`✅ Deleted parameter value: ${id}`)
+		logger.info(`✅ Deleted parameter value: ${id}`)
 		return NextResponse.json({ success: true })
 	} catch (error) {
-		console.error('❌ Error deleting parameter value:', error)
+		logger.error('❌ Error deleting parameter value:', error)
 		return NextResponse.json(
 			{ error: 'Failed to delete value' },
 			{ status: 500 }

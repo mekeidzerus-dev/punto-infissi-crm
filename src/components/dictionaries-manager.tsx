@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { logger } from '@/lib/logger'
 import {
 	Table,
 	TableBody,
@@ -129,7 +130,7 @@ export function DictionariesManager({
 				}
 			}
 		} catch (error) {
-			console.error('Error fetching dictionaries:', error)
+			logger.error('Error fetching dictionaries:', error)
 		}
 	}
 
@@ -148,7 +149,7 @@ export function DictionariesManager({
 			}
 			await fetchItems()
 		} catch (error) {
-			console.error('Error initializing sources:', error)
+			logger.error('Error initializing sources:', error)
 		}
 	}
 
@@ -181,7 +182,7 @@ export function DictionariesManager({
 				setIsDialogOpen(false)
 			}
 		} catch (error) {
-			console.error('Error adding dictionary:', error)
+			logger.error('Error adding dictionary:', error)
 			alert(t('errorAdding'))
 		}
 	}
@@ -207,7 +208,7 @@ export function DictionariesManager({
 				setIsDialogOpen(false)
 			}
 		} catch (error) {
-			console.error('Error editing dictionary:', error)
+			logger.error('Error editing dictionary:', error)
 			alert(t('errorEditing'))
 		}
 	}
@@ -224,7 +225,7 @@ export function DictionariesManager({
 				await fetchItems()
 			}
 		} catch (error) {
-			console.error('Error deleting dictionary:', error)
+			logger.error('Error deleting dictionary:', error)
 			alert(t('errorDeleting'))
 		}
 	}

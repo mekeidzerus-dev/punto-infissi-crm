@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
+import { logger } from '@/lib/logger'
 
 const LOGO_STORAGE_KEY = 'punto-infissi-logo-path'
 
@@ -14,12 +15,12 @@ export function LogoUpdater() {
 					const org = await response.json()
 					if (org.logoUrl) {
 						localStorage.setItem(LOGO_STORAGE_KEY, org.logoUrl)
-						console.log('✅ Loaded logo from database:', org.logoUrl)
+						logger.info('✅ Loaded logo from database:', org.logoUrl)
 						window.dispatchEvent(new Event('logo-updated'))
 					}
 				}
 			} catch (error) {
-				console.error('❌ Failed to load logo from database:', error)
+				logger.error('❌ Failed to load logo from database:', error)
 			}
 		}
 
@@ -43,14 +44,14 @@ export function LogoUpdater() {
 				'.default-logo'
 			) as NodeListOf<HTMLElement>
 
-			console.log('🔍 Поиск элементов логотипа:', {
+			logger.info('🔍 Поиск элементов логотипа:', {
 				logoElements: logoElements.length,
 				defaultElements: defaultElements.length,
 				logoPath,
 			})
 
 			if (logoElements.length === 0) {
-				console.log('❌ Элементы логотипа не найдены')
+				logger.info('❌ Элементы логотипа не найдены')
 				return
 			}
 
@@ -60,7 +61,7 @@ export function LogoUpdater() {
 					element.src = logoPath
 					element.alt = 'Логотип компании'
 					element.style.display = 'block'
-					console.log(`✅ Логотип обновлен: ${logoPath}`)
+					logger.info(`✅ Логотип обновлен: ${logoPath}`)
 				})
 				defaultElements.forEach(element => {
 					element.style.display = 'none'
@@ -69,7 +70,7 @@ export function LogoUpdater() {
 				// Скрываем логотип, показываем дефолтный
 				logoElements.forEach(element => {
 					element.style.display = 'none'
-					console.log('🔄 Логотип сброшен к дефолтному')
+					logger.info('🔄 Логотип сброшен к дефолтному')
 				})
 				defaultElements.forEach(element => {
 					element.style.display = 'block'

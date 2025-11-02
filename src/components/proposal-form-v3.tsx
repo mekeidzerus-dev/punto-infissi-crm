@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useLanguage } from '@/contexts/LanguageContext'
+import { logger } from '@/lib/logger'
 import {
 	Select,
 	SelectContent,
@@ -20,12 +21,7 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from '@/components/ui/dialog'
-import {
-	ProductConfigurator,
-	Configuration,
-} from '@/components/product-configurator'
 import { ProductConfiguratorV2 } from '@/components/product-configurator-v2'
-import { isFeatureEnabled } from '@/lib/feature-flags'
 import { ClientFormModal } from '@/components/client-form-modal'
 import {
 	Plus,
@@ -43,69 +39,17 @@ import {
 	Clock,
 	Pencil,
 } from 'lucide-react'
-import { calculateProductPrice } from '@/lib/price-calculator'
+import { buildProductPosition } from '@/lib/product-position-builder'
+import { generateProductDescription } from '@/lib/product-name-generator'
 
-interface Client {
-	id: number
-	firstName?: string
-	lastName?: string
-	companyName?: string
-	phone: string
-	email?: string
-	type: string
-}
-
-interface VATRate {
-	id: string
-	name: string
-	percentage: number
-	isDefault: boolean
-}
-
-interface ProposalPosition {
-	id?: string
-	categoryId: string
-	supplierCategoryId: string
-	configuration: Configuration
-	unitPrice: number
-	quantity: number
-	discount: number
-	vatRate: number
-	vatAmount: number
-	total: number
-	description?: string
-}
-
-interface ProposalGroup {
-	id?: string
-	name: string
-	description?: string
-	positions: ProposalPosition[]
-}
-
-interface ProposalDocument {
-	id?: string
-	number?: string
-	proposalDate?: string
-	validUntil?: string
-	clientId: number
-	responsibleManager?: string
-	status?: string
-	groups: ProposalGroup[]
-	vatRate: number
-	subtotal: number
-	discount: number
-	vatAmount: number
-	total: number
-	notes?: string
-}
-
-interface ProposalFormProps {
-	proposal?: ProposalDocument | any // Поддержка различных типов
-	onSave: (proposal: any) => void
-	onCancel: () => void
-	onPreview?: () => void
-}
+import type { Client, VATRate } from '@/types/common'
+import type {
+	ProposalPosition,
+	ProposalGroup,
+	ProposalDocument,
+	ProposalFormProps,
+} from '@/types/proposal'
+import type { Configuration } from '@/types/parameter'
 
 // Утилита для подсветки текста
 function highlightText(text: string, searchTerms: string[]) {
@@ -173,7 +117,7 @@ export function ProposalFormV3({
 	onCancel,
 	onPreview,
 }: ProposalFormProps) {
-	const { t } = useLanguage()
+	const { t, locale } = useLanguage()
 	const [clients, setClients] = useState<Client[]>([])
 	const [vatRates, setVatRates] = useState<VATRate[]>([])
 	const [showConfigurator, setShowConfigurator] = useState(false)
@@ -271,7 +215,7 @@ export function ProposalFormV3({
 			setClients(data)
 			setFilteredClients(data)
 		} catch (error) {
-			console.error('Error fetching clients:', error)
+			logger.error('Error fetching clients:', error)
 		}
 	}
 
@@ -285,7 +229,7 @@ export function ProposalFormV3({
 				setFormData(prev => ({ ...prev, vatRate: defaultRate.percentage }))
 			}
 		} catch (error) {
-			console.error('Error fetching VAT rates:', error)
+			logger.error('Error fetching VAT rates:', error)
 		}
 	}
 
@@ -339,7 +283,7 @@ export function ProposalFormV3({
 
 			if (response.ok) {
 				const createdClient = await response.json()
-				console.log('✅ Клиент создан:', createdClient)
+				// Клиент создан успешно
 
 				// Обновляем список клиентов
 				await fetchClients()
@@ -351,11 +295,11 @@ export function ProposalFormV3({
 				setShowClientSearch(false)
 			} else {
 				const error = await response.json()
-				console.error('❌ Ошибка создания клиента:', error)
+				logger.error('❌ Ошибка создания клиента:', error)
 				alert(`${t('errorSaving')}: ${error.error || 'Unknown error'}`)
 			}
 		} catch (error) {
-			console.error('❌ Ошибка:', error)
+			logger.error('❌ Ошибка:', error)
 			alert(t('errorSaving'))
 		}
 	}
@@ -373,7 +317,7 @@ export function ProposalFormV3({
 
 			if (response.ok) {
 				const updatedClient = await response.json()
-				console.log('✅ Клиент обновлён:', updatedClient)
+				// Клиент обновлён успешно
 
 				// Обновляем список клиентов
 				await fetchClients()
@@ -382,11 +326,11 @@ export function ProposalFormV3({
 				setShowEditClientModal(false)
 			} else {
 				const error = await response.json()
-				console.error('❌ Ошибка обновления клиента:', error)
+				logger.error('❌ Ошибка обновления клиента:', error)
 				alert(`${t('errorSaving')}: ${error.error || 'Unknown error'}`)
 			}
 		} catch (error) {
-			console.error('❌ Ошибка обновления клиента:', error)
+			logger.error('❌ Ошибка обновления клиента:', error)
 			alert(t('errorSaving'))
 		}
 	}
@@ -451,137 +395,209 @@ export function ProposalFormV3({
 		}))
 	}
 
-	const handleConfiguratorComplete = async (config: Configuration) => {
+	// Адаптер для конфигуратора v2
+	const handleConfiguratorV2Complete = async (product: any) => {
 		if (currentGroupIndex === null) return
 
-		const defaultVatRate = vatRates.find(v => v.isDefault)?.percentage || 22.0
-
-		// Генерируем умное описание продукта
-		let description = 'Продукт'
-
 		try {
-			// Пытаемся загрузить параметры категории для форматирования
-			const categoryParamsRes = await fetch(
-				`/api/category-parameters?categoryId=${config.categoryId}`
+			// Получаем правильный supplierCategoryId из API
+			let supplierCategoryId = ''
+			try {
+				const response = await fetch(
+					`/api/supplier-categories?categoryId=${product.category.id}`
+				)
+				if (response.ok) {
+					const supplierCategories = await response.json()
+
+					const supplierCategory = supplierCategories.find(
+						(sc: any) => sc.supplier.id === product.supplier.id
+					)
+					if (supplierCategory) {
+						supplierCategoryId = supplierCategory.id
+					}
+				}
+			} catch (error) {
+				logger.error('Error fetching supplier category:', error)
+			}
+
+			// Используем buildProductPosition для создания позиции с полными данными
+			const position = buildProductPosition(product)
+
+			// Устанавливаем supplierCategoryId
+			position.supplierCategoryId = supplierCategoryId
+
+			// Генерируем описание для обратной совместимости
+			const description = generateProductDescription({
+				categoryNameRu: position.categoryNameRu,
+				categoryNameIt: position.categoryNameIt,
+				supplierShortNameRu: position.supplierShortNameRu,
+				supplierShortNameIt: position.supplierShortNameIt,
+				supplierFullName: position.supplier?.name,
+				modelValueRu: position.modelValueRu,
+				modelValueIt: position.modelValueIt,
+				parameters: position.parameters,
+				locale,
+			})
+			position.description = description
+
+			// Устанавливаем финансовые поля (БЕЗ автоматического расчета цены)
+			const defaultVatRate = vatRates.find(v => v.isDefault)?.percentage || 22.0
+			position.unitPrice = 0 // Цена вводится вручную
+			position.vatRate = defaultVatRate
+			position.quantity = 1
+			position.discount = 0
+			position.vatAmount = 0
+			position.total = 0
+
+			// Добавляем позицию в форму
+			setFormData(prev => ({
+				...prev,
+				groups: prev.groups.map((group, i) =>
+					i === currentGroupIndex
+						? { ...group, positions: [...group.positions, position] }
+						: group
+				),
+			}))
+
+			setShowConfigurator(false)
+			setCurrentGroupIndex(null)
+		} catch (error: any) {
+			logger.error('❌ Error creating product position:', error)
+			// Показываем ошибку пользователю (можно использовать toast)
+			alert(
+				locale === 'ru'
+					? error.message || 'Ошибка при создании товара'
+					: error.message || 'Errore nella creazione del prodotto'
 			)
-			if (categoryParamsRes.ok) {
-				const categoryParams = await categoryParamsRes.json()
-				const parts: string[] = []
+		}
+	}
 
-				for (const cp of categoryParams) {
-					const param = cp.parameter
-					const value = config.parameters[param.id]
+	const generateDescription = async (
+		config: Configuration,
+		parameters?: any[]
+	): Promise<string> => {
+		// Генерируем описание продукта из параметров
+		// Новые правила:
+		// 1. Булевые параметры: "Название: Да/No"
+		// 2. Системные размеры (Ширина×Высота): "ШxВ" после модели
+		// 3. Остальные параметры: только значение (без названия)
 
-					if (value === undefined || value === null || value === '') continue
+		const parts: string[] = []
+		let dimensionsPart = '' // Для размеров ШxВ
+		const booleanParts: string[] = [] // Для булевых параметров
 
-					let formattedValue = String(value)
+		// Если есть информация о параметрах, используем их названия
+		if (parameters && parameters.length > 0) {
+			// Сначала находим системные параметры размеров
+			const widthParam = parameters.find(
+				p => (p.name === 'Ширина' || p.nameIt === 'Larghezza') && p.isSystem
+			)
+			const heightParam = parameters.find(
+				p => (p.name === 'Высота' || p.nameIt === 'Altezza') && p.isSystem
+			)
 
-					// Форматируем по типу
-					if (param.type === 'NUMBER') {
-						formattedValue = `${value}${param.unit || ''}`
+			const widthValue = widthParam ? config.parameters[widthParam.id] : null
+			const heightValue = heightParam ? config.parameters[heightParam.id] : null
+
+			// Формируем строку размеров ШxВ
+			if (widthValue && heightValue) {
+				dimensionsPart = `${widthValue}x${heightValue}`
+			} else if (widthValue) {
+				dimensionsPart = `${widthValue}`
+			} else if (heightValue) {
+				dimensionsPart = `${heightValue}`
+			}
+
+			// Обрабатываем остальные параметры
+			Object.entries(config.parameters).forEach(([paramId, value]) => {
+				if (value === undefined || value === null || value === '') return
+
+				// Находим параметр по ID
+				const parameter = parameters.find(p => p.id === paramId)
+				if (!parameter) {
+					// Fallback для неизвестных параметров
+					parts.push(String(value))
+					return
+				}
+
+				// Пропускаем системные параметры размеров (они уже обработаны)
+				if (parameter.isSystem) return
+
+				const paramName =
+					locale === 'ru'
+						? parameter.name
+						: parameter.nameIt || parameter.name
+
+				let formattedValue: string
+
+				// Обработка множественных значений для TEXT параметров
+				if (parameter.type === 'TEXT' && Array.isArray(value)) {
+					formattedValue = value.filter(v => v && v.trim()).join(', ')
+				} else {
+					formattedValue = String(value)
+
+					// Форматируем по типу параметра
+					if (parameter.type === 'NUMBER') {
+						const unit = parameter.unit ? ` ${parameter.unit}` : ''
+						formattedValue = `${value}${unit}`
 					} else if (
-						(param.type === 'SELECT' || param.type === 'COLOR') &&
-						param.values
+						(parameter.type === 'SELECT' || parameter.type === 'COLOR') &&
+						parameter.values
 					) {
-						const valueObj = param.values.find((v: any) => v.value === value)
+						const valueObj = parameter.values.find(
+							(v: any) => v.value === value
+						)
 						if (valueObj) {
-							formattedValue = valueObj.valueIt || valueObj.value
+							formattedValue =
+								locale === 'ru'
+									? valueObj.value
+									: valueObj.valueIt || valueObj.value
 							if (valueObj.ralCode) {
 								formattedValue += ` (${valueObj.ralCode})`
 							}
 						}
+					} else if (parameter.type === 'BOOLEAN') {
+						// Булевые параметры: добавляем название + значение
+						const boolValue = value === 'true' || value === true
+						const boolText = locale === 'ru' ? (boolValue ? 'Да' : 'Нет') : (boolValue ? 'Sì' : 'No')
+						booleanParts.push(`${paramName}: ${boolText}`)
+						return // Не добавляем в parts, добавим позже
 					}
-
-					parts.push(`${param.nameIt || param.name}: ${formattedValue}`)
 				}
 
-				if (config.customNotes) {
-					parts.push(`Note: ${config.customNotes}`)
+				if (formattedValue) {
+					// Для всех остальных типов: только значение (без названия параметра)
+					parts.push(formattedValue)
 				}
-
-				description = parts.length > 0 ? parts.join(' | ') : 'Продукт'
-			}
-		} catch (error) {
-			console.error('Error generating description:', error)
-			description = generateDescription(config)
+			})
+		} else {
+			// Fallback для случая когда нет информации о параметрах
+			Object.entries(config.parameters).forEach(([paramId, value]) => {
+				if (value === undefined || value === null || value === '') return
+				parts.push(String(value))
+			})
 		}
 
-		// 🎯 АВТОМАТИЧЕСКИЙ РАСЧЕТ ЦЕНЫ на основе параметров продукта
-		const priceBreakdown = calculateProductPrice(config)
-		const calculatedPrice = priceBreakdown.total
-
-		// Логируем детали расчета для отладки
-		if (calculatedPrice > 0) {
-			console.log('💰 Автоматический расчет цены:')
-			console.log(priceBreakdown.details.join('\n'))
-			console.log(`\n✅ Итоговая цена: €${calculatedPrice.toFixed(2)}`)
+		// Собираем финальное описание:
+		// 1. Размеры (если есть)
+		// 2. Остальные параметры (только значения)
+		// 3. Булевые параметры (название: значение)
+		// 4. Заметки
+		const finalParts: string[] = []
+		
+		if (dimensionsPart) {
+			finalParts.push(dimensionsPart)
 		}
-
-		const newPosition: ProposalPosition = {
-			id: Date.now().toString(),
-			categoryId: config.categoryId,
-			supplierCategoryId: config.supplierCategoryId,
-			configuration: config,
-			unitPrice: calculatedPrice, // Используем рассчитанную цену вместо 0
-			quantity: 1,
-			discount: 0,
-			vatRate: defaultVatRate,
-			vatAmount: 0,
-			total: 0,
-			description,
-		}
-
-		setFormData(prev => ({
-			...prev,
-			groups: prev.groups.map((group, i) =>
-				i === currentGroupIndex
-					? { ...group, positions: [...group.positions, newPosition] }
-					: group
-			),
-		}))
-
-		setShowConfigurator(false)
-		setCurrentGroupIndex(null)
-	}
-
-	// Адаптер для нового конфигуратора v2
-	const handleConfiguratorV2Complete = async (product: any) => {
-		if (currentGroupIndex === null) return
-
-		// Преобразуем данные из нового конфигуратора в формат Configuration
-		const config: Configuration = {
-			categoryId: product.category?.id || '',
-			supplierCategoryId: '', // TODO: Получить из выбранного поставщика
-			parameters: product.configuration || {},
-			customNotes: '', // TODO: Добавить поле для заметок в новом конфигураторе
-		}
-
-		// Используем существующую функцию обработки
-		await handleConfiguratorComplete(config)
-	}
-
-	const generateDescription = (config: Configuration): string => {
-		// Генерируем описание продукта из параметров
-		// Формат: "Ширина: 1400мм, Высота: 2000мм, Материал: ПВХ, Цвет: Белый (RAL 9010)"
-
-		const parts: string[] = []
-
-		// Мапинг ID параметров к понятным названиям
-		// Параметры теперь хранятся по ID, нужно их декодировать
-		Object.entries(config.parameters).forEach(([paramId, value]) => {
-			if (value === undefined || value === null || value === '') return
-
-			// Для временной совместимости просто показываем значение
-			// В будущем это будет заменено на реальные названия из БД
-			parts.push(String(value))
-		})
+		
+		finalParts.push(...parts)
+		finalParts.push(...booleanParts)
 
 		// Если есть заметки, добавляем их
 		if (config.customNotes) {
-			parts.push(`Note: ${config.customNotes}`)
+			finalParts.push(`Note: ${config.customNotes}`)
 		}
 
-		return parts.length > 0 ? parts.join(' | ') : 'Продукт'
+		return finalParts.length > 0 ? finalParts.join(' | ') : 'Продукт'
 	}
 
 	const updatePosition = (
@@ -1165,168 +1181,189 @@ export function ProposalFormV3({
 													<th className='text-left py-2 px-3 font-medium'>
 														{t('description')}
 													</th>
-													<th className='text-center py-2 px-3 font-medium w-20'>
-														{t('quantity')}
-													</th>
-													<th className='text-right py-2 px-3 font-medium w-24'>
-														{t('price')}
-													</th>
-													<th className='text-center py-2 px-3 font-medium w-20'>
-														{t('discount')}
-													</th>
-													<th className='text-center py-2 px-3 font-medium w-20'>
-														{t('vat')}
-													</th>
-													<th className='text-right py-2 px-3 font-medium w-24'>
-														{t('total')}
-													</th>
+												<th className='text-center py-2 px-3 font-medium' style={{ width: '80px', minWidth: '80px' }}>
+													{t('quantity')}
+												</th>
+												<th className='text-right py-2 px-3 font-medium' style={{ width: '100px', minWidth: '100px' }}>
+													{t('price')}
+												</th>
+												<th className='text-center py-2 px-3 font-medium' style={{ width: '80px', minWidth: '80px' }}>
+													{t('discount')}
+												</th>
+												<th className='text-center py-2 px-3 font-medium' style={{ width: '80px', minWidth: '80px' }}>
+													{t('vat')}
+												</th>
+												<th className='text-right py-2 px-3 font-medium' style={{ width: '100px', minWidth: '100px' }}>
+													{t('total')}
+												</th>
 													<th className='w-12'></th>
 												</tr>
 											</thead>
 											<tbody className='divide-y'>
-												{group.positions.map((position, positionIndex) => (
-													<tr key={position.id} className='hover:bg-gray-50'>
-														<td className='py-2 px-3 text-xs'>
-															<div className='flex items-center justify-between'>
-																<span>{position.description}</span>
-																{/* Индикатор автоматического расчета цены */}
-																{position.unitPrice > 0 && (
-																	<span
-																		className='ml-2 text-xs px-2 py-0.5 bg-green-50 text-green-600 rounded'
-																		title='Цена рассчитана автоматически'
-																	>
-																		💰 AUTO
-																	</span>
-																)}
-															</div>
-														</td>
-														<td className='py-2 px-3'>
-															<Input
-																type='number'
-																value={position.quantity || ''}
-																onChange={e =>
-																	updatePosition(
-																		groupIndex,
-																		positionIndex,
-																		'quantity',
-																		e.target.value === ''
-																			? 1
-																			: parseFloat(e.target.value) || 1
-																	)
-																}
-																onFocus={e => {
-																	// При фокусе, если значение = 1, очищаем поле для удобства ввода
-																	if (position.quantity === 1) {
-																		e.target.select()
+												{group.positions.map((position, positionIndex) => {
+													// Генерируем описание товара
+													const productDescription =
+														position.categoryNameRu || position.categoryNameIt
+															? generateProductDescription({
+																	categoryNameRu: position.categoryNameRu,
+																	categoryNameIt: position.categoryNameIt,
+																	supplierShortNameRu:
+																		position.supplierShortNameRu,
+																	supplierShortNameIt:
+																		position.supplierShortNameIt,
+																	supplierFullName: position.supplier?.name,
+																	modelValueRu: position.modelValueRu,
+																	modelValueIt: position.modelValueIt,
+																	parameters: position.parameters || [],
+																	locale,
+															  })
+															: position.description || ''
+
+													return (
+														<tr key={position.id} className='hover:bg-gray-50'>
+															<td className='py-2 px-3 text-xs'>
+																<div className='flex flex-col'>
+																	<div>
+																		<span className='break-words'>
+																			{productDescription}
+																		</span>
+																	</div>
+																	{/* Вторая строка: customNotes (Informazioni aggiuntive) */}
+																	{position.customNotes && (
+																		<div className='mt-1 text-xs text-gray-600 italic'>
+																			{position.customNotes}
+																		</div>
+																	)}
+																</div>
+															</td>
+															<td className='py-2 px-3'>
+																<Input
+																	type='number'
+																	value={position.quantity || ''}
+																	onChange={e =>
+																		updatePosition(
+																			groupIndex,
+																			positionIndex,
+																			'quantity',
+																			e.target.value === ''
+																				? 1
+																				: parseFloat(e.target.value) || 1
+																		)
 																	}
-																}}
-																placeholder='1'
-																className='text-center w-full h-8 text-xs'
-																min='1'
-																step='1'
-															/>
-														</td>
-														<td className='py-2 px-3'>
-															<Input
-																type='number'
-																value={
-																	position.unitPrice === 0
-																		? ''
-																		: position.unitPrice
-																}
-																onChange={e =>
-																	updatePosition(
-																		groupIndex,
-																		positionIndex,
-																		'unitPrice',
-																		e.target.value === ''
-																			? 0
-																			: parseFloat(e.target.value) || 0
-																	)
-																}
-																onFocus={e => {
-																	// При фокусе выделяем весь текст для быстрой замены
-																	e.target.select()
-																}}
-																placeholder='0.00'
-																className='text-right w-full h-8 text-xs'
-																min='0'
-																step='0.01'
-															/>
-														</td>
-														<td className='py-2 px-3'>
-															<Input
-																type='number'
-																value={
-																	position.discount === 0
-																		? ''
-																		: position.discount
-																}
-																onChange={e =>
-																	updatePosition(
-																		groupIndex,
-																		positionIndex,
-																		'discount',
-																		e.target.value === ''
-																			? 0
-																			: parseFloat(e.target.value) || 0
-																	)
-																}
-																onFocus={e => {
-																	// При фокусе выделяем весь текст
-																	e.target.select()
-																}}
-																placeholder='0'
-																className='text-center w-full h-8 text-xs'
-																min='0'
-																max='100'
-																step='1'
-															/>
-														</td>
-														<td className='py-2 px-3'>
-															<Select
-																value={String(position.vatRate)}
-																onValueChange={value =>
-																	updatePosition(
-																		groupIndex,
-																		positionIndex,
-																		'vatRate',
-																		parseFloat(value)
-																	)
-																}
-															>
-																<SelectTrigger className='w-full h-8 text-xs'>
-																	<SelectValue />
-																</SelectTrigger>
-																<SelectContent>
-																	{vatRates.map(rate => (
-																		<SelectItem
-																			key={rate.id}
-																			value={String(rate.percentage)}
-																		>
-																			{rate.percentage}%
-																		</SelectItem>
-																	))}
-																</SelectContent>
-															</Select>
-														</td>
-														<td className='py-2 px-3 text-right font-medium text-green-600'>
-															€{position.total.toFixed(2)}
-														</td>
-														<td className='py-2 px-3 text-center'>
-															<Button
-																variant='ghost'
-																size='sm'
-																onClick={() =>
-																	removePosition(groupIndex, positionIndex)
-																}
-																className='h-6 w-6 p-0'
-															>
-																<X className='w-4 h-4 text-red-600' />
-															</Button>
-														</td>
-													</tr>
-												))}
+																	onFocus={e => {
+																		// При фокусе, если значение = 1, очищаем поле для удобства ввода
+																		if (position.quantity === 1) {
+																			e.target.select()
+																		}
+																	}}
+																	placeholder='1'
+																	className='text-center w-full h-8 text-xs'
+																	min='1'
+																	step='1'
+																/>
+															</td>
+															<td className='py-2 px-3'>
+																<Input
+																	type='number'
+																	value={
+																		position.unitPrice === 0
+																			? ''
+																			: position.unitPrice
+																	}
+																	onChange={e =>
+																		updatePosition(
+																			groupIndex,
+																			positionIndex,
+																			'unitPrice',
+																			e.target.value === ''
+																				? 0
+																				: parseFloat(e.target.value) || 0
+																		)
+																	}
+																	onFocus={e => {
+																		// При фокусе выделяем весь текст для быстрой замены
+																		e.target.select()
+																	}}
+																	placeholder='0.00'
+																	className='text-right w-full h-8 text-xs'
+																	min='0'
+																	step='0.01'
+																/>
+															</td>
+															<td className='py-2 px-3'>
+																<Input
+																	type='number'
+																	value={
+																		position.discount === 0
+																			? ''
+																			: position.discount
+																	}
+																	onChange={e =>
+																		updatePosition(
+																			groupIndex,
+																			positionIndex,
+																			'discount',
+																			e.target.value === ''
+																				? 0
+																				: parseFloat(e.target.value) || 0
+																		)
+																	}
+																	onFocus={e => {
+																		// При фокусе выделяем весь текст
+																		e.target.select()
+																	}}
+																	placeholder='0'
+																	className='text-center w-full h-8 text-xs'
+																	min='0'
+																	max='100'
+																	step='1'
+																/>
+															</td>
+															<td className='py-2 px-3'>
+																<Select
+																	value={String(position.vatRate)}
+																	onValueChange={value =>
+																		updatePosition(
+																			groupIndex,
+																			positionIndex,
+																			'vatRate',
+																			parseFloat(value)
+																		)
+																	}
+																>
+																	<SelectTrigger className='w-full h-8 text-xs'>
+																		<SelectValue />
+																	</SelectTrigger>
+																	<SelectContent>
+																		{vatRates.map(rate => (
+																			<SelectItem
+																				key={rate.id}
+																				value={String(rate.percentage)}
+																			>
+																				{rate.percentage}%
+																			</SelectItem>
+																		))}
+																	</SelectContent>
+																</Select>
+															</td>
+															<td className='py-2 px-3 text-right font-medium text-green-600'>
+																€{position.total.toFixed(2)}
+															</td>
+															<td className='py-2 px-3 text-center'>
+																<Button
+																	variant='ghost'
+																	size='sm'
+																	onClick={() =>
+																		removePosition(groupIndex, positionIndex)
+																	}
+																	className='h-6 w-6 p-0'
+																>
+																	<X className='w-4 h-4 text-red-600' />
+																</Button>
+															</td>
+														</tr>
+													)
+												})}
 											</tbody>
 										</table>
 									</div>

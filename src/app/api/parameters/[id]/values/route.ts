@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 
 // GET /api/parameters/[id]/values
 // Получить все значения конкретного параметра
@@ -17,11 +18,11 @@ export async function GET(
 			orderBy: [{ order: 'asc' }, { createdAt: 'asc' }],
 		})
 
-		console.log(`✅ Found ${values.length} values for parameter ${id}`)
+		logger.info(`✅ Found ${values.length} values for parameter ${id}`)
 
 		return NextResponse.json(values)
 	} catch (error) {
-		console.error('❌ Error fetching parameter values:', error)
+		logger.error('❌ Error fetching parameter values:', error)
 		return NextResponse.json(
 			{ error: 'Failed to fetch parameter values' },
 			{ status: 500 }
