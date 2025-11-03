@@ -320,7 +320,9 @@ model ProposalDocument {
   client      Client @relation(fields: [clientId], references: [id])
   responsibleManager String? // ФИО ответственного менеджера
   
-  status      String @default("draft") // draft, sent, confirmed, expired
+  status      String @default("draft") // draft, sent, confirmed, expired (legacy)
+  statusId    Int?   // Связь с DocumentStatus
+  statusRef   DocumentStatus? @relation(fields: [statusId], references: [id])
   type        String @default("proposal") // proposal, order
   
   // Дополнительные поля для заказов
@@ -483,6 +485,11 @@ model Organization {
   faviconUrl  String?  // URL фавикона организации
   logoUrl     String?  // URL логотипа
   primaryColor String? @default("#dc2626") // Основной цвет бренда
+  
+  // Контактные данные
+  phone       String?  // Телефон компании
+  email       String?  // Email компании
+  address     String?  // Адрес компании
   
   // Настройки
   currency    String   @default("EUR")
@@ -691,4 +698,49 @@ model ConfiguratorDraft {
   @@index([currentStep])
   @@index([selectedCategoryId])
   @@index([selectedSupplierId])
+}
+
+// ============================================
+// СИСТЕМА СТАТУСОВ ДОКУМЕНТОВ
+// ============================================
+
+model DocumentType {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique // "proposal", "order", "invoice"
+  nameRu      String   // "Предложение", "Заказ", "Счет"
+  nameIt      String   // "Proposta", "Ordine", "Fattura"
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  
+  statuses    DocumentStatusType[]
+  
+  @@index([isActive])
+}
+
+model DocumentStatus {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique // "draft", "sent", "approved"
+  nameRu      String   // "Черновик", "Отправлено", "Утверждено"
+  nameIt      String   // "Bozza", "Inviato", "Approvato"
+  color       String   @default("#gray") // Цвет для UI
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  
+  documentTypes DocumentStatusType[]
+  proposals     ProposalDocument[]
+  
+  @@index([isActive])
+}
+
+model DocumentStatusType {
+  id              Int      @id @default(autoincrement())
+  documentTypeId  Int
+  documentType    DocumentType @relation(fields: [documentTypeId], references: [id], onDelete: Cascade)
+  statusId        Int
+  status          DocumentStatus @relation(fields: [statusId], references: [id], onDelete: Cascade)
+  order           Int      @default(0) // Порядок отображения
+  
+  @@unique([documentTypeId, statusId])
+  @@index([documentTypeId])
+  @@index([statusId])
 }

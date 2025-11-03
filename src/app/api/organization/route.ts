@@ -51,7 +51,7 @@ export async function GET() {
 export async function PUT(request: NextRequest) {
 	try {
 		const body = await request.json()
-		const { name, logoUrl, faviconUrl, primaryColor } = body
+		const { name, logoUrl, faviconUrl, primaryColor, phone, email, address, currency } = body
 
 		// Получаем существующую организацию
 		const existing = await prisma.organization.findFirst()
@@ -65,7 +65,10 @@ export async function PUT(request: NextRequest) {
 					logoUrl: logoUrl || null,
 					faviconUrl: faviconUrl || null,
 					primaryColor: primaryColor || '#dc2626',
-					currency: 'EUR',
+					phone: phone || null,
+					email: email || null,
+					address: address || null,
+					currency: currency || 'EUR',
 					timezone: 'Europe/Rome',
 					language: 'it',
 				},
@@ -83,6 +86,10 @@ export async function PUT(request: NextRequest) {
 				...(logoUrl !== undefined && { logoUrl: logoUrl || null }),
 				...(faviconUrl !== undefined && { faviconUrl: faviconUrl || null }),
 				...(primaryColor && { primaryColor }),
+				...(phone !== undefined && { phone: phone || null }),
+				...(email !== undefined && { email: email || null }),
+				...(address !== undefined && { address: address || null }),
+				...(currency && { currency }),
 			},
 		})
 

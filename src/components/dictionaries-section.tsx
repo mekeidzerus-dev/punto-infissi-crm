@@ -24,6 +24,7 @@ import {
 import { DictionariesManager } from '@/components/dictionaries-manager'
 import { VATRatesManager } from '@/components/vat-rates-manager'
 import { StatusManager } from '@/components/status-manager'
+import { DocumentStatusesManager } from '@/components/document-statuses-manager'
 import { useLanguage } from '@/contexts/LanguageContext'
 
 interface DictionaryItem {
@@ -45,9 +46,18 @@ export function DictionariesSection() {
 
 	const dictionaries: DictionaryItem[] = [
 		{
+			id: 'document-statuses',
+			name: 'Статусы документов',
+			nameIt: 'Stati dei Documenti',
+			icon: <Database className='h-5 w-5' />,
+			description: 'Управление статусами документов (предложения, заказы, счета)',
+			descriptionIt: 'Gestione stati documenti (proposte, ordini, fatture)',
+			component: DocumentStatusesManager,
+		},
+		{
 			id: 'statuses',
-			name: 'Статусы',
-			nameIt: 'Stati',
+			name: 'Статусы (старые)',
+			nameIt: 'Stati (vecchi)',
 			icon: <Tag className='h-5 w-5' />,
 			description: 'Управление статусами заказов',
 			descriptionIt: 'Gestione stati ordini',

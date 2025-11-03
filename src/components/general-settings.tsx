@@ -47,10 +47,10 @@ export function GeneralSettings() {
 
 	// Состояние для данных компании
 	const [companyData, setCompanyData] = useState({
-		name: 'PUNTO INFISSI',
-		phone: '+39 333 123 4567',
-		email: 'info@puntoinfissi.it',
-		address: 'Via Roma 123, Milano',
+		name: '',
+		phone: '',
+		email: '',
+		address: '',
 	})
 
 	const currentCurrency = CURRENCIES.find(c => c.code === selectedCurrency)
@@ -83,11 +83,16 @@ export function GeneralSettings() {
 				}
 
 				// Данные компании
-				if (org.name) {
-					setCompanyData(prev => ({
-						...prev,
-						name: org.name,
-					}))
+				setCompanyData({
+					name: org.name || '',
+					phone: org.phone || '',
+					email: org.email || '',
+					address: org.address || '',
+				})
+				
+				// Валюта
+				if (org.currency) {
+					setSelectedCurrency(org.currency)
 				}
 			}
 		} catch (error) {

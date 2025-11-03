@@ -41,6 +41,7 @@ import {
 } from 'lucide-react'
 import { buildProductPosition } from '@/lib/product-position-builder'
 import { generateProductDescription } from '@/lib/product-name-generator'
+import { parseClientInput } from '@/lib/client-input-parser'
 
 import type { Client, VATRate } from '@/types/common'
 import type {
@@ -335,36 +336,37 @@ export function ProposalFormV3({
 		}
 	}
 
-	// Умный парсинг ввода для создания клиента
-	const parseClientInput = (input: string) => {
-		const trimmed = input.trim()
-		if (!trimmed) return null
-
-		// Проверяем на email
-		const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-		if (emailRegex.test(trimmed)) {
-			return { email: trimmed }
+	// Обработчик создания нового клиента с умным парсингом
+	const handleCreateNewClient = () => {
+		const parsed = parseClientInput(clientSearch)
+		
+		// Показываем предупреждения если есть
+		if (parsed.warnings.length > 0) {
+			console.log('⚠️ Предупреждения:', parsed.warnings.join(', '))
 		}
-
-		// Проверяем на телефон (содержит цифры и +)
-		const phoneRegex = /^[\+]?[\d\s\-\(\)]+$/
-		if (phoneRegex.test(trimmed) && /\d/.test(trimmed)) {
-			return { phone: trimmed }
+		
+		// Если есть критические ошибки, показываем их
+		if (parsed.errors.length > 0) {
+			alert(`Обнаружены ошибки в данных:\n${parsed.errors.join('\n')}\n\nПожалуйста, исправьте их в форме.`)
 		}
-
-		// Проверяем на имя и фамилию (2 слова)
-		const words = trimmed.split(/\s+/)
-		if (words.length === 2) {
-			return { firstName: words[0], lastName: words[1] }
-		}
-
-		// Если одно слово - считаем именем
-		if (words.length === 1) {
-			return { firstName: words[0] }
-		}
-
-		// Если больше 2 слов - считаем компанией
-		return { companyName: trimmed }
+		
+		// Открываем форму с предзаполненными данными
+		setNewClientData({
+			type: parsed.companyName ? 'company' : 'individual',
+			firstName: parsed.firstName || '',
+			lastName: parsed.lastName || '',
+			companyName: parsed.companyName || '',
+			phone: parsed.phone || '',
+			email: parsed.email || '',
+			address: '',
+			codiceFiscale: '',
+			partitaIVA: '',
+			legalAddress: '',
+			contactPerson: '',
+			source: '',
+			notes: parsed.warnings.length > 0 ? `Автоисправления: ${parsed.warnings.join('; ')}` : '',
+		})
+		setShowClientModal(true)
 	}
 
 	const addGroup = () => {
@@ -1010,41 +1012,15 @@ export function ProposalFormV3({
 												<div className='text-xs text-gray-400 mb-3'>
 													{t('createNewClientPrompt')}
 												</div>
-												<Button
-													onClick={() => {
-														const parsedData =
-															parseClientInput(clientSearchTerm)
-														if (parsedData) {
-															// Создаём клиента с предзаполненными данными
-															const clientData = {
-																type: 'individual',
-																...parsedData,
-																// Заполняем остальные поля по умолчанию
-																firstName: parsedData.firstName || '',
-																lastName: parsedData.lastName || '',
-																companyName: parsedData.companyName || '',
-																phone: parsedData.phone || '',
-																email: parsedData.email || '',
-																address: '',
-																codiceFiscale: '',
-																partitaIVA: '',
-																legalAddress: '',
-																contactPerson: '',
-																source: 'Passaparola',
-																notes: '',
-															}
-															handleClientCreated(clientData)
-														} else {
-															setShowNewClientModal(true)
-														}
-													}}
-													variant='outline'
-													size='sm'
-													className='border-green-300 text-green-600 hover:bg-green-50 hover:text-green-700 hover:border-green-400'
-												>
-													<UserPlus className='h-4 w-4 mr-2' />
-													{t('createNewClient')}
-												</Button>
+											<Button
+												onClick={handleCreateNewClient}
+												variant='outline'
+												size='sm'
+												className='border-green-300 text-green-600 hover:bg-green-50 hover:text-green-700 hover:border-green-400'
+											>
+												<UserPlus className='h-4 w-4 mr-2' />
+												{t('createNewClient')}
+											</Button>
 											</div>
 										)}
 									</div>
@@ -1379,9 +1355,9 @@ export function ProposalFormV3({
 			</Card>
 
 			{/* Итоги + Примечания в одну строку */}
-			<div className='grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4'>
+			<div className='grid grid-cols-1 lg:grid-cols-[1.2fr_1fr] gap-3 mb-4'>
 				{/* Примечания */}
-				<Card className='p-6'>
+				<Card className='p-4'>
 					<Label htmlFor='notes' className='text-sm font-medium'>
 						{t('notes')}
 					</Label>
@@ -1393,16 +1369,13 @@ export function ProposalFormV3({
 						}
 						placeholder={t('notes')}
 						className='mt-2'
-						rows={5}
+						rows={4}
 					/>
 				</Card>
 
-				{/* Разделитель */}
-				<div className='h-1 bg-gradient-to-r from-green-200 via-green-300 to-green-200 mb-6 rounded-full' />
-
 				{/* 💰 ШАГ 3: ИТОГОВАЯ СУММА */}
 				{formData.groups.length > 0 && (
-					<Card className='p-6 border-2 border-green-200'>
+					<Card className='p-4 border-2 border-green-200'>
 						<div className='flex items-center justify-between mb-4'>
 							<div className='flex items-center gap-3'>
 								<div
@@ -1428,7 +1401,7 @@ export function ProposalFormV3({
 							)}
 						</div>
 
-						<div className='space-y-2 text-sm'>
+						<div className='space-y-1.5 text-xs'>
 							{/* Промежуточный итог */}
 							<div className='flex justify-between'>
 								<span className='text-gray-600'>{t('subtotal')}</span>
