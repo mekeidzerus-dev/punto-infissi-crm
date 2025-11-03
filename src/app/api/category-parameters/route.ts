@@ -50,7 +50,7 @@ export async function GET(request: NextRequest) {
 				const categoryParam = param.categoryParameters[0]
 
 				// Получаем значения для SELECT и COLOR параметров
-				let values = []
+				let values: Array<{ id: string; value: string; valueIt: string | null; hexColor: string | null; ralCode: string | null; order: number }> = []
 				if (param.type === 'SELECT' || param.type === 'COLOR') {
 					const paramValues = await prisma.parameterValue.findMany({
 						where: {
