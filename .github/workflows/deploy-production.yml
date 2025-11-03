@@ -59,13 +59,21 @@ jobs:
             fi
             echo "✅ Код обновлен: $(git log --oneline -1)"
 
-            # 4️⃣ Проверяем next.config.js
-            echo "4️⃣ Проверяем next.config.js..."
-            if grep -q "NODE_ENV" next.config.js; then
-              echo "❌ ОШИБКА: next.config.js содержит NODE_ENV!"
-              exit 1
+            # 4️⃣ Проверяем next.config.ts
+            echo "4️⃣ Проверяем next.config.ts..."
+            if [ -f "next.config.ts" ]; then
+              if grep -q "NODE_ENV" next.config.ts; then
+                echo "❌ ОШИБКА: next.config.ts содержит NODE_ENV!"
+                exit 1
+              fi
+              echo "✅ next.config.ts правильный"
+            elif [ -f "next.config.js" ]; then
+              if grep -q "NODE_ENV" next.config.js; then
+                echo "❌ ОШИБКА: next.config.js содержит NODE_ENV!"
+                exit 1
+              fi
+              echo "✅ next.config.js правильный"
             fi
-            echo "✅ next.config.js правильный"
 
             # 5️⃣ Устанавливаем зависимости
             echo "5️⃣ Устанавливаем зависимости..."
