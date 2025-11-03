@@ -34,8 +34,6 @@ export async function POST(request: NextRequest) {
 			},
 		})
 
-		logger.info('📋 Found CategoryParameter:', categoryParameter)
-
 		if (!categoryParameter) {
 			logger.warn('⚠️ Category parameter link not found')
 			return NextResponse.json(

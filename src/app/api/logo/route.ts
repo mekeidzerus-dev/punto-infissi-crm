@@ -93,7 +93,7 @@ export async function POST(request: NextRequest) {
 					where: { id: existing.id },
 					data: { logoUrl: saveResult.path },
 				})
-				logger.info('✅ Logo path saved to database:', saveResult.path)
+				logger.info(`✅ Logo path saved to database: ${saveResult.path}`)
 			} else {
 				await prisma.organization.create({
 					data: {
@@ -105,10 +105,10 @@ export async function POST(request: NextRequest) {
 						language: 'it',
 					},
 				})
-				logger.info('✅ Created organization with logo:', saveResult.path)
+				logger.info(`✅ Created organization with logo: ${saveResult.path}`)
 			}
 		} catch (dbError) {
-			logger.error('⚠️ Failed to save logo to database:', dbError)
+			logger.error('⚠️ Failed to save logo to database:', dbError || undefined)
 			// Не прерываем выполнение, файл уже сохранен
 		}
 

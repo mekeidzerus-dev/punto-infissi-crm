@@ -45,6 +45,7 @@ export interface ProposalDocument {
 	clientId: number
 	responsibleManager?: string
 	status?: string
+	statusId?: number | null
 	groups: ProposalGroup[]
 	vatRate: number
 	subtotal: number
@@ -60,4 +61,3 @@ export interface ProposalFormProps {
 	onCancel: () => void
 	onPreview?: () => void
 }
-

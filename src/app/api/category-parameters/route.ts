@@ -63,17 +63,21 @@ export async function GET(request: NextRequest) {
 							valueIt: true,
 							displayName: true,
 							hexColor: true,
+							ralCode: true,
+							order: true,
 						},
 						orderBy: {
 							order: 'asc',
 						},
 					})
 					values = paramValues.map(v => ({
-						id: v.id, // Добавляем ID для уникальной идентификации
+						id: v.id,
 						value: v.value,
 						valueIt: v.valueIt,
 						displayName: v.displayName,
 						hexColor: v.hexColor,
+						ralCode: v.ralCode,
+						order: v.order,
 					}))
 				}
 

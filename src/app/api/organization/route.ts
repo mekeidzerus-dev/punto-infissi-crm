@@ -36,7 +36,7 @@ export async function GET() {
 
 		return NextResponse.json(organization)
 	} catch (error) {
-		logger.error('❌ Error fetching organization:', error)
+		logger.error('❌ Error fetching organization:', error || undefined)
 		return NextResponse.json(
 			{
 				error: 'Failed to fetch organization',
@@ -102,10 +102,10 @@ export async function PUT(request: NextRequest) {
 			},
 		})
 
-		logger.info('✅ Updated organization:', updated.name)
+		logger.info(`✅ Updated organization: ${updated.name}`)
 		return NextResponse.json(updated)
 	} catch (error) {
-		logger.error('❌ Error updating organization:', error)
+		logger.error('❌ Error updating organization:', error || undefined)
 		return NextResponse.json(
 			{
 				error: 'Failed to update organization',

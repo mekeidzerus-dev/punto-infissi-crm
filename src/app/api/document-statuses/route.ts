@@ -54,7 +54,7 @@ export async function GET(request: NextRequest) {
 
 		return NextResponse.json(statuses)
 	} catch (error) {
-		logger.error('Error fetching document statuses:', error)
+		logger.error('Error fetching document statuses:', error || undefined)
 		return NextResponse.json(
 			{ error: 'Failed to fetch document statuses' },
 			{ status: 500 }
@@ -91,10 +91,10 @@ export async function POST(request: NextRequest) {
 			}
 		}
 
-		logger.info('✅ Created document status:', status.name)
+		logger.info(`✅ Created document status: ${status.name}`)
 		return NextResponse.json(status, { status: 201 })
 	} catch (error) {
-		logger.error('Error creating document status:', error)
+		logger.error('Error creating document status:', error || undefined)
 		return NextResponse.json(
 			{ error: 'Failed to create document status' },
 			{ status: 500 }
@@ -138,10 +138,10 @@ export async function PUT(request: NextRequest) {
 			}
 		}
 
-		logger.info('✅ Updated document status:', status.name)
+		logger.info(`✅ Updated document status: ${status.name}`)
 		return NextResponse.json(status)
 	} catch (error) {
-		logger.error('Error updating document status:', error)
+		logger.error('Error updating document status:', error || undefined)
 		return NextResponse.json(
 			{ error: 'Failed to update document status' },
 			{ status: 500 }
@@ -183,10 +183,10 @@ export async function DELETE(request: NextRequest) {
 			where: { id: parseInt(id) },
 		})
 
-		logger.info('✅ Deleted document status:', id)
+		logger.info(`✅ Deleted document status: ${id}`)
 		return NextResponse.json({ success: true })
 	} catch (error) {
-		logger.error('Error deleting document status:', error)
+		logger.error('Error deleting document status:', error || undefined)
 		return NextResponse.json(
 			{ error: 'Failed to delete document status' },
 			{ status: 500 }

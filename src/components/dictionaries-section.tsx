@@ -23,7 +23,6 @@ import {
 } from 'lucide-react'
 import { DictionariesManager } from '@/components/dictionaries-manager'
 import { VATRatesManager } from '@/components/vat-rates-manager'
-import { StatusManager } from '@/components/status-manager'
 import { DocumentStatusesManager } from '@/components/document-statuses-manager'
 import { useLanguage } from '@/contexts/LanguageContext'
 
@@ -41,7 +40,7 @@ interface DictionaryItem {
 export function DictionariesSection() {
 	const { t } = useLanguage()
 	const [expandedItems, setExpandedItems] = useState<Set<string>>(
-		new Set(['statuses'])
+		new Set(['document-statuses'])
 	)
 
 	const dictionaries: DictionaryItem[] = [
@@ -54,15 +53,6 @@ export function DictionariesSection() {
 				'Управление статусами документов (предложения, заказы, счета)',
 			descriptionIt: 'Gestione stati documenti (proposte, ordini, fatture)',
 			component: DocumentStatusesManager,
-		},
-		{
-			id: 'statuses',
-			name: 'Статусы (старые)',
-			nameIt: 'Stati (vecchi)',
-			icon: <Tag className='h-5 w-5' />,
-			description: 'Управление статусами заказов',
-			descriptionIt: 'Gestione stati ordini',
-			component: StatusManager,
 		},
 		{
 			id: 'vat',

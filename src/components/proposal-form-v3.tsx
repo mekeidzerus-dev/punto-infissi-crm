@@ -787,9 +787,16 @@ export function ProposalFormV3({
 						<Label className='text-xs text-gray-600'>{t('status')}</Label>
 						<Select
 							value={formData.status || 'draft'}
-							onValueChange={value =>
-								setFormData(prev => ({ ...prev, status: value }))
-							}
+							onValueChange={value => {
+								const selectedStatus = documentStatuses.find(
+									s => s.name === value
+								)
+								setFormData(prev => ({
+									...prev,
+									status: value,
+									statusId: selectedStatus?.id || null,
+								}))
+							}}
 						>
 							<SelectTrigger className='h-9 text-sm mt-1'>
 								<SelectValue />
@@ -797,7 +804,13 @@ export function ProposalFormV3({
 							<SelectContent>
 								{documentStatuses.map(status => (
 									<SelectItem key={status.id} value={status.name}>
-										{locale === 'ru' ? status.nameRu : status.nameIt}
+										<div className='flex items-center gap-2'>
+											<div
+												className='w-3 h-3 rounded-full'
+												style={{ backgroundColor: status.color }}
+											/>
+											{locale === 'ru' ? status.nameRu : status.nameIt}
+										</div>
 									</SelectItem>
 								))}
 							</SelectContent>

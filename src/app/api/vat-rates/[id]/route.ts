@@ -10,7 +10,7 @@ export async function PUT(
 		const { id } = await params
 		const body = await request.json()
 
-		logger.info('📝 Updating VAT rate:', id, body)
+		logger.info(`📝 Updating VAT rate: ${id}`, { body })
 
 		// Если устанавливаем isDefault = true, сначала снимаем его со всех остальных
 		if (body.isDefault === true) {
@@ -37,10 +37,10 @@ export async function PUT(
 			},
 		})
 
-		logger.info('✅ Updated VAT rate:', vatRate)
+		logger.info(`✅ Updated VAT rate: ${vatRate.name}`)
 		return NextResponse.json(vatRate)
 	} catch (error) {
-		logger.error('❌ Error updating VAT rate:', error)
+		logger.error('❌ Error updating VAT rate:', error || undefined)
 		return NextResponse.json(
 			{ error: 'Failed to update VAT rate' },
 			{ status: 500 }
@@ -55,7 +55,7 @@ export async function DELETE(
 	try {
 		const { id } = await params
 
-		logger.info('🗑️ Deleting VAT rate:', id)
+		logger.info(`🗑️ Deleting VAT rate: ${id}`)
 
 		// Проверяем, не используется ли эта ставка
 		const rate = await prisma.vATRate.findUnique({
@@ -76,7 +76,7 @@ export async function DELETE(
 		logger.info('✅ Deleted VAT rate')
 		return NextResponse.json({ success: true })
 	} catch (error) {
-		logger.error('❌ Error deleting VAT rate:', error)
+		logger.error('❌ Error deleting VAT rate:', error || undefined)
 		return NextResponse.json(
 			{ error: 'Failed to delete VAT rate' },
 			{ status: 500 }

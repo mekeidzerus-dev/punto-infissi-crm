@@ -9,12 +9,13 @@ export async function GET(
 	try {
 		const { id } = await params
 
-		logger.info('🔍 Fetching proposal:', id)
+		logger.info(`🔍 Fetching proposal: ${id}`)
 
 		const proposal = await prisma.proposalDocument.findUnique({
 			where: { id },
 			include: {
 				client: true,
+				statusRef: true,
 				groups: {
 					include: {
 						positions: {
@@ -46,7 +47,7 @@ export async function GET(
 		logger.info(`✅ Found proposal: ${proposal.number}`)
 		return NextResponse.json(proposal)
 	} catch (error) {
-		logger.error('❌ Error fetching proposal:', error)
+		logger.error('❌ Error fetching proposal:', error || undefined)
 		return NextResponse.json(
 			{ error: 'Failed to fetch proposal', details: String(error) },
 			{ status: 500 }
@@ -62,12 +63,21 @@ export async function PUT(
 		const { id } = await params
 		const body = await request.json()
 
-		logger.info('📝 Updating proposal:', id)
+		logger.info(`📝 Updating proposal: ${id}`)
 
 		// Удаляем все старые группы и позиции
 		await prisma.proposalGroup.deleteMany({
 			where: { proposalId: id },
 		})
+
+		// Находим statusId если передан status
+		let actualStatusId = body.statusId
+		if (!actualStatusId && body.status) {
+			const statusDoc = await prisma.documentStatus.findUnique({
+				where: { name: body.status },
+			})
+			actualStatusId = statusDoc?.id
+		}
 
 		// Обновляем предложение с новыми данными
 		const proposal = await prisma.proposalDocument.update({
@@ -84,35 +94,42 @@ export async function PUT(
 					responsibleManager: body.responsibleManager,
 				}),
 				...(body.status && { status: body.status }),
+				...(actualStatusId !== undefined && { statusId: actualStatusId }),
 				...(body.notes !== undefined && { notes: body.notes }),
 				...(body.vatRate !== undefined && { vatRate: body.vatRate }),
-				groups: {
-					create: body.groups?.map((group: Record<string, unknown>, groupIndex: number) => ({
-						name: group.name,
-						description: group.description,
-						sortOrder: groupIndex,
-						positions: {
-							create: group.positions?.map(
-								(position: Record<string, unknown>, positionIndex: number) => ({
-									categoryId: position.categoryId,
-									supplierCategoryId: position.supplierCategoryId,
-									configuration: position.configuration,
-									unitPrice: position.unitPrice || 0,
-									quantity: position.quantity || 1,
-									discount: position.discount || 0,
-									vatRate: position.vatRate || 22.0,
-									vatAmount: position.vatAmount || 0,
-									total: position.total || 0,
-									description: position.description,
-									sortOrder: positionIndex,
-								})
-							),
-						},
-					})),
-				},
+				groups: body.groups ? {
+					create: (body.groups as Array<Record<string, unknown>>).map(
+						(group: Record<string, unknown>, groupIndex: number) => ({
+							name: String(group.name),
+							description: group.description ? String(group.description) : null,
+							sortOrder: groupIndex,
+							positions: {
+								create: ((group.positions as Array<Record<string, unknown>> | undefined) || []).map(
+									(
+										position: Record<string, unknown>,
+										positionIndex: number
+									) => ({
+										categoryId: String(position.categoryId),
+										supplierCategoryId: String(position.supplierCategoryId),
+										configuration: (position.configuration as Record<string, unknown>) || {},
+										unitPrice: Number(position.unitPrice) || 0,
+										quantity: Number(position.quantity) || 1,
+										discount: Number(position.discount) || 0,
+										vatRate: Number(position.vatRate) || 22.0,
+										vatAmount: Number(position.vatAmount) || 0,
+										total: Number(position.total) || 0,
+										description: position.description ? String(position.description) : null,
+										sortOrder: positionIndex,
+									})
+								),
+							},
+						})
+					),
+				} as any : undefined,
 			},
 			include: {
 				client: true,
+				statusRef: true,
 				groups: {
 					include: {
 						positions: {
@@ -138,7 +155,7 @@ export async function PUT(
 		logger.info(`✅ Updated proposal: ${proposal.number}`)
 		return NextResponse.json(proposal)
 	} catch (error) {
-		logger.error('❌ Error updating proposal:', error)
+		logger.error('❌ Error updating proposal:', error || undefined)
 		return NextResponse.json(
 			{ error: 'Failed to update proposal', details: String(error) },
 			{ status: 500 }
@@ -153,7 +170,7 @@ export async function DELETE(
 	try {
 		const { id } = await params
 
-		logger.info('🗑️ Deleting proposal:', id)
+		logger.info(`🗑️ Deleting proposal: ${id}`)
 
 		await prisma.proposalDocument.delete({
 			where: { id },
@@ -162,7 +179,7 @@ export async function DELETE(
 		logger.info('✅ Deleted proposal')
 		return NextResponse.json({ success: true })
 	} catch (error) {
-		logger.error('❌ Error deleting proposal:', error)
+		logger.error('❌ Error deleting proposal:', error || undefined)
 		return NextResponse.json(
 			{ error: 'Failed to delete proposal', details: String(error) },
 			{ status: 500 }
@@ -249,6 +266,6 @@ async function recalculateProposalTotals(proposalId: string) {
 
 		logger.info(`✅ Recalculated totals for proposal ${proposalId}`)
 	} catch (error) {
-		logger.error('❌ Error recalculating totals:', error)
+		logger.error('❌ Error recalculating totals:', error || undefined)
 	}
 }

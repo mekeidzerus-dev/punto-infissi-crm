@@ -9,6 +9,7 @@ export async function GET() {
 		const proposals = await prisma.proposalDocument.findMany({
 			include: {
 				client: true,
+				statusRef: true,
 				groups: {
 					include: {
 						positions: {
@@ -32,7 +33,7 @@ export async function GET() {
 		logger.info(`✅ Found ${proposals.length} proposals`)
 		return NextResponse.json(proposals)
 	} catch (error) {
-		logger.error('❌ Error fetching proposals:', error)
+		logger.error('❌ Error fetching proposals:', error || undefined)
 		return NextResponse.json(
 			{ error: 'Failed to fetch proposals', details: String(error) },
 			{ status: 500 }
@@ -53,6 +54,7 @@ export async function POST(request: NextRequest) {
 			validUntil,
 			responsibleManager,
 			status,
+			statusId,
 			notes,
 		} = body
 
@@ -67,6 +69,15 @@ export async function POST(request: NextRequest) {
 		const count = await prisma.proposalDocument.count()
 		const number = `PROP-${String(count + 1).padStart(3, '0')}`
 
+		// Находим statusId если передан status
+		let actualStatusId = statusId
+		if (!actualStatusId && status) {
+			const statusDoc = await prisma.documentStatus.findUnique({
+				where: { name: status },
+			})
+			actualStatusId = statusDoc?.id
+		}
+
 		// Создаем предложение
 		const proposal = await prisma.proposalDocument.create({
 			data: {
@@ -76,47 +87,53 @@ export async function POST(request: NextRequest) {
 				clientId: parseInt(clientId),
 				responsibleManager: responsibleManager || 'Администратор',
 				status: status || 'draft',
+				statusId: actualStatusId || null,
 				vatRate: vatRate || 22.0,
 				notes,
-				groups: {
-					create: groups?.map((group: Record<string, unknown>, groupIndex: number) => ({
-						name: group.name,
-						description: group.description,
-						sortOrder: groupIndex,
-						positions: {
-							create: group.positions?.map(
-								(position: Record<string, unknown>, positionIndex: number) => ({
-									categoryId: position.categoryId,
-									supplierCategoryId: position.supplierCategoryId,
-									// Расширенная configuration с данными для локализации
-									configuration: {
-										...position.configuration,
-										// Сохраняем локализованные данные для последующего использования
-										_metadata: {
-											categoryNameRu: position.categoryNameRu,
-											categoryNameIt: position.categoryNameIt,
-											supplierShortNameRu: position.supplierShortNameRu,
-											supplierShortNameIt: position.supplierShortNameIt,
-											supplierFullName: position.supplier?.name,
-											modelValueRu: position.modelValueRu,
-											modelValueIt: position.modelValueIt,
-											parameters: position.parameters || [],
-											customNotes: position.customNotes,
-										},
-									},
-									unitPrice: position.unitPrice || 0,
-									quantity: position.quantity || 1,
-									discount: position.discount || 0,
-									vatRate: position.vatRate || 22.0,
-									vatAmount: position.vatAmount || 0,
-									total: position.total || 0,
-									description: position.description,
-									sortOrder: positionIndex,
-								})
-							),
-						},
-					})),
-				},
+				groups: groups ? {
+					create: (groups as Array<Record<string, unknown>>).map(
+						(group: Record<string, unknown>, groupIndex: number) => ({
+							name: String(group.name),
+							description: group.description ? String(group.description) : null,
+							sortOrder: groupIndex,
+							positions: {
+								create: ((group.positions as Array<Record<string, unknown>> | undefined) || []).map(
+									(
+										position: Record<string, unknown>,
+										positionIndex: number
+									) => ({
+										categoryId: String(position.categoryId),
+										supplierCategoryId: String(position.supplierCategoryId),
+										// Расширенная configuration с данными для локализации
+										configuration: {
+											...(position.configuration as Record<string, unknown> || {}),
+											// Сохраняем локализованные данные для последующего использования
+											_metadata: {
+												categoryNameRu: position.categoryNameRu,
+												categoryNameIt: position.categoryNameIt,
+												supplierShortNameRu: position.supplierShortNameRu,
+												supplierShortNameIt: position.supplierShortNameIt,
+												supplierFullName: (position.supplier as { name?: string } | undefined)?.name,
+												modelValueRu: position.modelValueRu,
+												modelValueIt: position.modelValueIt,
+												parameters: (position.parameters as unknown[] || []),
+												customNotes: position.customNotes,
+											},
+										} as Record<string, unknown>,
+										unitPrice: Number(position.unitPrice) || 0,
+										quantity: Number(position.quantity) || 1,
+										discount: Number(position.discount) || 0,
+										vatRate: Number(position.vatRate) || 22.0,
+										vatAmount: Number(position.vatAmount) || 0,
+										total: Number(position.total) || 0,
+										description: position.description ? String(position.description) : null,
+										sortOrder: positionIndex,
+									})
+								),
+							},
+						})
+					),
+				} as any : undefined,
 			},
 			include: {
 				client: true,
@@ -145,7 +162,7 @@ export async function POST(request: NextRequest) {
 		logger.info(`✅ Created proposal: ${proposal.number}`)
 		return NextResponse.json(proposal, { status: 201 })
 	} catch (error) {
-		logger.error('❌ Error creating proposal:', error)
+		logger.error('❌ Error creating proposal:', error || undefined)
 		return NextResponse.json(
 			{ error: 'Failed to create proposal', details: String(error) },
 			{ status: 500 }
@@ -231,6 +248,6 @@ async function recalculateProposalTotals(proposalId: string) {
 
 		logger.info(`✅ Recalculated totals for proposal ${proposalId}`)
 	} catch (error) {
-		logger.error('❌ Error recalculating totals:', error)
+		logger.error('❌ Error recalculating totals:', error || undefined)
 	}
 }

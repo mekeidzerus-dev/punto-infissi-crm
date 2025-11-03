@@ -83,7 +83,7 @@ export default function ProposalsPage() {
 			const data = await response.json()
 			setProposals(data)
 		} catch (error) {
-			logger.error('Error fetching proposals:', error)
+			logger.error('Error fetching proposals:', error || undefined)
 		} finally {
 			setIsLoading(false)
 		}
@@ -110,24 +110,24 @@ export default function ProposalsPage() {
 				setEditingProposal(undefined)
 			} else {
 				const error = await response.json()
-				logger.error('Error saving proposal:', error)
+				logger.error('Error saving proposal:', error || undefined)
 				alert(t('errorOccurred') + ': ' + (error.error || 'Unknown error'))
 			}
 		} catch (error) {
-			logger.error('Error saving proposal:', error)
+			logger.error('Error saving proposal:', error || undefined)
 			alert(t('errorOccurred'))
 		}
 	}
 
 	const handleEdit = async (proposal: ProposalDocumentView) => {
 		try {
-			logger.info('📝 Loading proposal for edit:', proposal.id)
+			logger.info(`📝 Loading proposal for edit: ${proposal.id}`)
 
 			// Загружаем полные данные предложения с API
 			const response = await fetch(`/api/proposals/${proposal.id}`)
 			if (response.ok) {
 				const apiData = await response.json()
-				logger.info('✅ Loaded proposal data:', apiData)
+				logger.info('✅ Loaded proposal data')
 
 				// Нормализуем данные: преобразуем Decimal (строки) в numbers
 				const normalizedProposal = {
@@ -186,7 +186,7 @@ export default function ProposalsPage() {
 						})) || [],
 				}
 
-				logger.info('✅ Normalized proposal:', normalizedProposal)
+				logger.info('✅ Normalized proposal')
 				setEditingProposal(normalizedProposal)
 				setShowForm(true)
 			} else {
@@ -194,7 +194,7 @@ export default function ProposalsPage() {
 				alert(t('errorOccurred'))
 			}
 		} catch (error) {
-			logger.error('❌ Error loading proposal:', error)
+			logger.error('❌ Error loading proposal:', error || undefined)
 			alert(t('errorOccurred'))
 		}
 	}
@@ -218,11 +218,11 @@ export default function ProposalsPage() {
 				await fetchProposals()
 			} else {
 				const error = await response.json()
-				logger.error('Error deleting proposal:', error)
+				logger.error('Error deleting proposal:', error || undefined)
 				alert(t('errorOccurred') + ': ' + (error.error || 'Unknown error'))
 			}
 		} catch (error) {
-			logger.error('Error deleting proposal:', error)
+			logger.error('Error deleting proposal:', error || undefined)
 			alert(t('errorOccurred'))
 		}
 	}
@@ -257,10 +257,10 @@ export default function ProposalsPage() {
 		}
 	}
 
-	const filteredProposals = multiSearch(proposals, searchTerm, [
+	const filteredProposals = multiSearch(proposals as Array<Record<string, unknown>>, searchTerm, [
 		'number',
 		'status',
-	])
+	] as (keyof Record<string, unknown>)[])
 
 	const navItems = [
 		{
