@@ -17,7 +17,7 @@ export async function PUT(
 				where: {
 					type,
 					isDefault: true,
-					NOT: { id: params.id },
+					NOT: { id },
 				},
 				data: { isDefault: false },
 			})
@@ -48,14 +48,15 @@ export async function PUT(
 
 export async function DELETE(
 	request: NextRequest,
-	{ params }: { params: { id: string } }
+	{ params }: { params: Promise<{ id: string }> }
 ) {
 	try {
+		const { id } = await params
 		await prisma.documentTemplate.delete({
-			where: { id: params.id },
+			where: { id },
 		})
 
-		logger.info(`✅ Deleted template: ${params.id}`)
+		logger.info(`✅ Deleted template: ${id}`)
 		return NextResponse.json({ success: true })
 	} catch (error) {
 		logger.error('❌ Error deleting template:', error)

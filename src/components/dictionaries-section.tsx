@@ -50,7 +50,8 @@ export function DictionariesSection() {
 			name: 'Статусы документов',
 			nameIt: 'Stati dei Documenti',
 			icon: <Database className='h-5 w-5' />,
-			description: 'Управление статусами документов (предложения, заказы, счета)',
+			description:
+				'Управление статусами документов (предложения, заказы, счета)',
 			descriptionIt: 'Gestione stati documenti (proposte, ordini, fatture)',
 			component: DocumentStatusesManager,
 		},

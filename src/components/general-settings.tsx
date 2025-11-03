@@ -89,7 +89,7 @@ export function GeneralSettings() {
 					email: org.email || '',
 					address: org.address || '',
 				})
-				
+
 				// Валюта
 				if (org.currency) {
 					setSelectedCurrency(org.currency)

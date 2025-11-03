@@ -51,7 +51,16 @@ export async function GET() {
 export async function PUT(request: NextRequest) {
 	try {
 		const body = await request.json()
-		const { name, logoUrl, faviconUrl, primaryColor, phone, email, address, currency } = body
+		const {
+			name,
+			logoUrl,
+			faviconUrl,
+			primaryColor,
+			phone,
+			email,
+			address,
+			currency,
+		} = body
 
 		// Получаем существующую организацию
 		const existing = await prisma.organization.findFirst()
@@ -106,4 +115,3 @@ export async function PUT(request: NextRequest) {
 		)
 	}
 }
-

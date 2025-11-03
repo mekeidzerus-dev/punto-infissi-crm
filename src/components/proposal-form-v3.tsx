@@ -121,6 +121,15 @@ export function ProposalFormV3({
 	const { t, locale } = useLanguage()
 	const [clients, setClients] = useState<Client[]>([])
 	const [vatRates, setVatRates] = useState<VATRate[]>([])
+	const [documentStatuses, setDocumentStatuses] = useState<
+		Array<{
+			id: number
+			name: string
+			nameRu: string
+			nameIt: string
+			color: string
+		}>
+	>([])
 	const [showConfigurator, setShowConfigurator] = useState(false)
 	const [currentGroupIndex, setCurrentGroupIndex] = useState<number | null>(
 		null
@@ -128,10 +137,11 @@ export function ProposalFormV3({
 	const [loading, setLoading] = useState(false)
 
 	// Поиск клиента
-	const [clientSearchTerm, setClientSearchTerm] = useState('')
+	const [clientSearch, setClientSearch] = useState('')
 	const [showClientSearch, setShowClientSearch] = useState(false)
 	const [showNewClientModal, setShowNewClientModal] = useState(false)
 	const [showEditClientModal, setShowEditClientModal] = useState(false)
+	const [newClientData, setNewClientData] = useState<any>(null)
 	const [filteredClients, setFilteredClients] = useState<Client[]>([])
 	const [showAllClients, setShowAllClients] = useState(false)
 
@@ -162,6 +172,7 @@ export function ProposalFormV3({
 	useEffect(() => {
 		fetchClients()
 		fetchVATRates()
+		fetchDocumentStatuses()
 	}, [])
 
 	// Обновляем formData когда приходит proposal для редактирования
@@ -231,6 +242,18 @@ export function ProposalFormV3({
 			}
 		} catch (error) {
 			logger.error('Error fetching VAT rates:', error)
+		}
+	}
+
+	const fetchDocumentStatuses = async () => {
+		try {
+			const response = await fetch(
+				'/api/document-statuses?documentType=proposal'
+			)
+			const data = await response.json()
+			setDocumentStatuses(data)
+		} catch (error) {
+			logger.error('Error fetching document statuses:', error)
 		}
 	}
 
@@ -339,17 +362,21 @@ export function ProposalFormV3({
 	// Обработчик создания нового клиента с умным парсингом
 	const handleCreateNewClient = () => {
 		const parsed = parseClientInput(clientSearch)
-		
+
 		// Показываем предупреждения если есть
 		if (parsed.warnings.length > 0) {
 			console.log('⚠️ Предупреждения:', parsed.warnings.join(', '))
 		}
-		
+
 		// Если есть критические ошибки, показываем их
 		if (parsed.errors.length > 0) {
-			alert(`Обнаружены ошибки в данных:\n${parsed.errors.join('\n')}\n\nПожалуйста, исправьте их в форме.`)
+			alert(
+				`Обнаружены ошибки в данных:\n${parsed.errors.join(
+					'\n'
+				)}\n\nПожалуйста, исправьте их в форме.`
+			)
 		}
-		
+
 		// Открываем форму с предзаполненными данными
 		setNewClientData({
 			type: parsed.companyName ? 'company' : 'individual',
@@ -364,9 +391,12 @@ export function ProposalFormV3({
 			legalAddress: '',
 			contactPerson: '',
 			source: '',
-			notes: parsed.warnings.length > 0 ? `Автоисправления: ${parsed.warnings.join('; ')}` : '',
+			notes:
+				parsed.warnings.length > 0
+					? `Автоисправления: ${parsed.warnings.join('; ')}`
+					: '',
 		})
-		setShowClientModal(true)
+		setShowNewClientModal(true)
 	}
 
 	const addGroup = () => {
@@ -526,9 +556,7 @@ export function ProposalFormV3({
 				if (parameter.isSystem) return
 
 				const paramName =
-					locale === 'ru'
-						? parameter.name
-						: parameter.nameIt || parameter.name
+					locale === 'ru' ? parameter.name : parameter.nameIt || parameter.name
 
 				let formattedValue: string
 
@@ -561,7 +589,14 @@ export function ProposalFormV3({
 					} else if (parameter.type === 'BOOLEAN') {
 						// Булевые параметры: добавляем название + значение
 						const boolValue = value === 'true' || value === true
-						const boolText = locale === 'ru' ? (boolValue ? 'Да' : 'Нет') : (boolValue ? 'Sì' : 'No')
+						const boolText =
+							locale === 'ru'
+								? boolValue
+									? 'Да'
+									: 'Нет'
+								: boolValue
+								? 'Sì'
+								: 'No'
 						booleanParts.push(`${paramName}: ${boolText}`)
 						return // Не добавляем в parts, добавим позже
 					}
@@ -586,11 +621,11 @@ export function ProposalFormV3({
 		// 3. Булевые параметры (название: значение)
 		// 4. Заметки
 		const finalParts: string[] = []
-		
+
 		if (dimensionsPart) {
 			finalParts.push(dimensionsPart)
 		}
-		
+
 		finalParts.push(...parts)
 		finalParts.push(...booleanParts)
 
@@ -760,10 +795,11 @@ export function ProposalFormV3({
 								<SelectValue />
 							</SelectTrigger>
 							<SelectContent>
-								<SelectItem value='draft'>{t('draft')}</SelectItem>
-								<SelectItem value='sent'>{t('sent')}</SelectItem>
-								<SelectItem value='confirmed'>{t('confirmed')}</SelectItem>
-								<SelectItem value='expired'>{t('expired')}</SelectItem>
+								{documentStatuses.map(status => (
+									<SelectItem key={status.id} value={status.name}>
+										{locale === 'ru' ? status.nameRu : status.nameIt}
+									</SelectItem>
+								))}
 							</SelectContent>
 						</Select>
 					</div>
@@ -1012,15 +1048,15 @@ export function ProposalFormV3({
 												<div className='text-xs text-gray-400 mb-3'>
 													{t('createNewClientPrompt')}
 												</div>
-											<Button
-												onClick={handleCreateNewClient}
-												variant='outline'
-												size='sm'
-												className='border-green-300 text-green-600 hover:bg-green-50 hover:text-green-700 hover:border-green-400'
-											>
-												<UserPlus className='h-4 w-4 mr-2' />
-												{t('createNewClient')}
-											</Button>
+												<Button
+													onClick={handleCreateNewClient}
+													variant='outline'
+													size='sm'
+													className='border-green-300 text-green-600 hover:bg-green-50 hover:text-green-700 hover:border-green-400'
+												>
+													<UserPlus className='h-4 w-4 mr-2' />
+													{t('createNewClient')}
+												</Button>
 											</div>
 										)}
 									</div>
@@ -1157,21 +1193,36 @@ export function ProposalFormV3({
 													<th className='text-left py-2 px-3 font-medium'>
 														{t('description')}
 													</th>
-												<th className='text-center py-2 px-3 font-medium' style={{ width: '80px', minWidth: '80px' }}>
-													{t('quantity')}
-												</th>
-												<th className='text-right py-2 px-3 font-medium' style={{ width: '100px', minWidth: '100px' }}>
-													{t('price')}
-												</th>
-												<th className='text-center py-2 px-3 font-medium' style={{ width: '80px', minWidth: '80px' }}>
-													{t('discount')}
-												</th>
-												<th className='text-center py-2 px-3 font-medium' style={{ width: '80px', minWidth: '80px' }}>
-													{t('vat')}
-												</th>
-												<th className='text-right py-2 px-3 font-medium' style={{ width: '100px', minWidth: '100px' }}>
-													{t('total')}
-												</th>
+													<th
+														className='text-center py-2 px-3 font-medium'
+														style={{ width: '80px', minWidth: '80px' }}
+													>
+														{t('quantity')}
+													</th>
+													<th
+														className='text-right py-2 px-3 font-medium'
+														style={{ width: '100px', minWidth: '100px' }}
+													>
+														{t('price')}
+													</th>
+													<th
+														className='text-center py-2 px-3 font-medium'
+														style={{ width: '80px', minWidth: '80px' }}
+													>
+														{t('discount')}
+													</th>
+													<th
+														className='text-center py-2 px-3 font-medium'
+														style={{ width: '80px', minWidth: '80px' }}
+													>
+														{t('vat')}
+													</th>
+													<th
+														className='text-right py-2 px-3 font-medium'
+														style={{ width: '100px', minWidth: '100px' }}
+													>
+														{t('total')}
+													</th>
 													<th className='w-12'></th>
 												</tr>
 											</thead>

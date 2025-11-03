@@ -483,7 +483,7 @@ export function ParameterValuesManager({
 
 					{values.length === 0 && !loading && (
 						<div className='text-center py-8 text-gray-500'>
-							Нет значений. Нажмите "Добавить значение" для создания.
+							Нет значений. Нажмите &quot;Добавить значение&quot; для создания.
 						</div>
 					)}
 				</div>

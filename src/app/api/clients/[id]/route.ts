@@ -7,10 +7,11 @@ const prisma = new PrismaClient()
 // GET /api/clients/[id] - получить клиента по ID
 export async function GET(
 	request: NextRequest,
-	{ params }: { params: { id: string } }
+	{ params }: { params: Promise<{ id: string }> }
 ) {
 	try {
-		const clientId = parseInt(params.id)
+		const { id } = await params
+		const clientId = parseInt(id)
 
 		if (isNaN(clientId)) {
 			return NextResponse.json({ error: 'Invalid client ID' }, { status: 400 })
@@ -41,10 +42,11 @@ export async function GET(
 // PUT /api/clients/[id] - обновить клиента
 export async function PUT(
 	request: NextRequest,
-	{ params }: { params: { id: string } }
+	{ params }: { params: Promise<{ id: string }> }
 ) {
 	try {
-		const clientId = parseInt(params.id)
+		const { id } = await params
+		const clientId = parseInt(id)
 
 		if (isNaN(clientId)) {
 			return NextResponse.json({ error: 'Invalid client ID' }, { status: 400 })
@@ -100,10 +102,11 @@ export async function PUT(
 // DELETE /api/clients/[id] - удалить клиента
 export async function DELETE(
 	request: NextRequest,
-	{ params }: { params: { id: string } }
+	{ params }: { params: Promise<{ id: string }> }
 ) {
 	try {
-		const clientId = parseInt(params.id)
+		const { id } = await params
+		const clientId = parseInt(id)
 
 		if (isNaN(clientId)) {
 			return NextResponse.json({ error: 'Invalid client ID' }, { status: 400 })
