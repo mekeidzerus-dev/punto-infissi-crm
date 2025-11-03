@@ -46,15 +46,16 @@ export async function GET(
 // Обновить переопределение параметра
 export async function PUT(
 	request: NextRequest,
-	{ params }: { params: { id: string } }
+	{ params }: { params: Promise<{ id: string }> }
 ) {
 	try {
+		const { id } = await params
 		const body = await request.json()
 		const { customValues, minValue, maxValue, isAvailable } = body
 
 		// Проверяем существование переопределения
 		const existing = await prisma.supplierParameterOverride.findUnique({
-			where: { id: params.id },
+			where: { id },
 		})
 
 		if (!existing) {
@@ -66,7 +67,7 @@ export async function PUT(
 
 		// Обновляем переопределение
 		const override = await prisma.supplierParameterOverride.update({
-			where: { id: params.id },
+			where: { id },
 			data: {
 				customValues: customValues !== undefined ? customValues : undefined,
 				minValue:
@@ -95,7 +96,7 @@ export async function PUT(
 			},
 		})
 
-		logger.info(`✅ Updated parameter override: ${params.id}`)
+		logger.info(`✅ Updated parameter override: ${id}`)
 
 		return NextResponse.json(override)
 	} catch (error) {
@@ -111,12 +112,13 @@ export async function PUT(
 // Удалить переопределение параметра
 export async function DELETE(
 	request: NextRequest,
-	{ params }: { params: { id: string } }
+	{ params }: { params: Promise<{ id: string }> }
 ) {
 	try {
+		const { id } = await params
 		// Проверяем существование переопределения
 		const existing = await prisma.supplierParameterOverride.findUnique({
-			where: { id: params.id },
+			where: { id },
 		})
 
 		if (!existing) {
@@ -128,10 +130,10 @@ export async function DELETE(
 
 		// Удаляем переопределение
 		await prisma.supplierParameterOverride.delete({
-			where: { id: params.id },
+			where: { id },
 		})
 
-		logger.info(`🗑️ Deleted parameter override: ${params.id}`)
+		logger.info(`🗑️ Deleted parameter override: ${id}`)
 
 		return NextResponse.json({ success: true })
 	} catch (error) {

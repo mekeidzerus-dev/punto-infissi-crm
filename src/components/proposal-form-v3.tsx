@@ -137,7 +137,7 @@ export function ProposalFormV3({
 	const [loading, setLoading] = useState(false)
 
 	// Поиск клиента
-	const [clientSearch, setClientSearch] = useState('')
+	const [clientSearchTerm, setClientSearchTerm] = useState('')
 	const [showClientSearch, setShowClientSearch] = useState(false)
 	const [showNewClientModal, setShowNewClientModal] = useState(false)
 	const [showEditClientModal, setShowEditClientModal] = useState(false)
@@ -361,7 +361,7 @@ export function ProposalFormV3({
 
 	// Обработчик создания нового клиента с умным парсингом
 	const handleCreateNewClient = () => {
-		const parsed = parseClientInput(clientSearch)
+		const parsed = parseClientInput(clientSearchTerm)
 
 		// Показываем предупреждения если есть
 		if (parsed.warnings.length > 0) {
