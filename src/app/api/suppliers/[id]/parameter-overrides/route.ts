@@ -68,10 +68,11 @@ export async function GET(
 // Создать новое переопределение параметра для поставщика
 export async function POST(
 	request: NextRequest,
-	{ params }: { params: { id: string } }
+	{ params }: { params: Promise<{ id: string }> }
 ) {
 	try {
-		const supplierId = parseInt(params.id)
+		const { id } = await params
+		const supplierId = parseInt(id)
 
 		if (isNaN(supplierId)) {
 			return NextResponse.json(

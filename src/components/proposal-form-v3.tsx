@@ -1576,8 +1576,12 @@ export function ProposalFormV3({
 			{/* Модальное окно создания клиента */}
 			<ClientFormModal
 				isOpen={showNewClientModal}
-				onClose={() => setShowNewClientModal(false)}
+				onClose={() => {
+					setShowNewClientModal(false)
+					setNewClientData(null)
+				}}
 				onSave={handleClientCreated}
+				initialData={newClientData}
 			/>
 
 			{/* Модальное окно редактирования клиента */}
