@@ -257,10 +257,10 @@ export default function ProposalsPage() {
 		}
 	}
 
-	const filteredProposals = multiSearch(proposals as unknown as Array<Record<string, unknown>>, searchTerm, [
+	const filteredProposals = (multiSearch(proposals as unknown as Array<Record<string, unknown>>, searchTerm, [
 		'number',
 		'status',
-	] as (keyof Record<string, unknown>)[]) as ProposalDocumentView[]
+	] as (keyof Record<string, unknown>)[]) as unknown) as ProposalDocumentView[]
 
 	const navItems = [
 		{
