@@ -300,8 +300,10 @@ export default function ProposalsPage() {
 		return legacyTextMap[proposal.status] || proposal.status
 	}
 
+	// Убеждаемся, что proposals - массив перед вызовом multiSearch
+	const safeProposals = Array.isArray(proposals) ? proposals : []
 	const filteredProposals = multiSearch(
-		proposals as unknown as Array<Record<string, unknown>>,
+		safeProposals as unknown as Array<Record<string, unknown>>,
 		searchTerm,
 		['number', 'status'] as (keyof Record<string, unknown>)[]
 	) as unknown as ProposalDocumentView[]
