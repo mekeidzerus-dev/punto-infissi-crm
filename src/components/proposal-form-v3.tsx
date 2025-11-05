@@ -868,6 +868,8 @@ export function ProposalFormV3({
 						</Label>
 						<Input
 							type='date'
+							id='proposalDate'
+							name='proposalDate'
 							value={formData.proposalDate}
 							onChange={e =>
 								setFormData(prev => ({ ...prev, proposalDate: e.target.value }))
@@ -884,6 +886,8 @@ export function ProposalFormV3({
 						</Label>
 						<Input
 							type='date'
+							id='validUntil'
+							name='validUntil'
 							value={formData.validUntil || ''}
 							onChange={e =>
 								setFormData(prev => ({ ...prev, validUntil: e.target.value }))
