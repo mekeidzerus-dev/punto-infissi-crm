@@ -76,7 +76,10 @@ export function ParametersConfiguration({
 
 	// Логируем изменение isEditMode (только в dev)
 	useEffect(() => {
-		if (process.env.NODE_ENV === 'development') {
+		if (
+			typeof process !== 'undefined' &&
+			process.env?.NODE_ENV === 'development'
+		) {
 			logger.debug('🔧 isEditMode changed:', { isEditMode })
 		}
 	}, [isEditMode])
@@ -309,7 +312,10 @@ export function ParametersConfiguration({
 				await loadParameters()
 
 				// Показываем пользовательское уведомление (опционально)
-				if (process.env.NODE_ENV === 'development') {
+				if (
+					typeof process !== 'undefined' &&
+					process.env?.NODE_ENV === 'development'
+				) {
 					logger.info('✅ Параметр успешно отвязан от категории')
 				}
 			} else {
@@ -320,19 +326,28 @@ export function ParametersConfiguration({
 					logger.warn(
 						'⚠️ Parameter link not found. It may already be unlinked or is a global parameter.'
 					)
-					if (process.env.NODE_ENV === 'development') {
+					if (
+						typeof process !== 'undefined' &&
+						process.env?.NODE_ENV === 'development'
+					) {
 						logger.warn('⚠️ Параметр уже отвязан или является глобальным')
 					}
 				} else {
 					logger.error('Error unlinking parameter:', responseData)
-					if (process.env.NODE_ENV === 'development') {
+					if (
+						typeof process !== 'undefined' &&
+						process.env?.NODE_ENV === 'development'
+					) {
 						logger.error('❌ Ошибка при отвязке:', responseData.error || undefined)
 					}
 				}
 			}
 		} catch (error) {
 			logger.error('Error unlinking parameter:', error)
-			if (process.env.NODE_ENV === 'development') {
+			if (
+				typeof process !== 'undefined' &&
+				process.env?.NODE_ENV === 'development'
+			) {
 				logger.error('❌ Неожиданная ошибка при отвязке параметра:', error || undefined)
 			}
 		}
@@ -368,7 +383,10 @@ export function ParametersConfiguration({
 					: parameter.nameIt || parameter.name
 
 			// Логируем для отладки (только в dev)
-			if (process.env.NODE_ENV === 'development') {
+			if (
+				typeof process !== 'undefined' &&
+				process.env?.NODE_ENV === 'development'
+			) {
 				logger.debug('🔍 Render tag field:', {
 					parameterName: parameter.name,
 					isEditMode,
@@ -501,7 +519,10 @@ export function ParametersConfiguration({
 											val?.value?.trim() || val?.valueIt?.trim() || valText
 
 										// Логируем для отладки (только в dev)
-										if (process.env.NODE_ENV === 'development') {
+										if (
+											typeof process !== 'undefined' &&
+											process.env?.NODE_ENV === 'development'
+										) {
 											logger.debug('🖱️ Clicked value:', {
 												valText,
 												valueToSave,
