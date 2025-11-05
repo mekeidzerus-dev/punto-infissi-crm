@@ -26,7 +26,9 @@ interface LogEntry {
 	}
 }
 
-const isProduction = process.env.NODE_ENV === 'production'
+// Безопасная проверка окружения для клиента и сервера
+const isProduction =
+	typeof process !== 'undefined' && process.env?.NODE_ENV === 'production'
 const isDevelopment = !isProduction
 
 /**
@@ -126,9 +128,13 @@ export const logger = {
 	 * Debug level - detailed information for debugging
 	 */
 	debug: (message: string, context?: LogContext) => {
+		if (typeof console === 'undefined') return
 		if (isDevelopment) {
 			console.debug(`🔍 ${message}`, context || '')
-		} else if (process.env.LOG_LEVEL === 'debug') {
+		} else if (
+			typeof process !== 'undefined' &&
+			process.env?.LOG_LEVEL === 'debug'
+		) {
 			const entry = createLogEntry('debug', message, context)
 			console.debug(JSON.stringify(entry))
 		}
@@ -138,6 +144,7 @@ export const logger = {
 	 * Info level - general informational messages
 	 */
 	info: (message: string, context?: LogContext) => {
+		if (typeof console === 'undefined') return
 		if (isProduction) {
 			const entry = createLogEntry('info', message, context)
 			console.log(JSON.stringify(entry))
@@ -150,6 +157,7 @@ export const logger = {
 	 * Warn level - warning messages for unexpected situations
 	 */
 	warn: (message: string, context?: LogContext) => {
+		if (typeof console === 'undefined') return
 		if (isProduction) {
 			const entry = createLogEntry('warn', message, context)
 			console.warn(JSON.stringify(entry))
@@ -162,6 +170,7 @@ export const logger = {
 	 * Error level - error messages with optional error object
 	 */
 	error: (message: string, error?: unknown, context?: LogContext) => {
+		if (typeof console === 'undefined') return
 		if (isProduction) {
 			const entry = createLogEntry('error', message, context, error)
 			console.error(JSON.stringify(entry))
