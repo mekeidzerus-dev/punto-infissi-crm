@@ -897,16 +897,18 @@ export function ProposalFormV3({
 						<Label className='text-xs text-gray-600'>
 							{t('responsibleManager')}
 						</Label>
-						<Input
-							value={formData.responsibleManager || ''}
-							onChange={e =>
-								setFormData(prev => ({
-									...prev,
-									responsibleManager: e.target.value,
-								}))
-							}
-							className='h-9 text-sm mt-1'
-						/>
+					<Input
+						id='responsibleManager'
+						name='responsibleManager'
+						value={formData.responsibleManager || ''}
+						onChange={e =>
+							setFormData(prev => ({
+								...prev,
+								responsibleManager: e.target.value,
+							}))
+						}
+						className='h-9 text-sm mt-1'
+					/>
 					</div>
 
 					{/* Статус */}
@@ -1088,6 +1090,8 @@ export function ProposalFormV3({
 									{t('client')} *
 								</Label>
 								<Input
+									id='clientSearch'
+									name='clientSearch'
 									placeholder={t('searchClient')}
 									value={clientSearchTerm}
 									onChange={e => {

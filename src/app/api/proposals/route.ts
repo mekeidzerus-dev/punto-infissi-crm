@@ -35,9 +35,17 @@ export async function GET() {
 		logger.info(`✅ Found ${proposals.length} proposals`)
 		return NextResponse.json(proposals)
 	} catch (error) {
+		const errorMessage = error instanceof Error ? error.message : String(error)
+		const errorStack = error instanceof Error ? error.stack : undefined
 		logger.error('❌ Error fetching proposals:', error || undefined)
+		logger.error('Error details:', { errorMessage, errorStack })
+		
+		// Безопасный ответ без stack trace в production
 		return NextResponse.json(
-			{ error: 'Failed to fetch proposals', details: String(error) },
+			{
+				error: 'Failed to fetch proposals',
+				details: process.env.NODE_ENV === 'development' ? errorMessage : 'Internal server error',
+			},
 			{ status: 500 }
 		)
 	}
