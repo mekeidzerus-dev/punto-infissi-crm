@@ -12,10 +12,6 @@ const nextConfig: NextConfig = {
 		// TypeScript errors are now fixed - strict checking enabled
 		ignoreBuildErrors: false,
 	},
-	// Убеждаемся что переменные окружения доступны на клиенте
-	env: {
-		NODE_ENV: process.env.NODE_ENV,
-	},
 }
 
 export default nextConfig
