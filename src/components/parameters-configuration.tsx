@@ -77,7 +77,7 @@ export function ParametersConfiguration({
 	// Логируем изменение isEditMode (только в dev)
 	useEffect(() => {
 		if (process.env.NODE_ENV === 'development') {
-			console.log('🔧 isEditMode changed:', isEditMode)
+			logger.debug('🔧 isEditMode changed:', { isEditMode })
 		}
 	}, [isEditMode])
 
@@ -310,7 +310,7 @@ export function ParametersConfiguration({
 
 				// Показываем пользовательское уведомление (опционально)
 				if (process.env.NODE_ENV === 'development') {
-					console.log('✅ Параметр успешно отвязан от категории')
+					logger.info('✅ Параметр успешно отвязан от категории')
 				}
 			} else {
 				logger.error('Failed to unlink parameter:', responseData)
@@ -321,19 +321,19 @@ export function ParametersConfiguration({
 						'⚠️ Parameter link not found. It may already be unlinked or is a global parameter.'
 					)
 					if (process.env.NODE_ENV === 'development') {
-						console.warn('⚠️ Параметр уже отвязан или является глобальным')
+						logger.warn('⚠️ Параметр уже отвязан или является глобальным')
 					}
 				} else {
 					logger.error('Error unlinking parameter:', responseData)
 					if (process.env.NODE_ENV === 'development') {
-						console.error('❌ Ошибка при отвязке:', responseData.error)
+						logger.error('❌ Ошибка при отвязке:', responseData.error || undefined)
 					}
 				}
 			}
 		} catch (error) {
 			logger.error('Error unlinking parameter:', error)
 			if (process.env.NODE_ENV === 'development') {
-				console.error('❌ Неожиданная ошибка при отвязке параметра:', error)
+				logger.error('❌ Неожиданная ошибка при отвязке параметра:', error || undefined)
 			}
 		}
 	}
@@ -369,7 +369,7 @@ export function ParametersConfiguration({
 
 			// Логируем для отладки (только в dev)
 			if (process.env.NODE_ENV === 'development') {
-				console.log('🔍 Render tag field:', {
+				logger.debug('🔍 Render tag field:', {
 					parameterName: parameter.name,
 					isEditMode,
 					isLinked: parameter.isLinked,
@@ -502,7 +502,7 @@ export function ParametersConfiguration({
 
 										// Логируем для отладки (только в dev)
 										if (process.env.NODE_ENV === 'development') {
-											console.log('🖱️ Clicked value:', {
+											logger.debug('🖱️ Clicked value:', {
 												valText,
 												valueToSave,
 												rawValue: val?.value,

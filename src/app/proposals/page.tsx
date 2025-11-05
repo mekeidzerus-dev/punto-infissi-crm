@@ -39,12 +39,20 @@ interface ProposalDocumentView {
 	type: string
 	subtotal: number | string // Decimal приходит как строка
 	discount: number | string
+	vatRate: number | string
 	vatAmount: number | string
 	total: number | string
 	createdAt: string
 	proposalDate?: string
 	responsibleManager?: string
 	notes?: string
+	statusRef?: {
+		id: number
+		name: string
+		nameRu: string
+		nameIt: string
+		color: string
+	} | null
 	groups: Array<{
 		id: string
 		name: string
@@ -111,7 +119,12 @@ export default function ProposalsPage() {
 			} else {
 				const error = await response.json()
 				logger.error('Error saving proposal:', error || undefined)
-				alert(t('errorOccurred') + ': ' + (error.error || 'Unknown error'))
+				const errorMessage = error.details || error.error || 'Unknown error'
+				alert(
+					locale === 'ru'
+						? `Ошибка: ${errorMessage}`
+						: `Errore: ${errorMessage}`
+				)
 			}
 		} catch (error) {
 			logger.error('Error saving proposal:', error || undefined)
@@ -137,7 +150,7 @@ export default function ProposalsPage() {
 					discount: Number(apiData.discount || 0),
 					vatAmount: Number(apiData.vatAmount || 0),
 					total: Number(apiData.total || 0),
-					vatRate: Number(apiData.vatRate || 22),
+					vatRate: Number(apiData.vatRate || 0),
 					groups:
 						apiData.groups?.map((group: any) => ({
 							...group,
@@ -155,7 +168,7 @@ export default function ProposalsPage() {
 										unitPrice: Number(pos.unitPrice || 0),
 										quantity: Number(pos.quantity || 1),
 										discount: Number(pos.discount || 0),
-										vatRate: Number(pos.vatRate || 22),
+										vatRate: Number(pos.vatRate || 0),
 										vatAmount: Number(pos.vatAmount || 0),
 										total: Number(pos.total || 0),
 										// Восстанавливаем поля локализации из metadata
@@ -227,40 +240,52 @@ export default function ProposalsPage() {
 		}
 	}
 
-	const getStatusColor = (status: string) => {
-		switch (status) {
-			case 'draft':
-				return 'bg-gray-100 text-gray-800'
-			case 'sent':
-				return 'bg-blue-100 text-blue-800'
-			case 'confirmed':
-				return 'bg-green-100 text-green-800'
-			case 'expired':
-				return 'bg-red-100 text-red-800'
-			default:
-				return 'bg-gray-100 text-gray-800'
+	const getStatusColorStyle = (proposal: ProposalDocumentView): React.CSSProperties | undefined => {
+		// Используем новый статус из БД, если есть
+		if (proposal.statusRef?.color) {
+			const hexOpacity = '33' // 20% прозрачности в HEX
+			return {
+				backgroundColor: `${proposal.statusRef.color}${hexOpacity}`,
+				color: proposal.statusRef.color,
+				borderColor: proposal.statusRef.color,
+			}
 		}
+		return undefined
 	}
 
-	const getStatusText = (status: string) => {
-		switch (status) {
-			case 'draft':
-				return t('draft')
-			case 'sent':
-				return t('sent')
-			case 'confirmed':
-				return t('confirmed')
-			case 'expired':
-				return t('expired')
-			default:
-				return status
+	const getStatusColorClass = (proposal: ProposalDocumentView): string => {
+		// Fallback на старые статусы (только классы)
+		const legacyColorMap: Record<string, string> = {
+			draft: 'bg-gray-100 text-gray-800',
+			sent: 'bg-blue-100 text-blue-800',
+			confirmed: 'bg-green-100 text-green-800',
+			expired: 'bg-red-100 text-red-800',
 		}
+		return legacyColorMap[proposal.status] || 'bg-gray-100 text-gray-800'
 	}
 
-	const filteredProposals = (multiSearch(proposals as unknown as Array<Record<string, unknown>>, searchTerm, [
-		'number',
-		'status',
-	] as (keyof Record<string, unknown>)[]) as unknown) as ProposalDocumentView[]
+	const getStatusText = (proposal: ProposalDocumentView) => {
+		// Используем новый статус из БД, если есть
+		if (proposal.statusRef) {
+			return locale === 'ru'
+				? proposal.statusRef.nameRu
+				: proposal.statusRef.nameIt
+		}
+		// Fallback на старые статусы
+		const legacyTextMap: Record<string, string> = {
+			draft: t('draft'),
+			sent: t('sent'),
+			confirmed: t('confirmed'),
+			expired: t('expired'),
+		}
+		return legacyTextMap[proposal.status] || proposal.status
+	}
+
+	const filteredProposals = multiSearch(
+		proposals as unknown as Array<Record<string, unknown>>,
+		searchTerm,
+		['number', 'status'] as (keyof Record<string, unknown>)[]
+	) as unknown as ProposalDocumentView[]
 
 	const navItems = [
 		{
@@ -272,7 +297,7 @@ export default function ProposalsPage() {
 		},
 		{
 			id: 'orders',
-			name: t('orders'),
+			name: locale === 'ru' ? 'Заказы' : 'Ordini',
 			href: '/orders',
 			icon: FileText,
 			count: 0,
@@ -371,11 +396,12 @@ export default function ProposalsPage() {
 											</td>
 											<td className='py-3 px-4'>
 												<span
-													className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(
-														proposal.status
-													)}`}
+													className={`px-2 py-1 rounded-full text-xs font-medium border ${
+														!proposal.statusRef?.color ? getStatusColorClass(proposal) : ''
+													}`}
+													style={getStatusColorStyle(proposal)}
 												>
-													{getStatusText(proposal.status)}
+													{getStatusText(proposal)}
 												</span>
 											</td>
 											<td className='py-3 px-4'>

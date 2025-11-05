@@ -93,10 +93,9 @@ export async function saveLogoFile(
 					`Логотип оптимизирован: ${buffer.length} → ${optimizedSize} байт`
 				)
 			} catch (error) {
-				logger.warn(
-					'Не удалось оптимизировать логотип, используем оригинал:',
-					error
-				)
+				logger.warn('Не удалось оптимизировать логотип, используем оригинал:', {
+					error: error instanceof Error ? error.message : String(error)
+				})
 			}
 		}
 

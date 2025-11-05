@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
+import { getDefaultVatRate } from '@/lib/vat-utils'
 
 export async function GET(
 	request: NextRequest,
@@ -79,6 +80,9 @@ export async function PUT(
 			actualStatusId = statusDoc?.id
 		}
 
+		// Получаем дефолтную ставку НДС из справочника
+		const defaultVatRate = await getDefaultVatRate()
+
 		// Обновляем предложение с новыми данными
 		const proposal = await prisma.proposalDocument.update({
 			where: { id },
@@ -97,35 +101,47 @@ export async function PUT(
 				...(actualStatusId !== undefined && { statusId: actualStatusId }),
 				...(body.notes !== undefined && { notes: body.notes }),
 				...(body.vatRate !== undefined && { vatRate: body.vatRate }),
-				groups: body.groups ? {
-					create: (body.groups as Array<Record<string, unknown>>).map(
-						(group: Record<string, unknown>, groupIndex: number) => ({
-							name: String(group.name),
-							description: group.description ? String(group.description) : null,
-							sortOrder: groupIndex,
-							positions: {
-								create: ((group.positions as Array<Record<string, unknown>> | undefined) || []).map(
-									(
-										position: Record<string, unknown>,
-										positionIndex: number
-									) => ({
-										categoryId: String(position.categoryId),
-										supplierCategoryId: String(position.supplierCategoryId),
-										configuration: (position.configuration as Record<string, unknown>) || {},
-										unitPrice: Number(position.unitPrice) || 0,
-										quantity: Number(position.quantity) || 1,
-										discount: Number(position.discount) || 0,
-										vatRate: Number(position.vatRate) || 22.0,
-										vatAmount: Number(position.vatAmount) || 0,
-										total: Number(position.total) || 0,
-										description: position.description ? String(position.description) : null,
-										sortOrder: positionIndex,
-									})
-								),
-							},
-						})
-					),
-				} as any : undefined,
+				groups: body.groups
+					? ({
+							create: (body.groups as Array<Record<string, unknown>>).map(
+								(group: Record<string, unknown>, groupIndex: number) => ({
+									name: String(group.name),
+									description: group.description
+										? String(group.description)
+										: null,
+									sortOrder: groupIndex,
+									positions: {
+										create: (
+											(group.positions as
+												| Array<Record<string, unknown>>
+												| undefined) || []
+										).map(
+											(
+												position: Record<string, unknown>,
+												positionIndex: number
+											) => ({
+												categoryId: String(position.categoryId),
+												supplierCategoryId: String(position.supplierCategoryId),
+												configuration:
+													(position.configuration as Record<string, unknown>) ||
+													{},
+												unitPrice: Number(position.unitPrice) || 0,
+												quantity: Number(position.quantity) || 1,
+												discount: Number(position.discount) || 0,
+												vatRate: Number(position.vatRate) || defaultVatRate,
+												vatAmount: Number(position.vatAmount) || 0,
+												total: Number(position.total) || 0,
+												description: position.description
+													? String(position.description)
+													: null,
+												sortOrder: positionIndex,
+											})
+										),
+									},
+								})
+							),
+					  } as any)
+					: undefined,
 			},
 			include: {
 				client: true,

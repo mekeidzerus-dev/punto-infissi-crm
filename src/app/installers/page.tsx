@@ -31,7 +31,7 @@ import { InstallerFormModal } from '@/components/installer-form-modal'
 import { useLanguage } from '@/contexts/LanguageContext'
 
 export default function InstallersPage() {
-	const { t } = useLanguage()
+	const { t, locale } = useLanguage()
 
 	const getAvailabilityBadge = (availability: string) => {
 		switch (availability) {
@@ -211,7 +211,7 @@ export default function InstallersPage() {
 									onClick={() => requestSort('rating')}
 								>
 									<div className='flex items-center gap-1'>
-										{t('rating')} {getSortIcon('rating')}
+										{locale === 'ru' ? 'Рейтинг' : 'Valutazione'} {getSortIcon('rating')}
 									</div>
 								</TableHead>
 								<TableHead

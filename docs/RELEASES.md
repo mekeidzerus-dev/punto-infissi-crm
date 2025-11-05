@@ -1,5 +1,102 @@
 # История релизов
 
+## Релиз 1.4.0 - 2025-11-03
+**Автор:** MekeidzeRH
+
+**Новые возможности:**
+- Функция основного статуса (isDefault) для документов
+  - Возможность назначить любой статус как основной для каждого типа документа отдельно
+  - Автоматическое назначение основного статуса при создании нового документа
+  - Визуальная индикация основного статуса зеленым badge с иконкой звезды
+  - Статусы остаются на своих местах (без автоматической сортировки наверх)
+- Улучшения UI управления статусами:
+  - Toast-уведомления вместо всплывающих окон (alert)
+  - Зеленый badge для основного статуса
+  - Кнопка со звездой для установки/снятия пометки "основной"
+
+**Исправления:**
+- Заменены все console.log/error/warn на logger во всех компонентах
+- Удалены временные отладочные файлы
+
+**Технические изменения:**
+- Добавлено поле `isDefault` в модель `DocumentStatusType` (Prisma schema)
+- Создан новый API endpoint `/api/document-statuses/[id]/set-default` для управления основным статусом
+- Создана утилита `getDefaultDocumentStatus()` в `src/lib/document-status-utils.ts`
+- Обновлен API `/api/document-statuses` - возвращает поле `isDefault`, сортировка только по `order`
+- Обновлен API `/api/proposals` - автоматически использует основной статус при создании документа
+- Обновлен `document-statuses-manager.tsx` - UI с кнопкой установки основного статуса
+- Обновлен `proposal-form-v3.tsx` - автоматический выбор основного статуса при создании
+- Интеграция toast-уведомлений из библиотеки `sonner`
+
+**Файлы:**
+- `prisma/schema.prisma` - добавлено поле `isDefault` в `DocumentStatusType`
+- `src/lib/document-status-utils.ts` - новый файл с утилитой получения основного статуса
+- `src/app/api/document-statuses/[id]/set-default/route.ts` - новый endpoint
+- `src/app/api/document-statuses/route.ts` - возвращает `isDefault`, сортировка по order
+- `src/app/api/proposals/route.ts` - использует основной статус при создании
+- `src/components/document-statuses-manager.tsx` - UI управления основным статусом, toast
+- `src/components/proposal-form-v3.tsx` - автоматический выбор основного статуса
+- `src/components/proposal-pdf-preview.tsx` - заменен console.error на logger
+- `src/components/parameters-configuration.tsx` - заменен console.* на logger
+
+**Тестирование:**
+- ✅ Основной статус устанавливается корректно
+- ✅ Основной статус автоматически назначается при создании документа
+- ✅ Статусы остаются на своих местах (без перемещения наверх)
+- ✅ Toast-уведомления работают корректно
+- ✅ Зеленый badge отображается для основного статуса
+- ✅ Все console.log заменены на logger
+
+---
+
+## Релиз 1.3.1 - 2025-11-03
+**Автор:** MekeidzeRH
+
+**Новые возможности:**
+- Расширена цветовая палитра статусов до 26 цветов (было 7)
+- Цветные статусы в списке предложений (proposals page)
+- Управление статусами: ссылка "+ Gestisci stati" в dropdown статусов
+- PDF: данные компании загружаются из `/api/organization`
+- PDF: кнопки "Scarica PDF" и "Stampa" отдельно
+- PDF: минимальные отступы 5mm для печати
+- PDF: компактные итоги по группам (Subtotale gruppo, Sconto, Totale)
+- PDF: выделение "Senza IVA" жёлтым фоном в итоговой сумме
+- PDF: улучшено качество логотипа при печати (image-rendering: crisp-edges)
+
+**Исправления:**
+- Дефолтная ставка НДС берётся из БД (isDefault=true), не hardcoded 22%
+- Расчёт НДС 0% ("Senza IVA") работает корректно
+- Конвертация Prisma Decimal в number для НДС
+
+**Технические изменения:**
+- Обновлена палитра цветов в `document-statuses-manager.tsx` (26 HEX-цветов)
+- Инлайн-стили для статусов вместо Tailwind классов
+- `ProposalPDFPreview`: fetch `/api/organization` вместо localStorage
+- `proposal-pdf-preview.tsx`: кнопки "Scarica PDF" и "Stampa"
+- CSS: `@page { margin: 5mm; size: A4 }` для печати
+- CSS: `image-rendering: crisp-edges` для логотипов в PDF
+- CSS: `print-color-adjust: exact` для точных цветов при печати
+- `proposals/page.tsx`: интеграция `statusRef` для цветных бейджей
+- `proposal-form-v3.tsx`: конвертация VAT percentage в number
+
+**Файлы:**
+- `src/components/document-statuses-manager.tsx` - расширенная палитра
+- `src/app/proposals/page.tsx` - цветные статусы
+- `src/components/proposal-form-v3.tsx` - ссылка "+ Gestisci stati", конвертация НДС
+- `src/components/proposal-pdf-preview.tsx` - данные из БД, кнопки, отступы, итоги, выделение IVA
+
+**Тестирование:**
+- ✅ 26 цветов статусов доступны в UI
+- ✅ Статусы отображаются цветными в списке предложений
+- ✅ PDF использует данные компании из БД
+- ✅ Печать с минимальными отступами и A4 размером
+- ✅ Дефолтный НДС из БД работает
+- ✅ НДС 0% корректно расчитывается
+- ✅ Итоги по группам в PDF
+- ✅ "Senza IVA" выделен жёлтым в PDF
+
+---
+
 ## Релиз 1.3.0 - 2025-11-03
 **Автор:** MekeidzeRH
 

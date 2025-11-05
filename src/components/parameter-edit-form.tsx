@@ -475,11 +475,11 @@ export default function ParameterEditForm({
 											: 'Valori parametro'}
 									</h3>
 									<Button
-										type='button'
-										onClick={handleAddValue}
-										variant='outline'
-										size='sm'
-										className='flex items-center gap-2'
+									type='button'
+									onClick={handleAddValue}
+									variant='outline'
+									size='sm'
+									className='flex items-center gap-2'
 									>
 										<Plus className='h-4 w-4' />
 										{locale === 'ru' ? 'Добавить значение' : 'Aggiungi valore'}
@@ -545,7 +545,7 @@ export default function ParameterEditForm({
 																		locale === 'ru' ? 'Алюминий' : 'Alluminio'
 																	}
 																	required
-																	size='sm'
+																	className='h-8 text-sm'
 																/>
 															</div>
 															<div className='space-y-1'>
@@ -577,7 +577,7 @@ export default function ParameterEditForm({
 																	placeholder={
 																		locale === 'ru' ? 'Alluminio' : 'Алюминий'
 																	}
-																	size='sm'
+																	className='h-8 text-sm'
 																/>
 															</div>
 														</div>
@@ -615,7 +615,7 @@ export default function ParameterEditForm({
 																				)
 																			}
 																			placeholder='#FFFFFF'
-																			size='sm'
+																			className='h-8 text-sm'
 																		/>
 																	</div>
 																</div>
@@ -635,7 +635,7 @@ export default function ParameterEditForm({
 																			)
 																		}
 																		placeholder='RAL 9010'
-																		size='sm'
+																		className='h-8 text-sm'
 																	/>
 																</div>
 															</>

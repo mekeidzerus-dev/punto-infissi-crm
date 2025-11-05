@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
+import { getDefaultVatRate } from '@/lib/vat-utils'
+import { getDefaultDocumentStatus } from '@/lib/document-status-utils'
 
 export async function GET() {
 	try {
@@ -46,6 +48,12 @@ export async function POST(request: NextRequest) {
 		logger.info('📝 Creating proposal...')
 
 		const body = await request.json()
+		logger.info('📦 Received data:', {
+			clientId: body.clientId,
+			groupsCount: body.groups?.length || 0,
+			hasGroups: !!body.groups,
+		})
+
 		const {
 			clientId,
 			groups,
@@ -59,15 +67,54 @@ export async function POST(request: NextRequest) {
 		} = body
 
 		if (!clientId) {
+			logger.error('❌ Client ID missing')
 			return NextResponse.json(
 				{ error: 'Client ID is required' },
 				{ status: 400 }
 			)
 		}
 
+		if (!groups || groups.length === 0) {
+			logger.error('❌ No groups provided')
+			return NextResponse.json(
+				{ error: 'At least one group with positions is required' },
+				{ status: 400 }
+			)
+		}
+
+		// Валидация позиций
+		for (const group of groups as Array<Record<string, unknown>>) {
+			const positions = (group.positions as Array<Record<string, unknown>>) || []
+			for (const position of positions) {
+				if (!position.categoryId || !position.supplierCategoryId) {
+					logger.error('❌ Position missing categoryId or supplierCategoryId:', {
+						categoryId: position.categoryId,
+						supplierCategoryId: position.supplierCategoryId,
+						description: position.description,
+					})
+					return NextResponse.json(
+						{
+							error: 'Position missing required fields',
+							details: `Position "${position.description || 'unknown'}" is missing categoryId or supplierCategoryId`,
+						},
+						{ status: 400 }
+					)
+				}
+			}
+		}
+
 		// Генерируем номер предложения
-		const count = await prisma.proposalDocument.count()
-		const number = `PROP-${String(count + 1).padStart(3, '0')}`
+		const lastProposal = await prisma.proposalDocument.findFirst({
+			where: { number: { startsWith: 'PROP-' } },
+			orderBy: { number: 'desc' },
+		})
+
+		let nextNumber = 1
+		if (lastProposal) {
+			const lastNumber = parseInt(lastProposal.number.replace('PROP-', ''))
+			nextNumber = lastNumber + 1
+		}
+		const number = `PROP-${String(nextNumber).padStart(3, '0')}`
 
 		// Находим statusId если передан status
 		let actualStatusId = statusId
@@ -77,6 +124,20 @@ export async function POST(request: NextRequest) {
 			})
 			actualStatusId = statusDoc?.id
 		}
+
+		// Если statusId не передан - используем основной статус для типа "proposal"
+		if (!actualStatusId) {
+			const defaultStatusId = await getDefaultDocumentStatus('proposal')
+			if (defaultStatusId) {
+				actualStatusId = defaultStatusId
+				logger.info(
+					`✅ Using default status for proposal: ${actualStatusId}`
+				)
+			}
+		}
+
+		// Получаем дефолтную ставку НДС из справочника
+		const defaultVatRate = await getDefaultVatRate()
 
 		// Создаем предложение
 		const proposal = await prisma.proposalDocument.create({
@@ -88,52 +149,68 @@ export async function POST(request: NextRequest) {
 				responsibleManager: responsibleManager || 'Администратор',
 				status: status || 'draft',
 				statusId: actualStatusId || null,
-				vatRate: vatRate || 22.0,
+				vatRate: vatRate || defaultVatRate,
 				notes,
-				groups: groups ? {
-					create: (groups as Array<Record<string, unknown>>).map(
-						(group: Record<string, unknown>, groupIndex: number) => ({
-							name: String(group.name),
-							description: group.description ? String(group.description) : null,
-							sortOrder: groupIndex,
-							positions: {
-								create: ((group.positions as Array<Record<string, unknown>> | undefined) || []).map(
-									(
-										position: Record<string, unknown>,
-										positionIndex: number
-									) => ({
-										categoryId: String(position.categoryId),
-										supplierCategoryId: String(position.supplierCategoryId),
-										// Расширенная configuration с данными для локализации
-										configuration: {
-											...(position.configuration as Record<string, unknown> || {}),
-											// Сохраняем локализованные данные для последующего использования
-											_metadata: {
-												categoryNameRu: position.categoryNameRu,
-												categoryNameIt: position.categoryNameIt,
-												supplierShortNameRu: position.supplierShortNameRu,
-												supplierShortNameIt: position.supplierShortNameIt,
-												supplierFullName: (position.supplier as { name?: string } | undefined)?.name,
-												modelValueRu: position.modelValueRu,
-												modelValueIt: position.modelValueIt,
-												parameters: (position.parameters as unknown[] || []),
-												customNotes: position.customNotes,
-											},
-										} as Record<string, unknown>,
-										unitPrice: Number(position.unitPrice) || 0,
-										quantity: Number(position.quantity) || 1,
-										discount: Number(position.discount) || 0,
-										vatRate: Number(position.vatRate) || 22.0,
-										vatAmount: Number(position.vatAmount) || 0,
-										total: Number(position.total) || 0,
-										description: position.description ? String(position.description) : null,
-										sortOrder: positionIndex,
-									})
-								),
-							},
-						})
-					),
-				} as any : undefined,
+				groups: groups
+					? ({
+							create: (groups as Array<Record<string, unknown>>).map(
+								(group: Record<string, unknown>, groupIndex: number) => ({
+									name: String(group.name),
+									description: group.description
+										? String(group.description)
+										: null,
+									sortOrder: groupIndex,
+									positions: {
+										create: (
+											(group.positions as
+												| Array<Record<string, unknown>>
+												| undefined) || []
+										).map(
+											(
+												position: Record<string, unknown>,
+												positionIndex: number
+											) => ({
+												categoryId: String(position.categoryId),
+												supplierCategoryId: String(position.supplierCategoryId),
+												// Расширенная configuration с данными для локализации
+												configuration: {
+													...((position.configuration as Record<
+														string,
+														unknown
+													>) || {}),
+													// Сохраняем локализованные данные для последующего использования
+													_metadata: {
+														categoryNameRu: position.categoryNameRu,
+														categoryNameIt: position.categoryNameIt,
+														supplierShortNameRu: position.supplierShortNameRu,
+														supplierShortNameIt: position.supplierShortNameIt,
+														supplierFullName: (
+															position.supplier as { name?: string } | undefined
+														)?.name,
+														modelValueRu: position.modelValueRu,
+														modelValueIt: position.modelValueIt,
+														parameters:
+															(position.parameters as unknown[]) || [],
+														customNotes: position.customNotes,
+													},
+												} as Record<string, unknown>,
+												unitPrice: Number(position.unitPrice) || 0,
+												quantity: Number(position.quantity) || 1,
+												discount: Number(position.discount) || 0,
+												vatRate: Number(position.vatRate) || defaultVatRate,
+												vatAmount: Number(position.vatAmount) || 0,
+												total: Number(position.total) || 0,
+												description: position.description
+													? String(position.description)
+													: null,
+												sortOrder: positionIndex,
+											})
+										),
+									},
+								})
+							),
+					  } as any)
+					: undefined,
 			},
 			include: {
 				client: true,
@@ -163,8 +240,15 @@ export async function POST(request: NextRequest) {
 		return NextResponse.json(proposal, { status: 201 })
 	} catch (error) {
 		logger.error('❌ Error creating proposal:', error || undefined)
+		const errorMessage = error instanceof Error ? error.message : String(error)
+		const errorStack = error instanceof Error ? error.stack : undefined
+		logger.error('Error details:', { errorMessage, errorStack })
 		return NextResponse.json(
-			{ error: 'Failed to create proposal', details: String(error) },
+			{
+				error: 'Failed to create proposal',
+				details: errorMessage,
+				...(process.env.NODE_ENV === 'development' && { stack: errorStack }),
+			},
 			{ status: 500 }
 		)
 	}

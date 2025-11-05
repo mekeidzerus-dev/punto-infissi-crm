@@ -32,9 +32,10 @@ interface Parameter {
 	maxValue?: number
 	step?: number
 	values?: ParameterValue[]
-	_count: {
-		categoryParameters: number
-		supplierOverrides: number
+	isSystem?: boolean
+	_count?: {
+		categoryParameters?: number
+		supplierOverrides?: number
 	}
 }
 
@@ -209,7 +210,7 @@ export function ParametersManager() {
 									<div>
 										Используется в категориях:{' '}
 										<span className='font-medium'>
-											{param._count.categoryParameters}
+											{param._count?.categoryParameters || 0}
 										</span>
 									</div>
 								</div>
@@ -313,7 +314,7 @@ export function ParametersManager() {
 				itemName={parameterToDelete?.name || ''}
 				itemType={locale === 'ru' ? 'параметр' : 'parametro'}
 				warningMessage={
-					parameterToDelete?._count.categoryParameters > 0
+					parameterToDelete?._count?.categoryParameters && parameterToDelete._count.categoryParameters > 0
 						? locale === 'ru'
 							? `Параметр используется в ${parameterToDelete._count.categoryParameters} категориях. Удаление может повлиять на конфигуратор.`
 							: `Il parametro è utilizzato in ${parameterToDelete._count.categoryParameters} categorie. L'eliminazione potrebbe influire sul configuratore.`

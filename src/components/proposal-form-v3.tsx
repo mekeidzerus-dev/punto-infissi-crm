@@ -21,8 +21,15 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from '@/components/ui/dialog'
+import {
+	Tooltip,
+	TooltipContent,
+	TooltipProvider,
+	TooltipTrigger,
+} from '@/components/ui/tooltip'
 import { ProductConfiguratorV2 } from '@/components/product-configurator-v2'
 import { ClientFormModal } from '@/components/client-form-modal'
+import { DocumentStatusesManager } from '@/components/document-statuses-manager'
 import {
 	Plus,
 	Trash2,
@@ -38,12 +45,15 @@ import {
 	Hash,
 	Clock,
 	Pencil,
+	Info,
+	AlertCircle,
 } from 'lucide-react'
 import { buildProductPosition } from '@/lib/product-position-builder'
 import { generateProductDescription } from '@/lib/product-name-generator'
 import { parseClientInput } from '@/lib/client-input-parser'
 
-import type { Client, VATRate } from '@/types/common'
+import type { Client } from '@/types/client'
+import type { VATRate } from '@/types/common'
 import type {
 	ProposalPosition,
 	ProposalGroup,
@@ -130,6 +140,7 @@ export function ProposalFormV3({
 			color: string
 		}>
 	>([])
+	const [showStatusManager, setShowStatusManager] = useState(false)
 	const [showConfigurator, setShowConfigurator] = useState(false)
 	const [currentGroupIndex, setCurrentGroupIndex] = useState<number | null>(
 		null
@@ -160,7 +171,7 @@ export function ProposalFormV3({
 		responsibleManager: 'Администратор',
 		status: 'draft',
 		groups: [],
-		vatRate: 22.0,
+		vatRate: 0,
 		subtotal: 0,
 		discount: 0,
 		vatAmount: 0,
@@ -235,8 +246,16 @@ export function ProposalFormV3({
 		try {
 			const response = await fetch('/api/vat-rates')
 			const data = await response.json()
-			setVatRates(data)
-			const defaultRate = data.find((rate: VATRate) => rate.isDefault)
+			// Конвертируем percentage в number, т.к. Prisma Decimal возвращает строку
+			const convertedData = data.map((rate: any) => ({
+				...rate,
+				percentage:
+					typeof rate.percentage === 'string'
+						? parseFloat(rate.percentage)
+						: rate.percentage,
+			}))
+			setVatRates(convertedData)
+			const defaultRate = convertedData.find((rate: VATRate) => rate.isDefault)
 			if (defaultRate && !proposal) {
 				setFormData(prev => ({ ...prev, vatRate: defaultRate.percentage }))
 			}
@@ -250,8 +269,21 @@ export function ProposalFormV3({
 			const response = await fetch(
 				'/api/document-statuses?documentType=proposal'
 			)
-			const data = await response.json()
-			setDocumentStatuses(data)
+			if (response.ok) {
+				const data = await response.json()
+				setDocumentStatuses(data)
+
+				// Если это новый документ и статус не установлен - устанавливаем основной статус (isDefault) или первый доступный
+				if (!proposal && !formData.statusId && data.length > 0) {
+					const defaultStatus = data.find((s: { isDefault?: boolean }) => s.isDefault) || data[0]
+					setFormData(prev => ({
+						...prev,
+						statusId: defaultStatus.id,
+						status: defaultStatus.name,
+					}))
+					logger.info(`✅ Auto-selected default status: ${defaultStatus.name} (ID: ${defaultStatus.id})`)
+				}
+			}
 		} catch (error) {
 			logger.error('Error fetching document statuses:', error)
 		}
@@ -365,7 +397,9 @@ export function ProposalFormV3({
 
 		// Показываем предупреждения если есть
 		if (parsed.warnings.length > 0) {
-			console.log('⚠️ Предупреждения:', parsed.warnings.join(', '))
+			logger.warn('⚠️ Предупреждения при парсинге клиента:', {
+				warnings: parsed.warnings,
+			})
 		}
 
 		// Если есть критические ошибки, показываем их
@@ -435,21 +469,92 @@ export function ProposalFormV3({
 			// Получаем правильный supplierCategoryId из API
 			let supplierCategoryId = ''
 			try {
-				const response = await fetch(
-					`/api/supplier-categories?categoryId=${product.category.id}`
-				)
+				const apiUrl = `/api/supplier-categories?categoryId=${product.category.id}`
+				logger.info('🔍 Fetching supplier categories:', {
+					url: apiUrl,
+					categoryId: product.category.id,
+					supplierId: product.supplier.id,
+					supplierIdType: typeof product.supplier.id,
+				})
+
+				const response = await fetch(apiUrl)
 				if (response.ok) {
 					const supplierCategories = await response.json()
+					logger.info('📦 Received supplier categories:', {
+						count: supplierCategories.length,
+						categories: supplierCategories.map((sc: any) => ({
+							id: sc.id,
+							supplierId: sc.supplier?.id,
+							supplierIdType: typeof sc.supplier?.id,
+							supplierName: sc.supplier?.name,
+							categoryId: sc.categoryId,
+						})),
+					})
 
-					const supplierCategory = supplierCategories.find(
-						(sc: any) => sc.supplier.id === product.supplier.id
-					)
+					// Сравниваем с учетом типов (может быть number или string)
+					const supplierCategory = supplierCategories.find((sc: any) => {
+						const scSupplierId = Number(sc.supplier?.id)
+						const productSupplierId = Number(product.supplier.id)
+						const match = scSupplierId === productSupplierId
+						
+						if (!match) {
+							logger.debug('🔍 Comparing:', {
+								scSupplierId,
+								scSupplierIdType: typeof sc.supplier?.id,
+								productSupplierId,
+								productSupplierIdType: typeof product.supplier.id,
+								match,
+							})
+						}
+						
+						return match
+					})
+
 					if (supplierCategory) {
 						supplierCategoryId = supplierCategory.id
+						logger.info('✅ Found supplier category:', {
+							supplierCategoryId,
+							supplierName: supplierCategory.supplier?.name,
+						})
+					} else {
+						logger.warn('⚠️ Supplier category not found:', {
+							categoryId: product.category.id,
+							categoryName: product.category.name,
+							supplierId: product.supplier.id,
+							supplierName: product.supplier.name,
+							availableSuppliers: supplierCategories.map((sc: any) => ({
+								id: sc.supplier?.id,
+								name: sc.supplier?.name,
+							})),
+						})
 					}
+				} else {
+					const errorText = await response.text()
+					logger.error('❌ API error:', {
+						status: response.status,
+						statusText: response.statusText,
+						errorText,
+					})
 				}
 			} catch (error) {
-				logger.error('Error fetching supplier category:', error)
+				logger.error('❌ Error fetching supplier category:', error)
+			}
+
+			// Проверяем что supplierCategoryId был найден
+			if (!supplierCategoryId) {
+				const errorMessage =
+					locale === 'ru'
+						? `Ошибка: Не удалось найти связь между категорией "${product.category.name}" и поставщиком "${product.supplier.name}". Убедитесь, что поставщик добавлен в эту категорию.`
+						: `Errore: Impossibile trovare il collegamento tra la categoria "${product.category.name}" e il fornitore "${product.supplier.name}". Assicurati che il fornitore sia aggiunto a questa categoria.`
+				alert(errorMessage)
+				logger.error('❌ Supplier category not found:', {
+					categoryId: product.category.id,
+					categoryName: product.category.name,
+					supplierId: product.supplier.id,
+					supplierName: product.supplier.name,
+					supplierIdType: typeof product.supplier.id,
+				})
+				return
 			}
 
 			// Используем buildProductPosition для создания позиции с полными данными
@@ -473,7 +578,7 @@ export function ProposalFormV3({
 			position.description = description
 
 			// Устанавливаем финансовые поля (БЕЗ автоматического расчета цены)
-			const defaultVatRate = vatRates.find(v => v.isDefault)?.percentage || 22.0
+			const defaultVatRate = Number(vatRates.find(v => v.isDefault)?.percentage) || 0
 			position.unitPrice = 0 // Цена вводится вручную
 			position.vatRate = defaultVatRate
 			position.quantity = 1
@@ -528,8 +633,8 @@ export function ProposalFormV3({
 				p => (p.name === 'Высота' || p.nameIt === 'Altezza') && p.isSystem
 			)
 
-			const widthValue = widthParam ? config.parameters[widthParam.id] : null
-			const heightValue = heightParam ? config.parameters[heightParam.id] : null
+			const widthValue = widthParam ? (config.parameters as unknown as Record<string, unknown>)[widthParam.id] : null
+			const heightValue = heightParam ? (config.parameters as unknown as Record<string, unknown>)[heightParam.id] : null
 
 			// Формируем строку размеров ШxВ
 			if (widthValue && heightValue) {
@@ -700,9 +805,31 @@ export function ProposalFormV3({
 			return
 		}
 
+		// Валидация позиций перед сохранением
+		for (const group of formData.groups) {
+			for (const position of group.positions) {
+				if (!position.categoryId || !position.supplierCategoryId) {
+					alert(
+						locale === 'ru'
+							? `Ошибка: Позиция "${position.description || 'без описания'}" не имеет категории или поставщика. Удалите позицию или добавьте её через конфигуратор.`
+							: `Errore: La posizione "${position.description || 'senza descrizione'}" non ha categoria o fornitore. Rimuovi la posizione o aggiungila tramite il configuratore.`
+					)
+					setLoading(false)
+					return
+				}
+			}
+		}
+
 		setLoading(true)
 		try {
 			await onSave(formData)
+		} catch (error) {
+			logger.error('Error saving proposal:', error)
+			alert(
+				locale === 'ru'
+					? `Ошибка сохранения: ${error instanceof Error ? error.message : 'Unknown error'}`
+					: `Errore di salvataggio: ${error instanceof Error ? error.message : 'Unknown error'}`
+			)
 		} finally {
 			setLoading(false)
 		}
@@ -813,6 +940,21 @@ export function ProposalFormV3({
 										</div>
 									</SelectItem>
 								))}
+								<div className='border-t border-gray-200 mt-1 pt-1'>
+									<button
+										type='button'
+										onClick={e => {
+											e.stopPropagation()
+											setShowStatusManager(true)
+										}}
+										className='w-full text-left px-2 py-1.5 text-xs text-blue-600 hover:bg-blue-50 rounded flex items-center gap-1'
+									>
+										<Settings className='h-3 w-3' />
+										{locale === 'ru'
+											? '+ Управлять статусами'
+											: '+ Gestisci stati'}
+									</button>
+								</div>
 							</SelectContent>
 						</Select>
 					</div>
@@ -837,14 +979,14 @@ export function ProposalFormV3({
 						</div>
 						<div>
 							<div className='text-xs text-gray-500'>
-								{t('step')} 1 {t('of')} 3
+								{locale === 'ru' ? 'Шаг' : 'Passo'} 1 {locale === 'ru' ? 'из' : 'di'} 3
 							</div>
 							<h3 className='font-semibold text-lg'>{t('stepClientInfo')}</h3>
 						</div>
 					</div>
 					{selectedClient && (
 						<div className='text-green-600 font-medium text-sm'>
-							✓ {t('completed')}
+							✓ {locale === 'ru' ? 'Завершено' : 'Completato'}
 						</div>
 					)}
 				</div>
@@ -1102,7 +1244,7 @@ export function ProposalFormV3({
 						</div>
 						<div>
 							<div className='text-xs text-gray-500'>
-								{t('step')} 2 {t('of')} 3
+								{locale === 'ru' ? 'Шаг' : 'Passo'} 2 {locale === 'ru' ? 'из' : 'di'} 3
 							</div>
 							<h3 className='font-semibold text-lg'>{t('stepProducts')}</h3>
 						</div>
@@ -1110,7 +1252,7 @@ export function ProposalFormV3({
 					{formData.groups.length > 0 &&
 						formData.groups.some(g => g.positions.length > 0) && (
 							<div className='text-green-600 font-medium text-sm'>
-								✓ {t('completed')}
+								✓ {locale === 'ru' ? 'Завершено' : 'Completato'}
 							</div>
 						)}
 				</div>
@@ -1203,7 +1345,10 @@ export function ProposalFormV3({
 										<table className='w-full text-sm'>
 											<thead className='bg-gray-100 border-b'>
 												<tr>
-													<th className='text-left py-2 px-3 font-medium'>
+													<th 
+														className='text-left py-2 px-3 font-medium'
+														style={{ width: '40%', maxWidth: '400px' }}
+													>
 														{t('description')}
 													</th>
 													<th
@@ -1261,16 +1406,21 @@ export function ProposalFormV3({
 
 													return (
 														<tr key={position.id} className='hover:bg-gray-50'>
-															<td className='py-2 px-3 text-xs'>
+															<td 
+																className='py-2 px-3 text-xs'
+																style={{ 
+																	width: '40%', 
+																	maxWidth: '400px',
+																	wordBreak: 'break-word'
+																}}
+															>
 																<div className='flex flex-col'>
-																	<div>
-																		<span className='break-words'>
-																			{productDescription}
-																		</span>
+																	<div className='break-words whitespace-normal'>
+																		{productDescription}
 																	</div>
 																	{/* Вторая строка: customNotes (Informazioni aggiuntive) */}
 																	{position.customNotes && (
-																		<div className='mt-1 text-xs text-gray-600 italic'>
+																		<div className='mt-1 text-xs text-gray-600 italic break-words whitespace-normal'>
 																			{position.customNotes}
 																		</div>
 																	)}
@@ -1453,30 +1603,30 @@ export function ProposalFormV3({
 								</div>
 								<div>
 									<div className='text-xs text-gray-500'>
-										{t('step')} 3 {t('of')} 3
+										{locale === 'ru' ? 'Шаг' : 'Passo'} 3 {locale === 'ru' ? 'из' : 'di'} 3
 									</div>
 									<h3 className='font-semibold text-lg'>{t('stepTotals')}</h3>
 								</div>
 							</div>
 							{formData.total > 0 && (
 								<div className='text-green-600 font-medium text-sm'>
-									✓ {t('completed')}
+									✓ {locale === 'ru' ? 'Завершено' : 'Completato'}
 								</div>
 							)}
 						</div>
 
-						<div className='space-y-1.5 text-xs'>
+						<div className='space-y-2 text-sm'>
 							{/* Промежуточный итог */}
-							<div className='flex justify-between'>
+							<div className='flex justify-between items-center py-1'>
 								<span className='text-gray-600'>{t('subtotal')}</span>
-								<span className='font-medium'>
+								<span className='font-medium text-gray-900'>
 									€{formData.subtotal.toFixed(2)}
 								</span>
 							</div>
 
 							{/* Скидка */}
 							{formData.discount > 0 && (
-								<div className='flex justify-between'>
+								<div className='flex justify-between items-center py-1'>
 									<span className='text-gray-600'>{t('totalDiscount')}</span>
 									<span className='font-medium text-red-600'>
 										-€{formData.discount.toFixed(2)}
@@ -1484,30 +1634,20 @@ export function ProposalFormV3({
 								</div>
 							)}
 
-							{/* Разделитель */}
-							<div className='border-t my-2' />
-
 							{/* Итог без НДС */}
-							<div className='flex justify-between'>
-								<span className='font-medium'>{t('subtotalBeforeVat')}</span>
-								<span className='font-semibold'>
+							<div className='flex justify-between items-center py-1'>
+								<span className='text-gray-700 font-medium'>{t('subtotalBeforeVat')}</span>
+								<span className='font-semibold text-gray-900'>
 									€{(formData.subtotal - formData.discount).toFixed(2)}
 								</span>
 							</div>
 
-							{/* НДС (отдельно) или уведомление о расчёте позже */}
-							{formData.vatAmount > 0 ? (
-								<div className='flex justify-between'>
+							{/* НДС - показываем только если есть */}
+							{formData.vatAmount > 0 && (
+								<div className='flex justify-between items-center py-1'>
 									<span className='text-gray-600'>{t('totalVat')}</span>
-									<span className='font-medium text-blue-600'>
-										+€{formData.vatAmount.toFixed(2)}
-									</span>
-								</div>
-							) : (
-								<div className='flex justify-between'>
-									<span className='text-gray-600'>{t('totalVat')}</span>
-									<span className='font-medium text-amber-600'>
-										{t('vatNotIncluded')}
+									<span className='font-medium text-gray-900'>
+										€{formData.vatAmount.toFixed(2)}
 									</span>
 								</div>
 							)}
@@ -1515,30 +1655,43 @@ export function ProposalFormV3({
 							{/* Разделитель */}
 							<div className='border-t border-gray-300 my-2' />
 
-							{/* ИТОГО с НДС или без НДС */}
-							<div className='flex justify-between items-center bg-green-50 -mx-4 px-4 py-3 rounded-lg'>
-								<span className='text-lg font-bold text-green-800'>
-									{formData.vatAmount > 0
-										? t('totalWithVat')
-										: t('totalWithoutVat')}
-								</span>
-								<span className='text-2xl font-bold text-green-600'>
-									€{formData.total.toFixed(2)}
-								</span>
-							</div>
-
-							{/* Важное уведомление, если НДС = 0 */}
-							{formData.vatAmount === 0 && (
-								<div className='mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg'>
-									<div className='flex items-start gap-2'>
-										<span className='text-amber-600 text-lg'>⚠️</span>
-										<div className='text-xs text-amber-800'>
-											<strong>{t('important')}:</strong>{' '}
-											{t('vatWillBeCalculatedLater')}
-										</div>
-									</div>
+							{/* ИТОГО - выделен зеленым цветом */}
+							<div className='space-y-2'>
+								<div className='flex justify-between items-center py-2 px-3 bg-green-50 rounded-lg border border-green-200'>
+									<span className='text-base font-semibold text-green-800'>
+										{formData.vatAmount > 0 ? t('totalWithVat') : t('totalWithoutVat')}
+									</span>
+									<span className='text-2xl font-bold text-green-700'>
+										€{formData.total.toFixed(2)}
+									</span>
 								</div>
-							)}
+								{/* Интерактивная информативная строка если без НДС */}
+								{formData.vatAmount === 0 && (
+									<TooltipProvider>
+										<div className='pt-1'>
+											<Tooltip delayDuration={200}>
+												<TooltipTrigger asChild>
+													<div className='flex items-center gap-1.5 text-xs text-gray-600 hover:text-amber-700 transition-colors cursor-help group'>
+														<Info className='h-3.5 w-3.5 text-amber-600 group-hover:text-amber-700' />
+														<span className='font-medium'>
+															{locale === 'ru' 
+																? 'Цена без НДС'
+																: 'Prezzo senza IVA'}
+														</span>
+													</div>
+												</TooltipTrigger>
+												<TooltipContent side='top' className='max-w-xs'>
+													<p className='text-xs leading-relaxed'>
+														{locale === 'ru' 
+															? 'Указанная сумма не включает НДС согласно применимому налоговому законодательству.'
+															: 'L\'importo indicato non include l\'IVA secondo la normativa fiscale applicabile.'}
+													</p>
+												</TooltipContent>
+											</Tooltip>
+										</div>
+									</TooltipProvider>
+								)}
+							</div>
 						</div>
 					</Card>
 				)}
@@ -1622,6 +1775,18 @@ export function ProposalFormV3({
 						: undefined
 				}
 			/>
+
+			{/* Модальное окно управления статусами */}
+			<Dialog open={showStatusManager} onOpenChange={setShowStatusManager}>
+				<DialogContent className='max-w-4xl max-h-[90vh] overflow-y-auto'>
+					<DialogHeader>
+						<DialogTitle>
+							{locale === 'ru' ? 'Управление статусами' : 'Gestione Stati'}
+						</DialogTitle>
+					</DialogHeader>
+					<DocumentStatusesManager />
+				</DialogContent>
+			</Dialog>
 		</div>
 	)
 }

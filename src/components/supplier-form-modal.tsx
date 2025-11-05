@@ -403,7 +403,7 @@ export function SupplierFormModal({
 									}
 								>
 									<SelectTrigger>
-										<SelectValue placeholder={t('rating')} />
+										<SelectValue placeholder={locale === 'ru' ? 'Рейтинг' : 'Valutazione'} />
 									</SelectTrigger>
 									<SelectContent>
 										<SelectItem value='5'>⭐⭐⭐⭐⭐</SelectItem>

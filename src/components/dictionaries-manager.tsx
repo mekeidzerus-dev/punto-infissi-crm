@@ -154,7 +154,11 @@ export function DictionariesManager({
 	}
 
 	// Множественный поиск
-	const filteredItems = multiSearch(items, searchTerm, ['name'])
+	const filteredItems = multiSearch(
+		items as unknown as Record<string, unknown>[],
+		searchTerm,
+		['name']
+	) as unknown as DictionaryItem[]
 
 	// Сортировка
 	const { sortedItems, requestSort, getSortIcon } = useSorting(
@@ -347,13 +351,13 @@ export function DictionariesManager({
 						</TableRow>
 					</TableHeader>
 					<TableBody>
-						{sortedItems.map(item => (
+						{sortedItems.map((item: DictionaryItem) => (
 							<TableRow
-								key={item.id}
+								key={String(item.id)}
 								className={!item.isActive ? 'opacity-40' : ''}
 							>
 								<TableCell className='font-medium'>
-									{highlightText(item.name, searchTerm)}
+									{highlightText(String(item.name), searchTerm)}
 								</TableCell>
 								<TableCell>
 									<Badge
@@ -368,14 +372,16 @@ export function DictionariesManager({
 										<Button
 											variant='outline'
 											size='sm'
-											onClick={() => openEditDialog(item)}
+											onClick={() =>
+												openEditDialog(item as unknown as DictionaryItem)
+											}
 										>
 											<Edit className='h-4 w-4' />
 										</Button>
 										<Button
 											variant='outline'
 											size='sm'
-											onClick={() => handleDelete(item.id)}
+											onClick={() => handleDelete(Number(item.id))}
 											className='text-red-600 hover:bg-red-50'
 										>
 											<Trash2 className='h-4 w-4' />

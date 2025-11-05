@@ -13,7 +13,7 @@ import { cn } from '@/lib/utils'
 import { useLanguage } from '@/contexts/LanguageContext'
 
 interface Supplier {
-	id: string
+	id: string | number
 	name: string
 	rating: number
 	address: string

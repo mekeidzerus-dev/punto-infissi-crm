@@ -1,0 +1,57 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - generic [ref=e3]:
+    - banner [ref=e5]:
+      - generic [ref=e6]:
+        - generic [ref=e7]:
+          - generic "Clicca per caricare il logo" [ref=e9] [cursor=pointer]:
+            - generic [ref=e10]:
+              - img [ref=e11]
+              - text: Logo
+          - generic [ref=e15]:
+            - img [ref=e16]
+            - textbox "Cerca in tutto il sistema..." [ref=e19]
+        - generic [ref=e20]:
+          - button "3" [ref=e21]:
+            - img
+            - generic [ref=e23]: "3"
+          - button [ref=e24]:
+            - img
+          - generic [ref=e25]:
+            - button "🇮🇹" [ref=e26]
+            - button "🇷🇺" [ref=e27]
+          - button [ref=e28]:
+            - img
+    - main [ref=e32]:
+      - generic [ref=e33]:
+        - generic [ref=e34]:
+          - navigation [ref=e35]:
+            - link "Preventivi (0)" [ref=e37] [cursor=pointer]:
+              - /url: /proposals
+              - generic [ref=e38]:
+                - img [ref=e39]
+                - generic [ref=e42]: Preventivi
+                - generic [ref=e43]: (0)
+            - link "Ordini" [ref=e46] [cursor=pointer]:
+              - /url: /orders
+              - generic [ref=e47]:
+                - img [ref=e48]
+                - generic [ref=e51]: Ordini
+          - button "Nuovo preventivo" [ref=e52]:
+            - img
+            - text: Nuovo preventivo
+        - textbox "Cerca in tutto il sistema..." [ref=e56]
+        - generic [ref=e59]: Caricamento......
+  - contentinfo [ref=e60]:
+    - generic [ref=e62]:
+      - generic [ref=e63]:
+        - generic [ref=e64]: © 2025 PUNTO INFISSI
+        - generic [ref=e65]: Tutti i diritti riservati
+      - generic [ref=e67]: v1.1.0
+      - generic [ref=e68]:
+        - button "Documentazione" [ref=e69]
+        - button "Stato" [ref=e70]
+  - region "Notifications alt+T"
+```

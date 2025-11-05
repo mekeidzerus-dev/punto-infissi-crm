@@ -56,7 +56,7 @@ export interface ProposalDocument {
 }
 
 export interface ProposalFormProps {
-	proposal?: ProposalDocument
+	proposal?: ProposalDocument | any
 	onSave: (proposal: ProposalDocument) => void
 	onCancel: () => void
 	onPreview?: () => void

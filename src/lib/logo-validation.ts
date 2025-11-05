@@ -155,7 +155,6 @@ export async function validateLogoBuffer(
 				format: metadata.format || 'unknown',
 				size: buffer.length,
 				aspectRatio,
-				isPrintFriendly,
 			},
 		}
 	} catch (error) {

@@ -22,10 +22,11 @@ interface VATRate {
 	description?: string
 	isDefault: boolean
 	isActive: boolean
+	isSystem?: boolean
 }
 
 export function VATRatesManager() {
-	const { t } = useLanguage()
+	const { t, locale } = useLanguage()
 	const [vatRates, setVatRates] = useState<VATRate[]>([])
 	const [showForm, setShowForm] = useState(false)
 	const [editingRate, setEditingRate] = useState<VATRate | null>(null)
@@ -194,7 +195,7 @@ export function VATRatesManager() {
 												{rate.name}
 												{rate.isSystem && (
 													<span className='px-2 py-1 bg-purple-100 text-purple-700 text-xs rounded font-medium'>
-														{t('system') || '🔒 Sistema'}
+														🔒 {locale === 'ru' ? 'Системный' : 'Sistema'}
 													</span>
 												)}
 											</div>
@@ -267,7 +268,7 @@ export function VATRatesManager() {
 								onChange={e =>
 									setFormData({ ...formData, name: e.target.value })
 								}
-								placeholder='IVA 22%'
+								placeholder='IVA 0%'
 								required
 							/>
 						</div>

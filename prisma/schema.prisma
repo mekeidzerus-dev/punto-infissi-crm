@@ -332,7 +332,7 @@ model ProposalDocument {
   // Итоги
   subtotal    Decimal @db.Decimal(10, 2) @default(0)
   discount    Decimal @db.Decimal(10, 2) @default(0)
-  vatRate     Decimal @db.Decimal(5, 2) @default(22.00)
+  vatRate     Decimal @db.Decimal(5, 2) @default(0)
   vatAmount   Decimal @db.Decimal(10, 2) @default(0)
   total       Decimal @db.Decimal(10, 2) @default(0)
   
@@ -394,7 +394,7 @@ model ProposalPosition {
   quantity    Decimal @db.Decimal(10, 2) @default(1)
   discount    Decimal @db.Decimal(5, 2) @default(0) // процент скидки
   discountAmount Decimal @db.Decimal(10, 2) @default(0) // сумма скидки
-  vatRate     Decimal @db.Decimal(5, 2) @default(22.00) // НДС для этой позиции
+  vatRate     Decimal @db.Decimal(5, 2) @default(0) // НДС для этой позиции
   vatAmount   Decimal @db.Decimal(10, 2) @default(0) // сумма НДС
   total       Decimal @db.Decimal(10, 2)
   
@@ -739,8 +739,10 @@ model DocumentStatusType {
   statusId        Int
   status          DocumentStatus @relation(fields: [statusId], references: [id], onDelete: Cascade)
   order           Int      @default(0) // Порядок отображения
+  isDefault       Boolean  @default(false) // Основной статус для этого типа документа
   
   @@unique([documentTypeId, statusId])
   @@index([documentTypeId])
   @@index([statusId])
+  @@index([isDefault])
 }

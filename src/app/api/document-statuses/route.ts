@@ -34,7 +34,11 @@ export async function GET(request: NextRequest) {
 			const statuses = type.statuses.map(st => ({
 				...st.status,
 				order: st.order,
+				isDefault: st.isDefault,
 			}))
+
+			// Сортируем только по order, без перемещения основного статуса
+			statuses.sort((a, b) => a.order - b.order)
 
 			return NextResponse.json(statuses)
 		}
@@ -46,6 +50,9 @@ export async function GET(request: NextRequest) {
 				documentTypes: {
 					include: {
 						documentType: true,
+					},
+					orderBy: {
+						order: 'asc',
 					},
 				},
 			},
@@ -193,4 +200,3 @@ export async function DELETE(request: NextRequest) {
 		)
 	}
 }
-

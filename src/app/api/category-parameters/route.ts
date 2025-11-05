@@ -34,15 +34,15 @@ export async function GET(request: NextRequest) {
 					},
 				],
 			},
-		include: {
-			categoryParameters: {
-				where: {
-					categoryId: categoryId,
+			include: {
+				categoryParameters: {
+					where: {
+						categoryId: categoryId,
+					},
 				},
 			},
-		},
-		// Без orderBy здесь, сортировка будет в коде ниже
-	})
+			// Без orderBy здесь, сортировка будет в коде ниже
+		})
 
 		// Формируем результат - показываем все параметры
 		const result = await Promise.all(
@@ -50,7 +50,14 @@ export async function GET(request: NextRequest) {
 				const categoryParam = param.categoryParameters[0]
 
 				// Получаем значения для SELECT и COLOR параметров
-				let values: Array<{ id: string; value: string; valueIt: string | null; hexColor: string | null; ralCode: string | null; order: number }> = []
+				let values: Array<{
+					id: string
+					value: string
+					valueIt: string | null
+					hexColor: string | null
+					ralCode: string | null
+					order: number
+				}> = []
 				if (param.type === 'SELECT' || param.type === 'COLOR') {
 					const paramValues = await prisma.parameterValue.findMany({
 						where: {
@@ -86,9 +93,10 @@ export async function GET(request: NextRequest) {
 					param.name === 'Модель' || param.nameIt === 'Modello'
 				// Системные параметры (размеры) всегда обязательны
 				const isSystemParameter = param.isSystem === true
-				const isRequired = isModelParameter || isSystemParameter
-					? true
-					: categoryParam?.isRequired || false
+				const isRequired =
+					isModelParameter || isSystemParameter
+						? true
+						: categoryParam?.isRequired || false
 
 				return {
 					id: param.id,
@@ -114,10 +122,10 @@ export async function GET(request: NextRequest) {
 			// Если оба системные параметры размеров
 			if (a.isSystem && b.isSystem) {
 				const systemOrder: Record<string, number> = {
-					'Ширина': 1,
-					'Larghezza': 1,
-					'Высота': 2,
-					'Altezza': 2,
+					Ширина: 1,
+					Larghezza: 1,
+					Высота: 2,
+					Altezza: 2,
 				}
 				const orderA = systemOrder[a.name] || systemOrder[a.nameIt || ''] || 999
 				const orderB = systemOrder[b.name] || systemOrder[b.nameIt || ''] || 999

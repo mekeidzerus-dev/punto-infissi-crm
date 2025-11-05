@@ -47,7 +47,8 @@ export async function validateFaviconFile(
 	}
 
 	// 2. Проверка MIME типа
-	if (!FAVICON_CONFIG.ALLOWED_MIME_TYPES.includes(file.type)) {
+	const allowedMimeTypes = FAVICON_CONFIG.ALLOWED_MIME_TYPES as readonly string[]
+	if (!allowedMimeTypes.includes(file.type as any)) {
 		return {
 			valid: false,
 			error: `Неподдерживаемый формат. Разрешены: ${FAVICON_CONFIG.ALLOWED_EXTENSIONS.join(
@@ -58,7 +59,8 @@ export async function validateFaviconFile(
 
 	// 3. Проверка расширения
 	const extension = file.name.split('.').pop()?.toLowerCase()
-	if (!extension || !FAVICON_CONFIG.ALLOWED_EXTENSIONS.includes(extension)) {
+	const allowedExtensions = FAVICON_CONFIG.ALLOWED_EXTENSIONS as readonly string[]
+	if (!extension || !allowedExtensions.includes(extension as any)) {
 		return {
 			valid: false,
 			error: `Неверное расширение файла. Разрешены: ${FAVICON_CONFIG.ALLOWED_EXTENSIONS.join(
@@ -154,7 +156,8 @@ export async function validateFaviconBuffer(
 	}
 
 	// 2. Проверка MIME типа
-	if (!FAVICON_CONFIG.ALLOWED_MIME_TYPES.includes(mimeType)) {
+	const allowedMimeTypes = FAVICON_CONFIG.ALLOWED_MIME_TYPES as readonly string[]
+	if (!allowedMimeTypes.includes(mimeType as any)) {
 		return {
 			valid: false,
 			error: `Неподдерживаемый формат. Разрешены: ${FAVICON_CONFIG.ALLOWED_EXTENSIONS.join(
@@ -165,7 +168,8 @@ export async function validateFaviconBuffer(
 
 	// 3. Проверка расширения
 	const extension = fileName.split('.').pop()?.toLowerCase()
-	if (!extension || !FAVICON_CONFIG.ALLOWED_EXTENSIONS.includes(extension)) {
+	const allowedExtensions = FAVICON_CONFIG.ALLOWED_EXTENSIONS as readonly string[]
+	if (!extension || !allowedExtensions.includes(extension as any)) {
 		return {
 			valid: false,
 			error: `Неверное расширение файла. Разрешены: ${FAVICON_CONFIG.ALLOWED_EXTENSIONS.join(
@@ -234,5 +238,3 @@ export async function validateFaviconBuffer(
 		}
 	}
 }
-
-

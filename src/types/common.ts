@@ -14,4 +14,3 @@ export interface ProductCategory {
 	createdAt?: string
 	updatedAt?: string
 }
-

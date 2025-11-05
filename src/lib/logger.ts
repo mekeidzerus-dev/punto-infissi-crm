@@ -78,11 +78,12 @@ function formatError(error: unknown): LogEntry['error'] | undefined {
 		}
 	}
 
-	if (typeof error === 'object') {
+	if (typeof error === 'object' && error !== null) {
+		const errorObj = error as Error
 		return {
-			message: error.message || String(error),
-			stack: error.stack,
-			name: error.name,
+			message: errorObj.message || String(error),
+			stack: errorObj.stack,
+			name: errorObj.name,
 		}
 	}
 

@@ -1,6 +1,6 @@
 {
 	"name": "punto-infissi-crm",
-	"version": "1.1.0",
+	"version": "1.4.0",
 	"description": "Professional CRM system for windows and doors sales management with advanced product configurator, HEX→RAL conversion, and bilingual support (IT/RU)",
 	"author": "Ruslan Mekeidze",
 	"private": true,
@@ -35,6 +35,8 @@
 		"@radix-ui/react-tooltip": "1.2.8",
 		"@react-pdf/renderer": "4.3.1",
 		"@types/bcryptjs": "2.4.6",
+		"html2canvas": "^1.4.1",
+		"jspdf": "^2.5.1",
 		"bcryptjs": "3.0.2",
 		"class-variance-authority": "0.7.1",
 		"clsx": "2.1.1",

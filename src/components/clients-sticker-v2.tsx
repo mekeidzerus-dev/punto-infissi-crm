@@ -103,7 +103,7 @@ export default function ClientsStickerV2() {
 	}
 
 	const handleEdit = (client: Client) => {
-		setEditingClient(client)
+		setEditingClient(client as ClientWithCount)
 		setIsFormOpen(true)
 	}
 
@@ -125,13 +125,11 @@ export default function ClientsStickerV2() {
 	}
 
 	// Множественная фильтрация (каждое слово через пробел = дополнительный фильтр)
-	const filteredClients = multiSearch(clients, searchTerm, [
-		'name',
-		'email',
-		'phone',
-		'company',
-		'address',
-	])
+	const filteredClients = multiSearch(
+		clients as unknown as Record<string, unknown>[],
+		searchTerm,
+		['name', 'email', 'phone', 'company', 'address']
+	) as unknown as ClientWithCount[]
 
 	// Сортировка
 	const { sortedItems, requestSort, getSortIcon } = useSorting(
@@ -181,7 +179,8 @@ export default function ClientsStickerV2() {
 									name: editingClient.name,
 									email: editingClient.email,
 									phone: editingClient.phone,
-									company: editingClient.company,
+									company:
+										(editingClient as any).company || editingClient.companyName,
 									address: editingClient.address,
 									notes: editingClient.notes || '',
 							  } as any)
@@ -276,24 +275,34 @@ export default function ClientsStickerV2() {
 									</TableCell>
 								</TableRow>
 							) : (
-								sortedItems.map(client => (
-									<TableRow key={client.id} className='hover:bg-gray-50'>
+								sortedItems.map((client: ClientWithCount) => (
+									<TableRow
+										key={String(client.id)}
+										className='hover:bg-gray-50'
+									>
 										<TableCell className='font-medium text-sm'>
-											{highlightText(client.name, searchTerm)}
+											{highlightText(String(client.name || ''), searchTerm)}
 										</TableCell>
 										<TableCell className='text-sm text-gray-600'>
 											{client.email
-												? highlightText(client.email, searchTerm)
+												? highlightText(String(client.email), searchTerm)
 												: '-'}
 										</TableCell>
 										<TableCell className='text-sm text-gray-600'>
 											{client.phone
-												? highlightText(client.phone, searchTerm)
+												? highlightText(String(client.phone), searchTerm)
 												: '-'}
 										</TableCell>
 										<TableCell className='text-sm text-gray-600'>
-											{client.company
-												? highlightText(client.company, searchTerm)
+											{client.companyName || (client as any).company
+												? highlightText(
+														String(
+															client.companyName ||
+																(client as any).company ||
+																''
+														),
+														searchTerm
+												  )
 												: '-'}
 										</TableCell>
 										<TableCell>
@@ -301,18 +310,24 @@ export default function ClientsStickerV2() {
 												variant='secondary'
 												className='bg-blue-50 text-blue-700 text-xs'
 											>
-												{client._count.orders}
+												{Number((client._count as any)?.orders || 0)}
 											</Badge>
 										</TableCell>
 										<TableCell className='text-sm text-gray-500'>
-											{new Date(client.createdAt).toLocaleDateString('ru-RU')}
+											{client.createdAt
+												? new Date(String(client.createdAt)).toLocaleDateString(
+														'ru-RU'
+												  )
+												: '-'}
 										</TableCell>
 										<TableCell className='text-right'>
 											<div className='flex justify-end space-x-1'>
 												<Button
 													variant='outline'
 													size='sm'
-													onClick={() => handleEdit(client)}
+													onClick={() =>
+														handleEdit(client as unknown as Client)
+													}
 													className='h-8 w-8 p-0'
 												>
 													<Edit className='h-4 w-4' />
@@ -320,7 +335,7 @@ export default function ClientsStickerV2() {
 												<Button
 													variant='outline'
 													size='sm'
-													onClick={() => handleDelete(client.id)}
+													onClick={() => handleDelete(Number(client.id))}
 													className='h-8 w-8 p-0 text-red-600 hover:bg-red-50'
 												>
 													<Trash2 className='h-4 w-4' />

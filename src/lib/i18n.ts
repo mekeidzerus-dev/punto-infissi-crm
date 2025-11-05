@@ -72,19 +72,7 @@ export const translations = {
 		supplierInactiveTitle: 'Поставщик недоступен',
 		supplierInactiveMessage:
 			'Поставщик не активен и его нельзя выбрать. Обратитесь к администратору!',
-		active: 'Активен',
-		inactive: 'Неактивен',
 		editSupplier: 'Редактировать поставщика',
-		supplierName: 'Название поставщика',
-		rating: 'Рейтинг',
-		minOrderAmount: 'Минимальная сумма заказа',
-		deliveryDays: 'Дни доставки',
-		status: 'Статус',
-		address: 'Адрес',
-		notes: 'Примечания',
-		save: 'Сохранить',
-		confirmDeleteSupplier: 'Удалить поставщика из категории?',
-		close: 'Закрыть',
 		understood: 'Понятно',
 		error: 'Ошибка',
 		supplierDeleteError: 'Произошла ошибка при удалении поставщика.',
@@ -114,11 +102,7 @@ export const translations = {
 
 		// ============ ПОСТАВЩИКИ ============
 		addSupplier: 'Добавить поставщика',
-		supplierName: 'Название поставщика',
-		rating: 'Рейтинг',
 		paymentTerms: 'Условия оплаты',
-		deliveryDays: 'Дней на доставку',
-		minOrderAmount: 'Минимальная сумма заказа',
 		productCategories: 'Категории продуктов',
 		selected: 'выбрано',
 		selectCategoriesForSupplier:
@@ -138,10 +122,7 @@ export const translations = {
 		noAvailableSuppliers: 'Нет доступных поставщиков',
 		errorUpdating: 'Ошибка при обновлении',
 		errorDeleting: 'Ошибка при удалении',
-		selectAll: 'Выбрать все',
 		clearAll: 'Снять все',
-		selected: 'Выбрано',
-		cancel: 'Отмена',
 		adding: 'Добавление...',
 		addSelected: 'Добавить выбранные',
 
@@ -197,11 +178,7 @@ export const translations = {
 			'НДС будет рассчитан позже в зависимости от условий клиента',
 		important: 'Важно',
 
-		// ============ КОНФИГУРАТОР ============
-		productConfigurator: 'Конфигуратор продукта',
-		selectCategory: 'Выберите категорию продукта',
-		selectSupplier: 'Выберите поставщика',
-		configureParameters: 'Настройте параметры',
+		// ============ КОНФИГУРАТОР (расширенные) ============
 		addToProposal: 'Добавить в предложение',
 		preview: 'Предварительный просмотр',
 		fillDimensionsForVisualization: 'Заполните размеры для визуализации',
@@ -215,7 +192,6 @@ export const translations = {
 		depth: 'Глубина',
 		material: 'Материал',
 		color: 'Цвет',
-		price: 'Цена',
 		mm: 'мм',
 		widthPlaceholder: '800мм',
 		heightPlaceholder: '2000мм',
@@ -233,11 +209,7 @@ export const translations = {
 		confirmSelection: 'Подтвердить выбор',
 		supplier: 'Поставщик',
 
-		// ============ ПАРАМЕТРЫ ПРОДУКТА ============
-		material: 'Материал',
-		color: 'Цвет',
-		width: 'Ширина',
-		height: 'Высота',
+		// ============ ПАРАМЕТРЫ ПРОДУКТА (расширенные) ============
 		opening: 'Открывание',
 		handle: 'Ручка',
 		lock: 'Замок',
@@ -308,8 +280,6 @@ export const translations = {
 		changeClient: 'Изменить клиента',
 		systemInformation: 'Системная информация',
 		proposalValidUntil: 'Действительно до',
-		step: 'Шаг',
-		of: 'из',
 		stepClientInfo: 'Информация о клиенте',
 		stepProducts: 'Товары и услуги',
 		stepTotals: 'Итоговая сумма',
@@ -331,7 +301,6 @@ export const translations = {
 		confirmDeleteItem: 'Вы уверены, что хотите удалить этот элемент?',
 		errorAdding: 'Ошибка при добавлении элемента',
 		errorEditing: 'Ошибка при редактировании элемента',
-		errorDeleting: 'Ошибка при удалении элемента',
 		nothingFound: 'Ничего не найдено',
 		noItems: 'Нет элементов. Добавьте первый элемент.',
 		addSourcesInSettings: 'Добавьте источники в настройках',
@@ -348,7 +317,6 @@ export const translations = {
 		createClient: 'Создать клиента',
 		editClient: 'Редактировать клиента',
 		createSupplier: 'Создать поставщика',
-		editSupplier: 'Редактировать поставщика',
 		createPartner: 'Создать партнера',
 		editPartner: 'Редактировать партнера',
 		createInstaller: 'Создать монтажника',
@@ -449,7 +417,6 @@ export const translations = {
 		orderNumber: '№ Заказа',
 		createdDate: 'Дата создания',
 		searchClients: 'Поиск клиента...',
-		searchSuppliers: 'Поиск поставщиков...',
 		searchPartners: 'Поиск партнёров...',
 		searchInstallers: 'Поиск монтажников...',
 		searchProducts: 'Поиск продуктов...',
@@ -553,19 +520,7 @@ export const translations = {
 		supplierInactiveTitle: 'Fornitore non disponibile',
 		supplierInactiveMessage:
 			"Il fornitore non è attivo e non può essere selezionato. Contatta l'amministratore!",
-		active: 'Attivo',
-		inactive: 'Inattivo',
 		editSupplier: 'Modifica fornitore',
-		supplierName: 'Nome fornitore',
-		rating: 'Valutazione',
-		minOrderAmount: 'Importo minimo ordine',
-		deliveryDays: 'Giorni di consegna',
-		status: 'Stato',
-		address: 'Indirizzo',
-		notes: 'Note',
-		save: 'Salva',
-		confirmDeleteSupplier: 'Rimuovere il fornitore dalla categoria?',
-		close: 'Chiudi',
 		understood: 'Capito',
 		error: 'Errore',
 		supplierDeleteError:
@@ -596,11 +551,7 @@ export const translations = {
 
 		// ============ FORNITORI ============
 		addSupplier: 'Aggiungi fornitore',
-		supplierName: 'Nome fornitore',
-		rating: 'Valutazione',
 		paymentTerms: 'Termini di pagamento',
-		deliveryDays: 'Giorni di consegna',
-		minOrderAmount: 'Importo minimo ordine',
 		productCategories: 'Categorie prodotti',
 		selected: 'selezionato',
 		selectCategoriesForSupplier:
@@ -620,10 +571,7 @@ export const translations = {
 		noAvailableSuppliers: 'Nessun fornitore disponibile',
 		errorUpdating: "Errore durante l'aggiornamento",
 		errorDeleting: "Errore durante l'eliminazione",
-		selectAll: 'Seleziona tutto',
 		clearAll: 'Deseleziona tutto',
-		selected: 'Selezionati',
-		cancel: 'Annulla',
 		adding: 'Aggiunta in corso...',
 		addSelected: 'Aggiungi selezionati',
 
@@ -679,11 +627,7 @@ export const translations = {
 			"L'IVA sarà calcolata successivamente in base alle condizioni del cliente",
 		important: 'Importante',
 
-		// ============ CONFIGURATORE ============
-		productConfigurator: 'Configuratore prodotto',
-		selectCategory: 'Seleziona categoria prodotto',
-		selectSupplier: 'Seleziona fornitore',
-		configureParameters: 'Configura parametri',
+		// ============ CONFIGURATORE (esteso) ============
 		addToProposal: 'Aggiungi al preventivo',
 		preview: 'Anteprima',
 		fillDimensionsForVisualization:
@@ -698,7 +642,6 @@ export const translations = {
 		depth: 'Profondità',
 		material: 'Materiale',
 		color: 'Colore',
-		price: 'Prezzo',
 		mm: 'mm',
 		widthPlaceholder: '800mm',
 		heightPlaceholder: '2000mm',
@@ -715,11 +658,7 @@ export const translations = {
 		confirmSelection: 'Conferma selezione',
 		supplier: 'Fornitore',
 
-		// ============ PARAMETRI PRODOTTO ============
-		material: 'Materiale',
-		color: 'Colore',
-		width: 'Larghezza (mm)',
-		height: 'Altezza (mm)',
+		// ============ PARAMETRI PRODOTTO (estesi) ============
 		opening: 'Apertura',
 		handle: 'Maniglia',
 		lock: 'Serratura',
@@ -791,8 +730,6 @@ export const translations = {
 		changeClient: 'Cambia cliente',
 		systemInformation: 'Informazioni di sistema',
 		proposalValidUntil: 'Valido fino al',
-		step: 'Passo',
-		of: 'di',
 		stepClientInfo: 'Informazioni cliente',
 		stepProducts: 'Prodotti e servizi',
 		stepTotals: 'Totale finale',
@@ -814,7 +751,6 @@ export const translations = {
 		confirmDeleteItem: 'Sei sicuro di voler eliminare questo elemento?',
 		errorAdding: "Errore durante l'aggiunta dell'elemento",
 		errorEditing: "Errore durante la modifica dell'elemento",
-		errorDeleting: "Errore durante l'eliminazione dell'elemento",
 		nothingFound: 'Nessun risultato trovato',
 		noItems: 'Nessun elemento. Aggiungi il primo elemento.',
 		addSourcesInSettings: 'Aggiungi fonti nelle impostazioni',
@@ -831,7 +767,6 @@ export const translations = {
 		createClient: 'Crea cliente',
 		editClient: 'Modifica cliente',
 		createSupplier: 'Crea fornitore',
-		editSupplier: 'Modifica fornitore',
 		createPartner: 'Crea partner',
 		editPartner: 'Modifica partner',
 		createInstaller: 'Crea installatore',
@@ -932,7 +867,6 @@ export const translations = {
 		orderNumber: 'N° Ordine',
 		createdDate: 'Data creazione',
 		searchClients: 'Cerca cliente...',
-		searchSuppliers: 'Cerca fornitori...',
 		searchPartners: 'Cerca partner...',
 		searchInstallers: 'Cerca installatori...',
 		searchProducts: 'Cerca prodotti...',

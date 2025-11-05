@@ -150,7 +150,7 @@ export function generateProductDescription(
 			// Для булевых параметров: добавляем название параметра + значение
 			if (param.type === 'BOOLEAN') {
 				const paramName = locale === 'ru' ? param.name : param.nameIt
-				const boolValue = paramValue === 'true' || paramValue === true
+				const boolValue = paramValue === 'true' || (typeof paramValue === 'boolean' && paramValue === true)
 				const boolText = locale === 'ru' 
 					? (boolValue ? 'Да' : 'Нет') 
 					: (boolValue ? 'Sì' : 'No')

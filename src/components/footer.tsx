@@ -15,9 +15,7 @@ export function Footer() {
 					<div className='flex items-center gap-2'>
 						<span>© {currentYear} PUNTO INFISSI</span>
 						<span className='hidden md:inline'>•</span>
-						<span className='text-xs'>
-							{t('allRightsReserved') || 'Tutti i diritti riservati'}
-						</span>
+						<span className='text-xs'>Tutti i diritti riservati</span>
 					</div>
 
 					{/* Центр - Версия системы */}
@@ -38,13 +36,13 @@ export function Footer() {
 							}
 							className='hover:text-blue-600 transition-colors'
 						>
-							{t('documentation') || 'Documentazione'}
+							Documentazione
 						</button>
 						<button
 							onClick={() => window.open('/api/health', '_blank')}
 							className='hover:text-green-600 transition-colors'
 						>
-							{t('status') || 'Stato'}
+							Stato
 						</button>
 					</div>
 				</div>

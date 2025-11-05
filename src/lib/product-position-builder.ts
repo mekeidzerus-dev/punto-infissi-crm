@@ -227,7 +227,8 @@ export function buildProductPosition(product: ProductData): ProposalPosition {
 		parametersArray.sort((a, b) => a.order - b.order)
 
 		// Извлекаем customNotes из конфигурации
-		const customNotes = product.configuration._customNotes || ''
+		const customNotesRaw = product.configuration._customNotes
+		const customNotes = typeof customNotesRaw === 'string' && customNotesRaw.trim() ? customNotesRaw : undefined
 
 		// Удаляем _customNotes из configuration перед сохранением
 		const cleanConfiguration = { ...product.configuration }
@@ -248,11 +249,11 @@ export function buildProductPosition(product: ProductData): ProposalPosition {
 			modelValueIt,
 			parameters: parametersArray,
 			configuration: cleanConfiguration,
-			customNotes: customNotes || undefined,
+			customNotes,
 			unitPrice: 0,
 			quantity: 1,
 			discount: 0,
-			vatRate: 22.0,
+			vatRate: 0, // Будет установлено из справочника при создании позиции
 			vatAmount: 0,
 			total: 0,
 		}

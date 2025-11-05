@@ -43,6 +43,7 @@ interface Supplier {
 	email: string
 	phone: string
 	address: string
+	status?: 'active' | 'inactive'
 }
 
 interface SelectSuppliersModalProps {
@@ -187,11 +188,11 @@ export function SelectSuppliersModal({
 								{filteredSuppliers.map(supplier => (
 									<SupplierCard
 										key={supplier.id}
-										supplier={supplier}
+										supplier={{...supplier, status: supplier.status || 'active'}}
 										isSelected={selectedSuppliers.includes(supplier.id)}
 										onClick={() => handleSupplierToggle(supplier.id)}
 										onEdit={supplier => {
-											setEditingSupplier(supplier)
+											setEditingSupplier(supplier as Supplier)
 											setShowEditModal(true)
 										}}
 										showEditButton={true}
@@ -241,7 +242,25 @@ export function SelectSuppliersModal({
 							logger.error('Error saving supplier:', error)
 						}
 					}}
-					initialData={editingSupplier}
+					initialData={editingSupplier ? {
+						id: editingSupplier.id,
+						name: editingSupplier.name,
+						rating: String(editingSupplier.rating),
+						shortName: undefined,
+						shortNameIt: undefined,
+						phone: editingSupplier.phone,
+						email: editingSupplier.email,
+						contactPerson: editingSupplier.contactPerson,
+						address: editingSupplier.address,
+						codiceFiscale: '',
+						partitaIVA: '',
+						legalAddress: '',
+						paymentTerms: editingSupplier.paymentTerms,
+						deliveryDays: String(editingSupplier.deliveryDays),
+						minOrderAmount: String(editingSupplier.minOrderAmount),
+						status: editingSupplier.status || 'active',
+						notes: editingSupplier.notes
+					} : undefined}
 				/>
 			)}
 		</Dialog>

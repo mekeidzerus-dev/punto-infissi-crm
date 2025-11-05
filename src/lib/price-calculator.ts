@@ -7,7 +7,12 @@
  * - Опции (тип открытия, стеклопакет, фурнитура)
  */
 
-import { Configuration } from '@/components/product-configurator'
+// Configuration type is defined locally to avoid circular dependency
+export interface Configuration {
+	categoryId: string
+	supplierId: number
+	parameters: Record<string, unknown>
+}
 
 // ============================================
 // ТИПЫ
@@ -156,23 +161,29 @@ export function calculateProductPrice(
 	// Ищем размеры по ID параметров, если они переданы
 	if (parameters && parameters.length > 0) {
 		const widthParam = parameters.find(
-			p =>
-				p.name?.toLowerCase().includes('larghezza') ||
-				p.name?.toLowerCase().includes('width') ||
-				p.name?.toLowerCase().includes('ширина')
+			p => {
+				const name = p.name
+				if (typeof name !== 'string') return false
+				const lowerName = name.toLowerCase()
+				return lowerName.includes('larghezza') || lowerName.includes('width') || lowerName.includes('ширина')
+			}
 		)
 		const heightParam = parameters.find(
-			p =>
-				p.name?.toLowerCase().includes('altezza') ||
-				p.name?.toLowerCase().includes('height') ||
-				p.name?.toLowerCase().includes('высота')
+			p => {
+				const name = p.name
+				if (typeof name !== 'string') return false
+				const lowerName = name.toLowerCase()
+				return lowerName.includes('altezza') || lowerName.includes('height') || lowerName.includes('высота')
+			}
 		)
 
-		if (widthParam && config.parameters[widthParam.id]) {
-			width = parseFloat(config.parameters[widthParam.id]) || 0
+		if (widthParam && widthParam.id && typeof widthParam.id === 'string') {
+			const widthValue = config.parameters[widthParam.id]
+			width = parseFloat(String(widthValue)) || 0
 		}
-		if (heightParam && config.parameters[heightParam.id]) {
-			height = parseFloat(config.parameters[heightParam.id]) || 0
+		if (heightParam && heightParam.id && typeof heightParam.id === 'string') {
+			const heightValue = config.parameters[heightParam.id]
+			height = parseFloat(String(heightValue)) || 0
 		}
 	}
 
@@ -215,7 +226,7 @@ export function calculateProductPrice(
 		'материал',
 		'materiale',
 	])
-	const materialKey = normalizeValue(material)
+	const materialKey = material ? normalizeValue(material) as string : ''
 	const materialMultiplier = pricing.materialMultipliers[materialKey] || 1.0
 
 	const materialSurcharge =
@@ -234,7 +245,9 @@ export function calculateProductPrice(
 	const params = config.parameters
 
 	Object.entries(params).forEach(([key, value]) => {
-		const normalizedValue = normalizeValue(value)
+		const normalizedValue = normalizeValue(
+			typeof value === 'string' || typeof value === 'number' ? value : null
+		) as string
 		const optionPrice = pricing.optionPrices[normalizedValue]
 
 		if (optionPrice !== undefined && optionPrice !== 0) {
@@ -276,7 +289,10 @@ function getParameterValue(
 	// Сначала ищем по точному совпадению ключа
 	for (const key of possibleKeys) {
 		if (config.parameters[key] !== undefined) {
-			return config.parameters[key]
+			const value = config.parameters[key]
+			if (typeof value === 'string' || typeof value === 'number') {
+				return value
+			}
 		}
 	}
 
@@ -287,7 +303,10 @@ function getParameterValue(
 		)
 
 		if (foundKey) {
-			return config.parameters[foundKey]
+			const value = config.parameters[foundKey]
+			if (typeof value === 'string' || typeof value === 'number') {
+				return value
+			}
 		}
 	}
 
@@ -296,11 +315,15 @@ function getParameterValue(
 	for (const key of possibleKeys) {
 		const foundKey = Object.keys(config.parameters).find(k => {
 			const value = config.parameters[k]
-			return value && String(value).toLowerCase().includes(key.toLowerCase())
+			if (value === null || value === undefined) return false
+			return String(value).toLowerCase().includes(key.toLowerCase())
 		})
 
 		if (foundKey) {
-			return config.parameters[foundKey]
+			const value = config.parameters[foundKey]
+			if (typeof value === 'string' || typeof value === 'number') {
+				return value
+			}
 		}
 	}
 

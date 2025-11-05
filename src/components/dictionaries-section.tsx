@@ -33,7 +33,7 @@ interface DictionaryItem {
 	icon: React.ReactNode
 	description: string
 	descriptionIt: string
-	component: React.ComponentType
+	component: React.ComponentType<any>
 	count?: number
 }
 

@@ -82,7 +82,7 @@ export function ProductConfiguratorV2({
 	const [selectedCategory, setSelectedCategory] =
 		useState<CategoryWithCounts | null>(null)
 	const [selectedSupplier, setSelectedSupplier] = useState<{
-		id: number
+		id: string
 		name: string
 		rating: number
 		logo?: string
@@ -193,13 +193,16 @@ export function ProductConfiguratorV2({
 					address: item.supplier.address,
 					status: item.supplier.status,
 				}))
-				setCategorySuppliers(suppliers)
+				setCategorySuppliers(suppliers.map((s: { id: number; [key: string]: unknown }) => ({
+					...s,
+					id: String(s.id)
+				})))
 			} else {
 				const errorText = await response.text()
 				logger.error(
 					'Failed to load category suppliers:',
-					response.status,
-					errorText
+					new Error(`HTTP ${response.status}: ${errorText}`),
+					{ status: response.status }
 				)
 				// Устанавливаем пустой массив в случае ошибки
 				setCategorySuppliers([])
@@ -314,7 +317,7 @@ export function ProductConfiguratorV2({
 	}
 
 	const handleSupplierSelect = (supplier: {
-		id: number
+		id: number | string
 		name: string
 		rating: number
 		logo?: string
@@ -330,7 +333,10 @@ export function ProductConfiguratorV2({
 		address: string
 		status: string
 	}) => {
-		setSelectedSupplier(supplier)
+		setSelectedSupplier({
+			...supplier,
+			id: String(supplier.id)
+		})
 		// Автоматический переход к следующему шагу
 		setTimeout(() => {
 			setCurrentStep(3)
@@ -593,20 +599,27 @@ export function ProductConfiguratorV2({
 														return 1
 													return 0
 												})
-												.map(supplier => (
-													<SupplierCard
-														key={supplier.id}
-														supplier={supplier}
-														isSelected={selectedSupplier?.id === supplier.id}
+												.map(supplier => {
+													const supplierWithStringId = {
+														...supplier,
+														id: String(supplier.id),
+														status: supplier.status as 'active' | 'inactive'
+													}
+													return (
+														<SupplierCard
+															key={supplier.id}
+															supplier={supplierWithStringId}
+															isSelected={selectedSupplier?.id === String(supplier.id)}
 														isInactive={supplier.status === 'inactive'}
-														onClick={() =>
-															supplier.status === 'inactive'
-																? handleInactiveSupplierClick()
-																: handleSupplierSelect(supplier)
-														}
-														showEditButton={false}
-													/>
-												))}
+															onClick={() =>
+																supplier.status === 'inactive'
+																	? handleInactiveSupplierClick()
+																	: handleSupplierSelect(supplier)
+															}
+															showEditButton={false}
+														/>
+													)
+												})}
 										</div>
 									) : (
 										/* Пустое состояние */
@@ -640,7 +653,7 @@ export function ProductConfiguratorV2({
 						<div className='flex-1 overflow-auto'>
 							<ParametersConfiguration
 								categoryId={selectedCategory?.id || ''}
-								supplierId={selectedSupplier?.id || 0}
+								supplierId={Number(selectedSupplier?.id) || 0}
 								onBack={handleBack}
 								onComplete={handleConfigurationComplete}
 								onCancel={handleCancel}
@@ -689,123 +702,124 @@ export function ProductConfiguratorV2({
 
 				{/* Основной контент */}
 				<div className='flex-1 flex min-h-0 overflow-hidden pt-8'>
-				{/* Левая панель - этапы */}
-				<div className='w-56 bg-gray-50 p-6 rounded-md flex flex-col h-full'>
-					<div className='space-y-4'>
-						{/* Этап 1: Categoria */}
-						<div
-							className={`flex items-center px-4 py-3 border rounded-md transition-all duration-200 ${
-								currentStep === 1
-									? 'bg-blue-50 border-blue-300'
-									: currentStep >= 2 && selectedCategory
-									? 'bg-green-50 border-green-300'
-									: 'bg-white border-gray-200'
-							}`}
-						>
-							<div className='flex items-center gap-3'>
-								{/* Цифра или галочка */}
-								<div className='flex items-center justify-center w-6 h-6 rounded-full border-2 border-gray-300 bg-white'>
-									{currentStep >= 2 && selectedCategory ? (
-										<Check className='h-4 w-4 text-green-600' />
-									) : (
-										<span className='text-sm font-bold text-gray-700'>1</span>
-									)}
-								</div>
-
-								{/* Иконка и текст */}
-								<div className='flex items-center gap-2'>
-									<List className='h-5 w-5 text-gray-700' />
-									<span className='text-sm font-medium text-gray-800'>
-										{currentStep >= 2 && selectedCategory
-											? selectedCategory.name
-											: t('category')}
-									</span>
-								</div>
-							</div>
-						</div>
-
-						{/* Этап 2: Fornitore */}
-						<div
-							className={`flex items-center px-4 py-3 border rounded-md transition-all duration-200 ${
-								currentStep === 2
-									? 'bg-blue-50 border-blue-300'
-									: currentStep >= 2 && selectedCategory
-									? 'bg-green-50 border-green-300'
-									: 'bg-white border-gray-200'
-							}`}
-						>
-							<div className='flex items-center gap-3'>
-								{/* Цифра или галочка */}
-								<div className='flex items-center justify-center w-6 h-6 rounded-full border-2 border-gray-300 bg-white'>
-									{currentStep >= 3 && selectedSupplier ? (
-										<Check className='h-4 w-4 text-green-600' />
-									) : (
-										<span className='text-sm font-bold text-gray-700'>2</span>
-									)}
-								</div>
-
-								{/* Иконка и текст */}
-								<div className='flex items-center gap-2'>
-									<Building2 className='h-5 w-5 text-gray-700' />
-									<span className='text-sm font-medium text-gray-800'>
-										{currentStep >= 3 && selectedSupplier
-											? selectedSupplier.name
-											: t('supplier')}
-									</span>
-								</div>
-							</div>
-						</div>
-
-						{/* Этап 3: Parametri */}
-						<div
-							className={`flex items-center px-4 py-3 border rounded-md transition-all duration-200 ${
-								currentStep === 3
-									? 'bg-blue-50 border-blue-300'
-									: currentStep >= 4
-									? 'bg-green-50 border-green-300'
-									: 'bg-white border-gray-200'
-							}`}
-						>
-							<div className='flex items-center gap-3'>
-								{/* Цифра или галочка */}
-								<div className='flex items-center justify-center w-6 h-6 rounded-full border-2 border-gray-300 bg-white'>
-									{currentStep >= 4 ? (
-										<Check className='h-4 w-4 text-green-600' />
-									) : (
-										<span className='text-sm font-bold text-gray-700'>3</span>
-									)}
-								</div>
-
-								{/* Иконка и текст */}
-								<div className='flex items-center gap-2'>
-									<Settings className='h-5 w-5 text-gray-700' />
-									<span className='text-sm font-medium text-gray-800'>
-										{t('parameters')}
-									</span>
-								</div>
-							</div>
-						</div>
-
-					</div>
-
-					{/* Кнопка подтверждения на шаге 3 */}
-					{currentStep === 3 && (
-						<div className='mt-auto pt-6'>
-							<Button
-								onClick={() => {
-									// Программно кликаем на кнопку Conferma в ParametersConfiguration
-									const confermaButton = document.querySelector('[data-conferma-button]') as HTMLButtonElement
-									if (confermaButton) {
-										confermaButton.click()
-									}
-								}}
-								className='w-full bg-green-600 hover:bg-green-700 text-white py-3 font-medium'
+					{/* Левая панель - этапы */}
+					<div className='w-56 bg-gray-50 p-6 rounded-md flex flex-col h-full'>
+						<div className='space-y-4'>
+							{/* Этап 1: Categoria */}
+							<div
+								className={`flex items-center px-4 py-3 border rounded-md transition-all duration-200 ${
+									currentStep === 1
+										? 'bg-blue-50 border-blue-300'
+										: currentStep >= 2 && selectedCategory
+										? 'bg-green-50 border-green-300'
+										: 'bg-white border-gray-200'
+								}`}
 							>
-								{locale === 'ru' ? 'Подтвердить' : 'Conferma'}
-							</Button>
+								<div className='flex items-center gap-3'>
+									{/* Цифра или галочка */}
+									<div className='flex items-center justify-center w-6 h-6 rounded-full border-2 border-gray-300 bg-white'>
+										{currentStep >= 2 && selectedCategory ? (
+											<Check className='h-4 w-4 text-green-600' />
+										) : (
+											<span className='text-sm font-bold text-gray-700'>1</span>
+										)}
+									</div>
+
+									{/* Иконка и текст */}
+									<div className='flex items-center gap-2'>
+										<List className='h-5 w-5 text-gray-700' />
+										<span className='text-sm font-medium text-gray-800'>
+											{currentStep >= 2 && selectedCategory
+												? selectedCategory.name
+												: t('category')}
+										</span>
+									</div>
+								</div>
+							</div>
+
+							{/* Этап 2: Fornitore */}
+							<div
+								className={`flex items-center px-4 py-3 border rounded-md transition-all duration-200 ${
+									currentStep === 2
+										? 'bg-blue-50 border-blue-300'
+										: currentStep >= 2 && selectedCategory
+										? 'bg-green-50 border-green-300'
+										: 'bg-white border-gray-200'
+								}`}
+							>
+								<div className='flex items-center gap-3'>
+									{/* Цифра или галочка */}
+									<div className='flex items-center justify-center w-6 h-6 rounded-full border-2 border-gray-300 bg-white'>
+										{currentStep >= 3 && selectedSupplier ? (
+											<Check className='h-4 w-4 text-green-600' />
+										) : (
+											<span className='text-sm font-bold text-gray-700'>2</span>
+										)}
+									</div>
+
+									{/* Иконка и текст */}
+									<div className='flex items-center gap-2'>
+										<Building2 className='h-5 w-5 text-gray-700' />
+										<span className='text-sm font-medium text-gray-800'>
+											{currentStep >= 3 && selectedSupplier
+												? selectedSupplier.name
+												: t('supplier')}
+										</span>
+									</div>
+								</div>
+							</div>
+
+							{/* Этап 3: Parametri */}
+							<div
+								className={`flex items-center px-4 py-3 border rounded-md transition-all duration-200 ${
+									currentStep === 3
+										? 'bg-blue-50 border-blue-300'
+										: currentStep >= 4
+										? 'bg-green-50 border-green-300'
+										: 'bg-white border-gray-200'
+								}`}
+							>
+								<div className='flex items-center gap-3'>
+									{/* Цифра или галочка */}
+									<div className='flex items-center justify-center w-6 h-6 rounded-full border-2 border-gray-300 bg-white'>
+										{currentStep >= 4 ? (
+											<Check className='h-4 w-4 text-green-600' />
+										) : (
+											<span className='text-sm font-bold text-gray-700'>3</span>
+										)}
+									</div>
+
+									{/* Иконка и текст */}
+									<div className='flex items-center gap-2'>
+										<Settings className='h-5 w-5 text-gray-700' />
+										<span className='text-sm font-medium text-gray-800'>
+											{t('parameters')}
+										</span>
+									</div>
+								</div>
+							</div>
 						</div>
-					)}
-				</div>
+
+						{/* Кнопка подтверждения на шаге 3 */}
+						{currentStep === 3 && (
+							<div className='mt-auto pt-6'>
+								<Button
+									onClick={() => {
+										// Программно кликаем на кнопку Conferma в ParametersConfiguration
+										const confermaButton = document.querySelector(
+											'[data-conferma-button]'
+										) as HTMLButtonElement
+										if (confermaButton) {
+											confermaButton.click()
+										}
+									}}
+									className='w-full bg-green-600 hover:bg-green-700 text-white py-3 font-medium'
+								>
+									{locale === 'ru' ? 'Подтвердить' : 'Conferma'}
+								</Button>
+							</div>
+						)}
+					</div>
 
 					{/* Правая рабочая область */}
 					<div className='flex-1 bg-white ml-4 flex flex-col min-h-0'>

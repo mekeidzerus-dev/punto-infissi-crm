@@ -9,7 +9,7 @@ const nextConfig: NextConfig = {
 		ignoreDuringBuilds: true,
 	},
 	typescript: {
-		// Allow production builds to complete even if TypeScript has errors
+		// TypeScript errors are now fixed - strict checking enabled
 		ignoreBuildErrors: false,
 	},
 }

@@ -54,7 +54,7 @@ export function InstallerFormModal({
 	onSave,
 	initialData,
 }: InstallerFormModalProps) {
-	const { t } = useLanguage()
+	const { t, locale } = useLanguage()
 	const [formData, setFormData] = useState<InstallerFormData>({
 		type: 'individual',
 		name: '',
@@ -390,7 +390,7 @@ export function InstallerFormModal({
 									}
 								>
 									<SelectTrigger>
-										<SelectValue placeholder={t('rating')} />
+										<SelectValue placeholder={locale === 'ru' ? 'Рейтинг' : 'Valutazione'} />
 									</SelectTrigger>
 									<SelectContent>
 										<SelectItem value='5'>⭐⭐⭐⭐⭐</SelectItem>
