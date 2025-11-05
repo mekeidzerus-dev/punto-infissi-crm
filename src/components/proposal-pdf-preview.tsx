@@ -90,6 +90,9 @@ export function ProposalPDFPreview({
 							address: org.address || '',
 						})
 					}
+				} else {
+					// Если API вернул ошибку, используем localStorage
+					logger.warn('API organization returned error, using localStorage fallback')
 				}
 			} catch (error) {
 				logger.error('Error fetching company data:', error || undefined)

@@ -36,11 +36,19 @@ export async function GET() {
 
 		return NextResponse.json(organization)
 	} catch (error) {
+		const errorMessage = error instanceof Error ? error.message : String(error)
+		const errorStack = error instanceof Error ? error.stack : undefined
 		logger.error('❌ Error fetching organization:', error || undefined)
+		logger.error('Error details:', { errorMessage, errorStack })
+		
+		// Безопасный ответ без stack trace в production
+		const isDev =
+			typeof process !== 'undefined' &&
+			process.env?.NODE_ENV === 'development'
 		return NextResponse.json(
 			{
 				error: 'Failed to fetch organization',
-				details: error instanceof Error ? error.message : 'Unknown error',
+				details: isDev ? errorMessage : 'Internal server error',
 			},
 			{ status: 500 }
 		)

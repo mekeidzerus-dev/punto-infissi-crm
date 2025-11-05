@@ -88,10 +88,29 @@ export default function ProposalsPage() {
 		try {
 			setIsLoading(true)
 			const response = await fetch('/api/proposals')
+			
+			if (!response.ok) {
+				const errorData = await response.json().catch(() => ({}))
+				logger.error('Error fetching proposals:', {
+					status: response.status,
+					error: errorData.error || errorData.details || 'Unknown error',
+				})
+				setProposals([]) // Устанавливаем пустой массив при ошибке
+				return
+			}
+			
 			const data = await response.json()
-			setProposals(data)
+			
+			// Убеждаемся, что data - массив
+			if (Array.isArray(data)) {
+				setProposals(data)
+			} else {
+				logger.error('Invalid data format from API:', data)
+				setProposals([])
+			}
 		} catch (error) {
 			logger.error('Error fetching proposals:', error || undefined)
+			setProposals([]) // Устанавливаем пустой массив при ошибке
 		} finally {
 			setIsLoading(false)
 		}
