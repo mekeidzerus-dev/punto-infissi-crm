@@ -41,10 +41,13 @@ export async function GET() {
 		logger.error('Error details:', { errorMessage, errorStack })
 		
 		// Безопасный ответ без stack trace в production
+		const isDev =
+			typeof process !== 'undefined' &&
+			process.env?.NODE_ENV === 'development'
 		return NextResponse.json(
 			{
 				error: 'Failed to fetch proposals',
-				details: process.env.NODE_ENV === 'development' ? errorMessage : 'Internal server error',
+				details: isDev ? errorMessage : 'Internal server error',
 			},
 			{ status: 500 }
 		)

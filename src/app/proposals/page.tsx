@@ -91,10 +91,11 @@ export default function ProposalsPage() {
 			
 			if (!response.ok) {
 				const errorData = await response.json().catch(() => ({}))
-				logger.error('Error fetching proposals:', {
-					status: response.status,
-					error: errorData.error || errorData.details || 'Unknown error',
-				})
+			const errorText = errorData.error || errorData.details || 'Unknown error'
+			logger.error('Error fetching proposals:', {
+				status: response.status,
+				error: typeof errorText === 'string' ? errorText : JSON.stringify(errorText),
+			})
 				setProposals([]) // Устанавливаем пустой массив при ошибке
 				return
 			}
@@ -109,7 +110,11 @@ export default function ProposalsPage() {
 				setProposals([])
 			}
 		} catch (error) {
-			logger.error('Error fetching proposals:', error || undefined)
+			const errorMessage = error instanceof Error ? error.message : String(error)
+			logger.error('Error fetching proposals:', {
+				error: errorMessage,
+				details: error instanceof Error ? error.stack : undefined,
+			})
 			setProposals([]) // Устанавливаем пустой массив при ошибке
 		} finally {
 			setIsLoading(false)
