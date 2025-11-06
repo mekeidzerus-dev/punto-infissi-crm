@@ -186,33 +186,49 @@ export function ProductConfiguratorV2({
 				`/api/supplier-categories?categoryId=${selectedCategory.id}`
 			)
 
-			if (response.ok) {
-				const data = await response.json()
+			if (!response.ok) {
+				const errorData = await response.json().catch(() => ({}))
+				logger.error('Error loading category suppliers:', {
+					status: response.status,
+					error: errorData.error || errorData.details || 'Unknown error',
+				})
+				setCategorySuppliers([])
+				return
+			}
 
-				// Преобразуем данные из формата API в плоскую структуру
-				const suppliers = data.map((item: any) => ({
-					id: item.supplier.id,
-					name: item.supplier.name,
-					shortName: item.supplier.shortName || null,
-					shortNameIt: item.supplier.shortNameIt || null,
-					rating: item.supplier.rating,
-					logo: item.supplier.logo,
-					parametersCount: 0, // Пока не используем реальное количество параметров
-					categoriesCount: 0, // TODO: добавить подсчет категорий
-					notes: item.supplier.notes,
-					paymentTerms: item.supplier.paymentTerms,
-					deliveryDays: item.supplier.deliveryDays,
-					minOrderAmount: item.supplier.minOrderAmount,
-					contactPerson: item.supplier.contactPerson,
-					email: item.supplier.email,
-					phone: item.supplier.phone,
-					address: item.supplier.address,
-					status: item.supplier.status,
-				}))
-				setCategorySuppliers(suppliers.map((s: { id: number; [key: string]: unknown }) => ({
-					...s,
-					id: String(s.id)
-				})))
+			const data = await response.json()
+
+			// Убеждаемся, что data - массив
+			if (!Array.isArray(data)) {
+				logger.error('Invalid supplier categories data format:', data)
+				setCategorySuppliers([])
+				return
+			}
+
+			// Преобразуем данные из формата API в плоскую структуру
+			const suppliers = data.map((item: any) => ({
+				id: item.supplier.id,
+				name: item.supplier.name,
+				shortName: item.supplier.shortName || null,
+				shortNameIt: item.supplier.shortNameIt || null,
+				rating: item.supplier.rating,
+				logo: item.supplier.logo,
+				parametersCount: 0, // Пока не используем реальное количество параметров
+				categoriesCount: 0, // TODO: добавить подсчет категорий
+				notes: item.supplier.notes,
+				paymentTerms: item.supplier.paymentTerms,
+				deliveryDays: item.supplier.deliveryDays,
+				minOrderAmount: item.supplier.minOrderAmount,
+				contactPerson: item.supplier.contactPerson,
+				email: item.supplier.email,
+				phone: item.supplier.phone,
+				address: item.supplier.address,
+				status: item.supplier.status,
+			}))
+			setCategorySuppliers(suppliers.map((s: { id: number; [key: string]: unknown }) => ({
+				...s,
+				id: String(s.id)
+			})))
 		} catch (error) {
 			logger.error('Error loading category suppliers:', error)
 			setCategorySuppliers([])
