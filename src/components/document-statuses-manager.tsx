@@ -292,47 +292,47 @@ export function DocumentStatusesManager() {
 			}))
 			setStatuses(statusesWithOrder)
 
-				// Обновляем отсортированные списки для каждого типа документа
-				const newSorted: Record<
-					number,
-					Array<{ status: DocumentStatus; statusTypeId: number; order: number; isDefault: boolean }>
-				> = {}
-				documentTypes.forEach(docType => {
-					const typeStatuses: Array<{ status: DocumentStatus; statusTypeId: number; order: number; isDefault: boolean }> = statusesWithOrder
-						.filter((status: DocumentStatus) =>
-							status.documentTypes.some(
-								(dt: any) => dt.documentType.id === docType.id
-							)
+			// Обновляем отсортированные списки для каждого типа документа
+			const newSorted: Record<
+				number,
+				Array<{ status: DocumentStatus; statusTypeId: number; order: number; isDefault: boolean }>
+			> = {}
+			documentTypes.forEach(docType => {
+				const typeStatuses: Array<{ status: DocumentStatus; statusTypeId: number; order: number; isDefault: boolean }> = statusesWithOrder
+					.filter((status: DocumentStatus) =>
+						status.documentTypes.some(
+							(dt: any) => dt.documentType.id === docType.id
 						)
-						.map((status: DocumentStatus) => {
-							const dt = status.documentTypes.find(
-								(dt: any) => dt.documentType.id === docType.id
-							)
-							return {
-								status,
-								statusTypeId: dt?.id || 0,
-								order: dt?.order || 0,
-								isDefault: dt?.isDefault || false,
-							}
-						})
-						.filter(
-							(item: {
-								status: DocumentStatus
-								statusTypeId: number
-								order: number
-								isDefault: boolean
-							}) => item.statusTypeId !== 0
+					)
+					.map((status: DocumentStatus) => {
+						const dt = status.documentTypes.find(
+							(dt: any) => dt.documentType.id === docType.id
 						)
-						.sort((a: { order: number }, b: { order: number }) => {
-							// Сортируем только по order, без перемещения основного статуса
-							return a.order - b.order
-						})
-					newSorted[docType.id] = typeStatuses
-				})
-				setSortedStatuses(newSorted)
-			}
+						return {
+							status,
+							statusTypeId: dt?.id || 0,
+							order: dt?.order || 0,
+							isDefault: dt?.isDefault || false,
+						}
+					})
+					.filter(
+						(item: {
+							status: DocumentStatus
+							statusTypeId: number
+							order: number
+							isDefault: boolean
+						}) => item.statusTypeId !== 0
+					)
+					.sort((a: { order: number }, b: { order: number }) => {
+						// Сортируем только по order, без перемещения основного статуса
+						return a.order - b.order
+					})
+				newSorted[docType.id] = typeStatuses
+			})
+			setSortedStatuses(newSorted)
 		} catch (error) {
 			logger.error('Error loading statuses:', error)
+			setStatuses([])
 		}
 	}
 
