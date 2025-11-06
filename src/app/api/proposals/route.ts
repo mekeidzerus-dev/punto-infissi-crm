@@ -8,10 +8,11 @@ export async function GET() {
 	try {
 		logger.info('🔍 Fetching proposals...')
 
+		// Безопасный запрос с обработкой возможных null значений
 		const proposals = await prisma.proposalDocument.findMany({
 			include: {
 				client: true,
-				statusRef: true,
+				statusRef: true, // Может быть null если statusId не установлен
 				groups: {
 					include: {
 						positions: {
@@ -33,7 +34,20 @@ export async function GET() {
 		})
 
 		logger.info(`✅ Found ${proposals.length} proposals`)
-		return NextResponse.json(proposals)
+		
+		// Безопасная сериализация - убираем возможные циклические ссылки
+		const safeProposals = proposals.map(proposal => ({
+			...proposal,
+			// Убеждаемся что все поля сериализуемы
+			createdAt: proposal.createdAt.toISOString(),
+			updatedAt: proposal.updatedAt.toISOString(),
+			proposalDate: proposal.proposalDate.toISOString(),
+			validUntil: proposal.validUntil?.toISOString() || null,
+			signedAt: proposal.signedAt?.toISOString() || null,
+			deliveryDate: proposal.deliveryDate?.toISOString() || null,
+		}))
+		
+		return NextResponse.json(safeProposals)
 	} catch (error) {
 		const errorMessage = error instanceof Error ? error.message : String(error)
 		const errorStack = error instanceof Error ? error.stack : undefined
