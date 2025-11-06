@@ -225,9 +225,9 @@ export function ProductConfiguratorV2({
 				address: item.supplier.address,
 				status: item.supplier.status,
 			}))
-			setCategorySuppliers(suppliers.map((s: { id: number; [key: string]: unknown }) => ({
+			setCategorySuppliers(suppliers.map((s) => ({
 				...s,
-				id: String(s.id)
+				id: String(s.id) as any
 			})))
 		} catch (error) {
 			logger.error('Error loading category suppliers:', error)
