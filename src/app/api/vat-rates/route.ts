@@ -14,9 +14,20 @@ export async function GET() {
 		logger.info(`✅ Found ${vatRates.length} VAT rates`)
 		return NextResponse.json(vatRates)
 	} catch (error) {
-		logger.error('❌ Error fetching VAT rates:', error)
+		const errorMessage = error instanceof Error ? error.message : String(error)
+		const errorStack = error instanceof Error ? error.stack : undefined
+		logger.error('❌ Error fetching VAT rates:', error || undefined)
+		logger.error('Error details:', { errorMessage, errorStack })
+		
+		// Безопасный ответ без stack trace в production
+		const isDev =
+			typeof process !== 'undefined' &&
+			process.env?.NODE_ENV === 'development'
 		return NextResponse.json(
-			{ error: 'Failed to fetch VAT rates', details: String(error) },
+			{
+				error: 'Failed to fetch VAT rates',
+				details: isDev ? errorMessage : 'Internal server error',
+			},
 			{ status: 500 }
 		)
 	}

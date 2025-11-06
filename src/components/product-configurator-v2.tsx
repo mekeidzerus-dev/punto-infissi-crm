@@ -147,14 +147,30 @@ export function ProductConfiguratorV2({
 		setCategoriesLoading(true)
 		try {
 			const response = await fetch('/api/categories/with-counts')
-			if (response.ok) {
-				const data = await response.json()
-				setCategories(data)
-			} else {
-				logger.error('Failed to load categories')
+			
+			if (!response.ok) {
+				const errorData = await response.json().catch(() => ({}))
+				logger.error('Failed to load categories:', {
+					status: response.status,
+					error: errorData.error || errorData.details || 'Unknown error',
+				})
+				setCategories([])
+				return
 			}
+			
+			const data = await response.json()
+			
+			// Убеждаемся, что data - массив
+			if (!Array.isArray(data)) {
+				logger.error('Invalid categories data format:', data)
+				setCategories([])
+				return
+			}
+			
+			setCategories(data)
 		} catch (error) {
 			logger.error('Error loading categories:', error)
+			setCategories([])
 		} finally {
 			setCategoriesLoading(false)
 		}
@@ -197,18 +213,9 @@ export function ProductConfiguratorV2({
 					...s,
 					id: String(s.id)
 				})))
-			} else {
-				const errorText = await response.text()
-				logger.error(
-					'Failed to load category suppliers:',
-					new Error(`HTTP ${response.status}: ${errorText}`),
-					{ status: response.status }
-				)
-				// Устанавливаем пустой массив в случае ошибки
-				setCategorySuppliers([])
-			}
 		} catch (error) {
 			logger.error('Error loading category suppliers:', error)
+			setCategorySuppliers([])
 		} finally {
 			setSuppliersLoading(false)
 		}

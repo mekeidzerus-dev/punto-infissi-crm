@@ -245,7 +245,26 @@ export function ProposalFormV3({
 	const fetchVATRates = async () => {
 		try {
 			const response = await fetch('/api/vat-rates')
+			
+			if (!response.ok) {
+				const errorData = await response.json().catch(() => ({}))
+				logger.error('Error fetching VAT rates:', {
+					status: response.status,
+					error: errorData.error || errorData.details || 'Unknown error',
+				})
+				setVatRates([])
+				return
+			}
+			
 			const data = await response.json()
+			
+			// Убеждаемся, что data - массив
+			if (!Array.isArray(data)) {
+				logger.error('Invalid VAT rates data format:', data)
+				setVatRates([])
+				return
+			}
+			
 			// Конвертируем percentage в number, т.к. Prisma Decimal возвращает строку
 			const convertedData = data.map((rate: any) => ({
 				...rate,
@@ -261,6 +280,7 @@ export function ProposalFormV3({
 			}
 		} catch (error) {
 			logger.error('Error fetching VAT rates:', error)
+			setVatRates([])
 		}
 	}
 
@@ -269,23 +289,41 @@ export function ProposalFormV3({
 			const response = await fetch(
 				'/api/document-statuses?documentType=proposal'
 			)
-			if (response.ok) {
-				const data = await response.json()
-				setDocumentStatuses(data)
+			
+			if (!response.ok) {
+				const errorData = await response.json().catch(() => ({}))
+				logger.error('Error fetching document statuses:', {
+					status: response.status,
+					error: errorData.error || errorData.details || 'Unknown error',
+				})
+				setDocumentStatuses([])
+				return
+			}
+			
+			const data = await response.json()
+			
+			// Убеждаемся, что data - массив
+			if (!Array.isArray(data)) {
+				logger.error('Invalid document statuses data format:', data)
+				setDocumentStatuses([])
+				return
+			}
+			
+			setDocumentStatuses(data)
 
-				// Если это новый документ и статус не установлен - устанавливаем основной статус (isDefault) или первый доступный
-				if (!proposal && !formData.statusId && data.length > 0) {
-					const defaultStatus = data.find((s: { isDefault?: boolean }) => s.isDefault) || data[0]
-					setFormData(prev => ({
-						...prev,
-						statusId: defaultStatus.id,
-						status: defaultStatus.name,
-					}))
-					logger.info(`✅ Auto-selected default status: ${defaultStatus.name} (ID: ${defaultStatus.id})`)
-				}
+			// Если это новый документ и статус не установлен - устанавливаем основной статус (isDefault) или первый доступный
+			if (!proposal && !formData.statusId && data.length > 0) {
+				const defaultStatus = data.find((s: { isDefault?: boolean }) => s.isDefault) || data[0]
+				setFormData(prev => ({
+					...prev,
+					statusId: defaultStatus.id,
+					status: defaultStatus.name,
+				}))
+				logger.info(`✅ Auto-selected default status: ${defaultStatus.name} (ID: ${defaultStatus.id})`)
 			}
 		} catch (error) {
 			logger.error('Error fetching document statuses:', error)
+			setDocumentStatuses([])
 		}
 	}
 
