@@ -283,14 +283,14 @@ export function DocumentStatusesManager() {
 			}
 			
 			const statusesWithOrder = data.map((status: DocumentStatus) => ({
-					...status,
-					documentTypes: status.documentTypes.map((dt: any) => ({
-						...dt,
-						order: dt.order || 0,
-						isDefault: dt.isDefault || false,
-					})),
-				}))
-				setStatuses(statusesWithOrder)
+				...status,
+				documentTypes: status.documentTypes.map((dt: any) => ({
+					...dt,
+					order: dt.order || 0,
+					isDefault: dt.isDefault || false,
+				})),
+			}))
+			setStatuses(statusesWithOrder)
 
 				// Обновляем отсортированные списки для каждого типа документа
 				const newSorted: Record<
