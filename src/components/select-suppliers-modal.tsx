@@ -79,18 +79,54 @@ export function SelectSuppliersModal({
 		try {
 			// Загружаем всех поставщиков
 			const suppliersResponse = await fetch('/api/suppliers')
-			const suppliers = await suppliersResponse.json()
-			setSuppliers(suppliers)
+			
+			if (!suppliersResponse.ok) {
+				const errorData = await suppliersResponse.json().catch(() => ({}))
+				logger.error('Error loading suppliers:', {
+					status: suppliersResponse.status,
+					error: errorData.error || errorData.details || 'Unknown error',
+				})
+				setSuppliers([])
+			} else {
+				const suppliers = await suppliersResponse.json()
+				
+				// Убеждаемся, что suppliers - массив
+				if (Array.isArray(suppliers)) {
+					setSuppliers(suppliers)
+				} else {
+					logger.error('Invalid suppliers data format:', suppliers)
+					setSuppliers([])
+				}
+			}
 
 			// Загружаем уже привязанных к категории
 			const categorySuppliersResponse = await fetch(
 				`/api/supplier-categories?categoryId=${categoryId}`
 			)
-			const categorySuppliers = await categorySuppliersResponse.json()
-			const supplierIds = categorySuppliers.map((item: any) => item.supplierId)
-			setSelectedSuppliers(supplierIds)
+			
+			if (!categorySuppliersResponse.ok) {
+				const errorData = await categorySuppliersResponse.json().catch(() => ({}))
+				logger.error('Error loading category suppliers:', {
+					status: categorySuppliersResponse.status,
+					error: errorData.error || errorData.details || 'Unknown error',
+				})
+				setSelectedSuppliers([])
+			} else {
+				const categorySuppliers = await categorySuppliersResponse.json()
+				
+				// Убеждаемся, что categorySuppliers - массив
+				if (Array.isArray(categorySuppliers)) {
+					const supplierIds = categorySuppliers.map((item: any) => item.supplierId)
+					setSelectedSuppliers(supplierIds)
+				} else {
+					logger.error('Invalid category suppliers data format:', categorySuppliers)
+					setSelectedSuppliers([])
+				}
+			}
 		} catch (error) {
 			logger.error('Error loading modal data:', error)
+			setSuppliers([])
+			setSelectedSuppliers([])
 		} finally {
 			setLoading(false)
 		}

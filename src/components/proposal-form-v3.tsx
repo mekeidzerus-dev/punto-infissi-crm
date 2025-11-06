@@ -234,11 +234,34 @@ export function ProposalFormV3({
 	const fetchClients = async () => {
 		try {
 			const response = await fetch('/api/clients')
+			
+			if (!response.ok) {
+				const errorData = await response.json().catch(() => ({}))
+				logger.error('Error fetching clients:', {
+					status: response.status,
+					error: errorData.error || errorData.details || 'Unknown error',
+				})
+				setClients([])
+				setFilteredClients([])
+				return
+			}
+			
 			const data = await response.json()
+			
+			// Убеждаемся, что data - массив
+			if (!Array.isArray(data)) {
+				logger.error('Invalid clients data format:', data)
+				setClients([])
+				setFilteredClients([])
+				return
+			}
+			
 			setClients(data)
 			setFilteredClients(data)
 		} catch (error) {
 			logger.error('Error fetching clients:', error)
+			setClients([])
+			setFilteredClients([])
 		}
 	}
 

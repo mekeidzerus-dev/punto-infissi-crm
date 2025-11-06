@@ -62,9 +62,20 @@ export async function GET(request: NextRequest) {
 
 		return NextResponse.json(suppliersWithFullData)
 	} catch (error) {
-		logger.error('Error fetching suppliers:', error)
+		const errorMessage = error instanceof Error ? error.message : String(error)
+		const errorStack = error instanceof Error ? error.stack : undefined
+		logger.error('❌ Error fetching suppliers:', error || undefined)
+		logger.error('Error details:', { errorMessage, errorStack })
+		
+		// Безопасный ответ без stack trace в production
+		const isDev =
+			typeof process !== 'undefined' &&
+			process.env?.NODE_ENV === 'development'
 		return NextResponse.json(
-			{ error: 'Failed to fetch suppliers' },
+			{
+				error: 'Failed to fetch suppliers',
+				details: isDev ? errorMessage : 'Internal server error',
+			},
 			{ status: 500 }
 		)
 	}

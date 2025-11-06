@@ -47,10 +47,30 @@ export function VATRatesManager() {
 		try {
 			setIsLoading(true)
 			const response = await fetch('/api/vat-rates')
+			
+			if (!response.ok) {
+				const errorData = await response.json().catch(() => ({}))
+				logger.error('Error fetching VAT rates:', {
+					status: response.status,
+					error: errorData.error || errorData.details || 'Unknown error',
+				})
+				setVatRates([])
+				return
+			}
+			
 			const data = await response.json()
+			
+			// Убеждаемся, что data - массив
+			if (!Array.isArray(data)) {
+				logger.error('Invalid VAT rates data format:', data)
+				setVatRates([])
+				return
+			}
+			
 			setVatRates(data)
 		} catch (error) {
 			logger.error('Error fetching VAT rates:', error)
+			setVatRates([])
 		} finally {
 			setIsLoading(false)
 		}

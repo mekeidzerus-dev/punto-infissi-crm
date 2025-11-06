@@ -263,9 +263,26 @@ export function DocumentStatusesManager() {
 	const loadStatuses = async () => {
 		try {
 			const response = await fetch('/api/document-statuses')
-			if (response.ok) {
-				const data = await response.json()
-				const statusesWithOrder = data.map((status: DocumentStatus) => ({
+			if (!response.ok) {
+				const errorData = await response.json().catch(() => ({}))
+				logger.error('Error loading statuses:', {
+					status: response.status,
+					error: errorData.error || errorData.details || 'Unknown error',
+				})
+				setStatuses([])
+				return
+			}
+			
+			const data = await response.json()
+			
+			// Убеждаемся, что data - массив
+			if (!Array.isArray(data)) {
+				logger.error('Invalid document statuses data format:', data)
+				setStatuses([])
+				return
+			}
+			
+			const statusesWithOrder = data.map((status: DocumentStatus) => ({
 					...status,
 					documentTypes: status.documentTypes.map((dt: any) => ({
 						...dt,
@@ -322,12 +339,29 @@ export function DocumentStatusesManager() {
 	const loadDocumentTypes = async () => {
 		try {
 			const response = await fetch('/api/document-types')
-			if (response.ok) {
-				const data = await response.json()
-				setDocumentTypes(data)
+			if (!response.ok) {
+				const errorData = await response.json().catch(() => ({}))
+				logger.error('Error loading document types:', {
+					status: response.status,
+					error: errorData.error || errorData.details || 'Unknown error',
+				})
+				setDocumentTypes([])
+				return
 			}
+			
+			const data = await response.json()
+			
+			// Убеждаемся, что data - массив
+			if (!Array.isArray(data)) {
+				logger.error('Invalid document types data format:', data)
+				setDocumentTypes([])
+				return
+			}
+			
+			setDocumentTypes(data)
 		} catch (error) {
 			logger.error('Error loading document types:', error)
+			setDocumentTypes([])
 		}
 	}
 

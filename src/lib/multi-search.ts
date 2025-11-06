@@ -61,6 +61,12 @@ export function multiSearch<T extends Record<string, unknown>>(
 	searchTerm: string,
 	fields: (keyof T)[]
 ): T[] {
+	// Убеждаемся, что items - массив
+	if (!Array.isArray(items)) {
+		console.warn('multiSearch: items is not an array, returning empty array', items)
+		return []
+	}
+
 	if (!searchTerm) return items
 
 	const searchWords = parseSearchTerms(searchTerm)
