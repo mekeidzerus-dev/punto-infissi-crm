@@ -2,8 +2,8 @@ module.exports = {
 	apps: [
 		{
 			name: 'punto-infissi-crm-current',
-			script: 'npm',
-			args: 'start -- --port 3000',
+			script: 'node_modules/.bin/next',
+			args: 'start --port 3000',
 			instances: 1,
 			exec_mode: 'fork',
 			autorestart: true,
@@ -16,6 +16,9 @@ module.exports = {
 			log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
 			merge_logs: true,
 			watch: false,
+			kill_timeout: 5000,
+			wait_ready: true,
+			listen_timeout: 10000,
 		},
 	],
 }
