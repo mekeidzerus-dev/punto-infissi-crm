@@ -6,6 +6,11 @@ on:
   pull_request:
     branches: [main]
 
+# Явно указываем что workflow может быть вызван другими workflow
+permissions:
+  contents: read
+  actions: read
+
 jobs:
   check:
     runs-on: ubuntu-latest

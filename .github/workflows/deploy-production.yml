@@ -1,13 +1,18 @@
 name: 🚀 Deploy to Production
 
 on:
-  push:
+  workflow_run:
+    workflows: ["Pre-Deploy Check"]
+    types:
+      - completed
     branches:
       - main
 
 jobs:
   deploy-production:
     runs-on: ubuntu-latest
+    # Запускаем только если Pre-Deploy Check успешно завершился
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
 
     steps:
       - name: 📥 Checkout code
