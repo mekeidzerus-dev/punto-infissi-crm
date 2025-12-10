@@ -231,6 +231,11 @@ jobs:
             pm2 start npm --name "punto-infissi-crm-current" -- start -- --port 3000
             pm2 save
             
+            # Убеждаемся что PM2 настроен на автозапуск
+            echo "🔄 Настраиваем автозапуск PM2..."
+            pm2 startup || echo "⚠️  pm2 startup не выполнен (может требовать sudo)"
+            pm2 save
+            
             # Проверка статуса PM2
             sleep 3
             PM2_STATUS=$(pm2 list | grep punto-infissi-crm-current || echo "")
