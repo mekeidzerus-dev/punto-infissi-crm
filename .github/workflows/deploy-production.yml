@@ -392,6 +392,32 @@ jobs:
             fi
             
             echo "✅ Процесс стабилен ($STABLE_COUNT/3 проверок прошли)"
+            
+            # Финальная проверка через внешний URL
+            echo ""
+            echo "🌐 Финальная проверка через внешний URL..."
+            PRODUCTION_URL="https://infissi.omoxsoft.com.ua"
+            EXTERNAL_CHECK_SUCCESS=false
+            
+            for ext_check in 1 2 3; do
+              echo "   Попытка $ext_check/3: проверяем $PRODUCTION_URL/api/health..."
+              if curl -f -s --max-time 15 "$PRODUCTION_URL/api/health" > /dev/null 2>&1; then
+                EXTERNAL_RESPONSE=$(curl -s --max-time 15 "$PRODUCTION_URL/api/health" 2>&1 | head -3)
+                echo "   ✅ Внешний health endpoint отвечает:"
+                echo "$EXTERNAL_RESPONSE"
+                EXTERNAL_CHECK_SUCCESS=true
+                break
+              else
+                echo "   ⚠️  Внешний endpoint не отвечает, ждем 10 секунд..."
+                sleep 10
+              fi
+            done
+            
+            if [ "$EXTERNAL_CHECK_SUCCESS" = false ]; then
+              echo "   ⚠️  ВНИМАНИЕ: Внешний health endpoint не отвечает!"
+              echo "   Локальный endpoint работает, но внешний недоступен."
+              echo "   Возможные причины: Nginx не настроен, firewall, или DNS проблема."
+            fi
 
             echo ""
             echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
