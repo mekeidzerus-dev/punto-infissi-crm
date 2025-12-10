@@ -17,6 +17,9 @@ jobs:
     steps:
       - name: 📥 Checkout code
         uses: actions/checkout@v4
+        with:
+          # Используем коммит из workflow_run который запустил этот деплой
+          ref: ${{ github.event.workflow_run.head_sha }}
 
       - name: 🚀 Deploy to Production via SSH
         uses: appleboy/ssh-action@v1.0.3
