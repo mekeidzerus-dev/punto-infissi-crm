@@ -8,6 +8,11 @@ on:
     branches:
       - main
 
+# Предотвращаем одновременные запуски деплоя
+concurrency:
+  group: deploy-production
+  cancel-in-progress: true
+
 jobs:
   deploy-production:
     runs-on: ubuntu-latest
