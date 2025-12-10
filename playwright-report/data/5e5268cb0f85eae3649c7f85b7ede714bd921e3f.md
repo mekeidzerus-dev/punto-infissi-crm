@@ -1,0 +1,41 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - generic [ref=e4]:
+    - generic [ref=e5]:
+      - heading "MODOCRM" [level=1] [ref=e6]
+      - paragraph [ref=e7]: Accedi al tuo account
+    - generic [ref=e8]:
+      - generic [ref=e9]:
+        - generic [ref=e10]: Email
+        - textbox "Email" [ref=e11]:
+          - /placeholder: your@email.com
+      - generic [ref=e12]:
+        - generic [ref=e13]: Password
+        - textbox "Password" [ref=e14]:
+          - /placeholder: ••••••••
+      - button "Accedi" [ref=e15]
+    - generic [ref=e16]:
+      - paragraph [ref=e17]:
+        - link "Password dimenticata?" [ref=e18] [cursor=pointer]:
+          - /url: /auth/forgot-password
+      - paragraph [ref=e19]:
+        - text: Non hai un account?
+        - link "Registrati" [ref=e20] [cursor=pointer]:
+          - /url: /auth/signup
+  - contentinfo [ref=e21]:
+    - generic [ref=e23]:
+      - generic [ref=e24]:
+        - generic [ref=e25]: © 2025 MODOCRM
+        - generic [ref=e26]: •
+        - generic [ref=e27]: Tutti i diritti riservati
+      - generic [ref=e28]:
+        - generic [ref=e29]: v1.4.0
+        - generic [ref=e30]: CRM System
+      - generic [ref=e31]:
+        - button "Documentazione" [ref=e32]
+        - button "Stato" [ref=e33]
+  - region "Notifications alt+T"
+  - alert [ref=e34]
+```

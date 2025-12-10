@@ -3,6 +3,10 @@ import { PrismaClient } from '@prisma/client'
 const prisma = new PrismaClient()
 
 async function main() {
+	if (process.env.SEED_FORCE !== 'true') {
+		console.error('❌ Set SEED_FORCE=true to run seed-dev seeding');
+		process.exit(1);
+	}
 	console.log('🌱 Начинаем заполнение тестовыми данными...')
 
 	// Очистка существующих данных (в правильном порядке, учитывая зависимости)
@@ -41,7 +45,7 @@ async function main() {
 
 	// 1. Создание администратора (NextAuth будет управлять аутентификацией)
 	console.log('👤 Создание администратора...')
-	const admin = await prisma.user.create({
+	await prisma.user.create({
 		data: {
 			email: 'admin@puntoinfissi.it',
 			name: 'Amministratore',
@@ -477,7 +481,7 @@ async function main() {
 	console.log('✅ Тестовые данные успешно созданы!')
 	console.log('\n📊 СОЗДАНО:')
 	console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
-	console.log(`   👤 Администратор: admin@puntoinfissi.it (пароль: admin123)`)
+	console.log(`   👤 Администратор: admin@puntoinfissi.it`)
 	console.log(`   📁 Категорий: 1 (Porte Interne 🚪)`)
 	console.log(
 		`   ⚙️  Параметров: 5 (Материал, Размеры, Цвет, Стекло, Установка)`
@@ -490,7 +494,7 @@ async function main() {
 	console.log(`   🔗 Связей поставщик-категория: ${suppliers.length}`)
 	console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
 	console.log('\n🎯 ТЕПЕРЬ МОЖЕШЬ:')
-	console.log('   ✅ Войти в систему (admin@puntoinfissi.it / admin123)')
+	console.log('   ✅ Авторизоваться через ссылку входа (admin@puntoinfissi.it)')
 	console.log('   ✅ Просмотреть клиентов и поставщиков')
 	console.log('   ✅ Создать предложение с конфигуратором')
 	console.log('   ✅ Тестировать систему параметров')

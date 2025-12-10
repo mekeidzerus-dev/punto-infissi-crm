@@ -1,122 +1,118 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
+import { ApiError, parseJson, success, withApiHandler } from '@/lib/api-handler'
+import { clientCreateSchema, clientUpdateSchema } from '@/lib/validation/client'
+import {
+	buildClientCreateData,
+	buildClientUpdateData,
+	ensureClientId,
+} from './helpers'
+import { getCurrentOrganizationId } from '@/lib/organization-context'
+import { requireAuth } from '@/lib/auth-helpers'
+import { updateUserActivity } from '@/lib/activity-tracker'
 
-// GET - получить всех клиентов
-export async function GET() {
-	try {
-		logger.info('🔍 Fetching clients from database...')
-		const clients = await prisma.client.findMany({
-			include: {
-				_count: {
-					select: {
-						orders: true,
-					},
+export const GET = withApiHandler(async () => {
+	const user = await requireAuth()
+	await updateUserActivity(user.id)
+	logger.info('🔍 Fetching clients from database...', {
+		userId: user.id,
+		userOrganizationId: user.organizationId,
+	})
+	const organizationId = await getCurrentOrganizationId()
+	logger.info('Organization ID from session:', { organizationId })
+
+	// Если organizationId есть в сессии, используем его, иначе используем из user
+	const finalOrganizationId = organizationId || user.organizationId
+	logger.info('Final organization ID for query:', { finalOrganizationId })
+
+	const clients = await prisma.client.findMany({
+		where: finalOrganizationId ? { organizationId: finalOrganizationId } : undefined,
+		include: {
+			_count: {
+				select: {
+					orders: true,
 				},
 			},
-			orderBy: { createdAt: 'desc' },
-		})
+		},
+		orderBy: { createdAt: 'desc' },
+	})
 
-		logger.info(`✅ Found ${clients.length} clients`)
-		return NextResponse.json(clients)
-	} catch (error) {
-		logger.error('❌ Error fetching clients:', error)
-		return NextResponse.json(
-			{ error: 'Failed to fetch clients', details: String(error) },
-			{ status: 500 }
-		)
+	logger.info(`✅ Found ${clients.length} clients for organization ${finalOrganizationId}`)
+	return success(clients)
+})
+
+export const POST = withApiHandler(async (request: NextRequest) => {
+	const user = await requireAuth()
+	await updateUserActivity(user.id)
+	const payload = await parseJson(request, clientCreateSchema)
+	logger.info('📝 Creating client with data', {
+		payload,
+		userOrganizationId: user.organizationId,
+	})
+
+	const createData = await buildClientCreateData(payload)
+	logger.info('Client create data with organizationId:', {
+		organizationId: (createData as any).organizationId,
+	})
+
+	const client = await prisma.client.create({
+		data: createData,
+	})
+
+	logger.info('✅ Client created:', { id: client.id, organizationId: client.organizationId })
+	return success(client, 201)
+})
+
+export const PUT = withApiHandler(async (request: NextRequest) => {
+	const user = await requireAuth()
+	await updateUserActivity(user.id)
+	const payload = await parseJson(request, clientUpdateSchema)
+	const organizationId = await getCurrentOrganizationId()
+	logger.info('📝 Updating client', { id: payload.id, organizationId })
+
+	// Проверяем принадлежность записи к организации
+	const existing = await prisma.client.findFirst({
+		where: {
+			id: payload.id,
+			...(organizationId ? { organizationId } : {}),
+		},
+	})
+
+	if (!existing) {
+		throw new ApiError(404, 'Client not found')
 	}
-}
 
-// POST - создать клиента
-export async function POST(request: NextRequest) {
-	try {
-		const body = await request.json()
-		logger.info('📝 Creating client with data:', body)
+	const client = await prisma.client.update({
+		where: { id: payload.id },
+		data: buildClientUpdateData(payload),
+	})
 
-		const client = await prisma.client.create({
-			data: {
-				type: body.type || 'individual',
-				firstName: body.firstName,
-				lastName: body.lastName,
-				companyName: body.companyName,
-				phone: body.phone,
-				email: body.email,
-				address: body.address,
-				codiceFiscale: body.codiceFiscale,
-				partitaIVA: body.partitaIVA,
-				legalAddress: body.legalAddress,
-				contactPerson: body.contactPerson,
-				source: body.source,
-				notes: body.notes,
-			},
-		})
+	return success(client)
+})
 
-		return NextResponse.json(client, { status: 201 })
-	} catch (error) {
-		logger.error('Error creating client:', error)
-		return NextResponse.json(
-			{ error: 'Failed to create client' },
-			{ status: 500 }
-		)
+export const DELETE = withApiHandler(async (request: NextRequest) => {
+	const user = await requireAuth()
+	await updateUserActivity(user.id)
+	const id = ensureClientId(request.nextUrl.searchParams.get('id'))
+	const organizationId = await getCurrentOrganizationId()
+	logger.info('🗑️ Deleting client', { id, organizationId })
+
+	// Проверяем принадлежность записи к организации
+	const existing = await prisma.client.findFirst({
+		where: {
+			id,
+			...(organizationId ? { organizationId } : {}),
+		},
+	})
+
+	if (!existing) {
+		throw new ApiError(404, 'Client not found')
 	}
-}
 
-// PUT - обновить клиента
-export async function PUT(request: NextRequest) {
-	try {
-		const body = await request.json()
-		const { id, ...data } = body
+	await prisma.client.delete({
+		where: { id },
+	})
 
-		const client = await prisma.client.update({
-			where: { id: parseInt(id) },
-			data: {
-				type: data.type,
-				firstName: data.firstName,
-				lastName: data.lastName,
-				companyName: data.companyName,
-				phone: data.phone,
-				email: data.email,
-				address: data.address,
-				codiceFiscale: data.codiceFiscale,
-				partitaIVA: data.partitaIVA,
-				legalAddress: data.legalAddress,
-				contactPerson: data.contactPerson,
-				source: data.source,
-				notes: data.notes,
-			},
-		})
-
-		return NextResponse.json(client)
-	} catch (error) {
-		logger.error('Error updating client:', error)
-		return NextResponse.json(
-			{ error: 'Failed to update client' },
-			{ status: 500 }
-		)
-	}
-}
-
-// DELETE - удалить клиента
-export async function DELETE(request: NextRequest) {
-	try {
-		const { searchParams } = new URL(request.url)
-		const id = searchParams.get('id')
-
-		if (!id) {
-			return NextResponse.json({ error: 'ID is required' }, { status: 400 })
-		}
-
-		await prisma.client.delete({
-			where: { id: parseInt(id) },
-		})
-
-		return NextResponse.json({ success: true })
-	} catch (error) {
-		logger.error('Error deleting client:', error)
-		return NextResponse.json(
-			{ error: 'Failed to delete client' },
-			{ status: 500 }
-		)
-	}
-}
+	return success({ success: true })
+})

@@ -13,7 +13,7 @@ export function Footer() {
 				<div className='flex flex-col md:flex-row justify-between items-center gap-2 text-sm text-gray-600'>
 					{/* Левая часть - Копирайт */}
 					<div className='flex items-center gap-2'>
-						<span>© {currentYear} PUNTO INFISSI</span>
+						<span>© {currentYear} MODOCRM</span>
 						<span className='hidden md:inline'>•</span>
 						<span className='text-xs'>Tutti i diritti riservati</span>
 					</div>

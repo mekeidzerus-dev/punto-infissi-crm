@@ -1,156 +1,44 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { logger } from '@/lib/logger'
+import { ApiError, parseJson, success, withApiHandler } from '@/lib/api-handler'
+import {
+	buildProductCategoryUpdateData,
+	productCategoryUpdateBodySchema,
+	ensureProductCategoryId,
+} from '../helpers'
 
-// GET /api/product-categories/[id] - получить категорию по ID
-export async function GET(
-	request: NextRequest,
-	{ params }: { params: Promise<{ id: string }> }
-) {
-	try {
-		const { id: categoryId } = await params
-		logger.info(`🔍 Fetching category: ${categoryId}`)
+const updateBodyWithoutId = productCategoryUpdateBodySchema.omit({ id: true })
 
-		const category = await prisma.productCategory.findUnique({
-			where: { id: categoryId },
-			include: {
-				supplierCategories: {
-					include: {
-						supplier: true,
-					},
-				},
-			},
-		})
+export const GET = withApiHandler(async (_request, { params }) => {
+	const id = ensureProductCategoryId(params?.id as string)
 
-		if (!category) {
-			logger.info(`❌ Category not found: ${categoryId}`)
-			return NextResponse.json({ error: 'Category not found' }, { status: 404 })
-		}
+	const category = await prisma.productCategory.findUnique({
+		where: { id },
+	})
 
-		logger.info(`✅ Found category: ${category.name}`)
-		return NextResponse.json(category)
-	} catch (error) {
-		logger.error('❌ Error fetching category:', error)
-		return NextResponse.json(
-			{ error: 'Failed to fetch category' },
-			{ status: 500 }
-		)
+	if (!category) {
+		throw new ApiError(404, 'Category not found')
 	}
-}
 
-// PUT /api/product-categories/[id] - обновить категорию
-export async function PUT(
-	request: NextRequest,
-	{ params }: { params: Promise<{ id: string }> }
-) {
-	try {
-		const { id: categoryId } = await params
-		const data = await request.json()
-		logger.info(`📝 Updating category: ${categoryId}`)
+	return success(category)
+})
 
-		// Проверяем что категория существует
-		const existingCategory = await prisma.productCategory.findUnique({
-			where: { id: categoryId },
-		})
+export const PUT = withApiHandler(async (request: NextRequest, { params }) => {
+	const id = ensureProductCategoryId(params?.id as string)
+	const payload = await parseJson(request, updateBodyWithoutId)
 
-		if (!existingCategory) {
-			logger.info(`❌ Category not found: ${categoryId}`)
-			return NextResponse.json({ error: 'Category not found' }, { status: 404 })
-		}
+	const category = await prisma.productCategory.update({
+		where: { id },
+		data: buildProductCategoryUpdateData({ ...payload, id }),
+	})
 
-		// Обновляем категорию
-		const updatedCategory = await prisma.productCategory.update({
-			where: { id: categoryId },
-			data: {
-				name: data.name,
-				icon: data.icon,
-				description: data.description,
-				isActive:
-					data.isActive !== undefined
-						? data.isActive
-						: existingCategory.isActive,
-				updatedAt: new Date(),
-			},
-			include: {
-				supplierCategories: {
-					include: {
-						supplier: true,
-					},
-				},
-			},
-		})
+	return success(category)
+})
 
-		logger.info(`✅ Updated category: ${updatedCategory.name}`)
-		return NextResponse.json(updatedCategory)
-	} catch (error) {
-		logger.error('❌ Error updating category:', error)
-		return NextResponse.json(
-			{ error: 'Failed to update category' },
-			{ status: 500 }
-		)
-	}
-}
+export const DELETE = withApiHandler(async (_request, { params }) => {
+	const id = ensureProductCategoryId(params?.id as string)
 
-// DELETE /api/product-categories/[id] - удалить категорию
-export async function DELETE(
-	request: NextRequest,
-	{ params }: { params: Promise<{ id: string }> }
-) {
-	try {
-		const { id: categoryId } = await params
-		logger.info(`🗑️ Deleting category: ${categoryId}`)
+	await prisma.productCategory.delete({ where: { id } })
 
-		// Проверяем что категория существует
-		const existingCategory = await prisma.productCategory.findUnique({
-			where: { id: categoryId },
-		})
-
-		if (!existingCategory) {
-			logger.info(`❌ Category not found: ${categoryId}`)
-			return NextResponse.json({ error: 'Category not found' }, { status: 404 })
-		}
-
-		// Проверяем есть ли связанные записи
-		const supplierCategories = await prisma.supplierProductCategory.findMany({
-			where: { categoryId },
-		})
-
-		// Если есть связанные записи, удаляем их сначала
-		if (supplierCategories.length > 0) {
-			logger.info(
-				`🗑️ Deleting ${supplierCategories.length} supplier relationships first`
-			)
-			await prisma.supplierProductCategory.deleteMany({
-				where: { categoryId },
-			})
-		}
-
-		// Также удаляем связанные параметры категории
-		const categoryParameters = await prisma.categoryParameter.findMany({
-			where: { categoryId },
-		})
-
-		if (categoryParameters.length > 0) {
-			logger.info(
-				`🗑️ Deleting ${categoryParameters.length} category parameters`
-			)
-			await prisma.categoryParameter.deleteMany({
-				where: { categoryId },
-			})
-		}
-
-		// Удаляем категорию
-		await prisma.productCategory.delete({
-			where: { id: categoryId },
-		})
-
-		logger.info(`✅ Deleted category: ${existingCategory.name}`)
-		return NextResponse.json({ success: true })
-	} catch (error) {
-		logger.error('❌ Error deleting category:', error)
-		return NextResponse.json(
-			{ error: 'Failed to delete category' },
-			{ status: 500 }
-		)
-	}
-}
+	return success({ success: true })
+})

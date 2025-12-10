@@ -284,6 +284,32 @@ export const translations = {
 		stepProducts: 'Товары и услуги',
 		stepTotals: 'Итоговая сумма',
 
+		// ============ ВОССТАНОВЛЕНИЕ ПАРОЛЯ ============
+		forgotPassword: 'Забыли пароль?',
+		forgotPasswordDescription:
+			'Введите ваш email, и мы отправим вам ссылку для сброса пароля.',
+		sendResetLink: 'Отправить ссылку',
+		passwordResetEmailSent:
+			'Если email существует, ссылка для сброса пароля была отправлена.',
+		resetPassword: 'Сброс пароля',
+		resetPasswordDescription: 'Введите новый пароль',
+		newPassword: 'Новый пароль',
+		confirmPassword: 'Подтвердите пароль',
+		passwordsDoNotMatch: 'Пароли не совпадают',
+		passwordTooShort: 'Пароль должен быть не менее 8 символов',
+		passwordResetSuccess: 'Пароль успешно изменен',
+		invalidToken: 'Недействительный или истекший токен',
+		tokenExpiredMessage:
+			'Эта ссылка для сброса пароля недействительна или истекла. Запросите новую.',
+		requestNewLink: 'Запросить новую ссылку',
+		backToSignIn: 'Вернуться к входу',
+		verifying: 'Проверка токена...',
+		resetting: 'Сброс пароля...',
+		enterNewPassword: 'Введите новый пароль',
+		confirmPasswordPlaceholder: 'Подтвердите новый пароль',
+		passwordRequirements:
+			'Должен быть не менее 8 символов с буквами и цифрами',
+
 		// ============ ВАЛИДАЦИЯ И ОШИБКИ ============
 		requiredField: 'Обязательное поле',
 		invalidPhoneFormat: 'Неверный формат номера для',
@@ -733,6 +759,32 @@ export const translations = {
 		stepClientInfo: 'Informazioni cliente',
 		stepProducts: 'Prodotti e servizi',
 		stepTotals: 'Totale finale',
+
+		// ============ RESET PASSWORD ============
+		forgotPassword: 'Password dimenticata?',
+		forgotPasswordDescription:
+			'Inserisci la tua email e ti invieremo un link per reimpostare la password.',
+		sendResetLink: 'Invia link',
+		passwordResetEmailSent:
+			'Se l\'email esiste, è stato inviato un link per reimpostare la password.',
+		resetPassword: 'Reimposta password',
+		resetPasswordDescription: 'Inserisci la nuova password',
+		newPassword: 'Nuova password',
+		confirmPassword: 'Conferma password',
+		passwordsDoNotMatch: 'Le password non corrispondono',
+		passwordTooShort: 'La password deve essere di almeno 8 caratteri',
+		passwordResetSuccess: 'Password reimpostata con successo',
+		invalidToken: 'Token non valido o scaduto',
+		tokenExpiredMessage:
+			'Questo link per reimpostare la password non è valido o è scaduto. Richiedine uno nuovo.',
+		requestNewLink: 'Richiedi nuovo link',
+		backToSignIn: 'Torna al login',
+		verifying: 'Verifica token...',
+		resetting: 'Reimpostazione password...',
+		enterNewPassword: 'Inserisci nuova password',
+		confirmPasswordPlaceholder: 'Conferma nuova password',
+		passwordRequirements:
+			'Deve essere di almeno 8 caratteri con lettere e numeri',
 
 		// ============ VALIDAZIONE ED ERRORI ============
 		requiredField: 'Campo obbligatorio',

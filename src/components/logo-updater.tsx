@@ -3,7 +3,7 @@
 import { useEffect } from 'react'
 import { logger } from '@/lib/logger'
 
-const LOGO_STORAGE_KEY = 'punto-infissi-logo-path'
+const LOGO_STORAGE_KEY = 'modocrm-logo-path'
 
 export function LogoUpdater() {
 	useEffect(() => {

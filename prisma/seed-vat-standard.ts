@@ -42,8 +42,8 @@ async function main() {
 	]
 
 	for (const vat of standardVATRates) {
-		const existing = await prisma.vATRate.findUnique({
-			where: { name: vat.name },
+		const existing = await prisma.vATRate.findFirst({
+			where: { name: vat.name, organizationId: null },
 		})
 
 		if (existing) {

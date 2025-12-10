@@ -1,215 +1,130 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
+import { prisma } from '@/lib/prisma'
+import { ApiError, json, withApiHandler } from '@/lib/api-handler'
+import { ensureOrganization } from '@/app/api/organization/helpers'
 import { validateLogoBuffer } from '@/lib/logo-validation'
-import { logger } from '@/lib/logger'
 import {
 	saveLogoFile,
 	cleanupOldLogos,
 	optimizeLogoStorage,
 } from '@/lib/logo-storage'
 import { createRateLimitMiddleware, RATE_LIMITS } from '@/lib/rate-limiter'
+import { logger } from '@/lib/logger'
 
-export async function POST(request: NextRequest) {
-	try {
-		// 1. Rate Limiting
-		const rateLimitCheck = createRateLimitMiddleware(RATE_LIMITS.LOGO_UPLOAD)(
-			request
-		)
+const uploadLimiter = createRateLimitMiddleware(RATE_LIMITS.LOGO_UPLOAD)
+const deleteLimiter = createRateLimitMiddleware(RATE_LIMITS.LOGO_DELETE)
 
-		if (!rateLimitCheck.allowed) {
-			return NextResponse.json(
-				{
-					error: `Слишком много запросов. Попробуйте через ${rateLimitCheck.retryAfter} сек.`,
-					retryAfter: rateLimitCheck.retryAfter,
-				},
-				{
-					status: 429,
-					headers: {
-						'Retry-After': String(rateLimitCheck.retryAfter || 60),
-						'X-RateLimit-Limit': String(RATE_LIMITS.LOGO_UPLOAD.maxRequests),
-						'X-RateLimit-Remaining': String(rateLimitCheck.remaining),
-						'X-RateLimit-Reset': String(
-							Math.ceil(rateLimitCheck.resetAt / 1000)
-						),
-					},
-				}
-			)
-		}
-
-		// 2. Получение файла
-		const formData = await request.formData()
-		const file = formData.get('file') as File
-
-		if (!file) {
-			return NextResponse.json(
-				{ error: 'Файл не предоставлен' },
-				{ status: 400 }
-			)
-		}
-
-		// 3. Конвертация в Buffer
-		const bytes = await file.arrayBuffer()
-		const buffer = Buffer.from(bytes)
-
-		// 4. Валидация файла
-		const validation = await validateLogoBuffer(buffer, file.type, file.name)
-
-		if (!validation.valid) {
-			return NextResponse.json(
-				{
-					error: validation.error || 'Файл не прошел валидацию',
-					details: validation.error,
-				},
-				{ status: 400 }
-			)
-		}
-
-		// 5. Сохранение файла с хешем
-		const saveResult = await saveLogoFile(buffer, file.name)
-
-		if (!saveResult.success) {
-			return NextResponse.json(
-				{
-					error: saveResult.error || 'Не удалось сохранить файл',
-				},
-				{ status: 500 }
-			)
-		}
-
-		// 6. Очистка старых файлов
-		const cleanup = await optimizeLogoStorage(1) // Оставляем только последний логотип
-		logger.info(
-			`Очистка логотипов завершена: сохранено ${cleanup.kept}, удалено ${cleanup.deleted}`
-		)
-
-		// 7. Сохранение пути в базу данных
-		try {
-			const { prisma } = await import('@/lib/prisma')
-
-			// Получаем или создаем организацию
-			const existing = await prisma.organization.findFirst()
-
-			if (existing) {
-				await prisma.organization.update({
-					where: { id: existing.id },
-					data: { logoUrl: saveResult.path },
-				})
-				logger.info(`✅ Logo path saved to database: ${saveResult.path}`)
-			} else {
-				await prisma.organization.create({
-					data: {
-						name: 'PUNTO INFISSI',
-						slug: 'punto-infissi',
-						logoUrl: saveResult.path,
-						currency: 'EUR',
-						timezone: 'Europe/Rome',
-						language: 'it',
-					},
-				})
-				logger.info(`✅ Created organization with logo: ${saveResult.path}`)
-			}
-		} catch (dbError) {
-			logger.error('⚠️ Failed to save logo to database:', dbError || undefined)
-			// Не прерываем выполнение, файл уже сохранен
-		}
-
-		// 8. Возврат результата
-		return NextResponse.json(
-			{
-				success: true,
-				path: saveResult.path,
-				message: 'Логотип успешно загружен',
-				metadata: {
-					...validation.metadata,
-					hash: saveResult.metadata?.hash,
-					fileName: saveResult.metadata?.fileName,
-				},
+function rateLimitResponse(limitCheck: ReturnType<typeof uploadLimiter>, limit: number) {
+	return json(
+		{
+			error: `Слишком много запросов. Попробуйте через ${limitCheck.retryAfter} сек.`,
+			retryAfter: limitCheck.retryAfter,
+		},
+		{
+			status: 429,
+			headers: {
+				'Retry-After': String(limitCheck.retryAfter || 60),
+				'X-RateLimit-Limit': String(limit),
+				'X-RateLimit-Remaining': String(limitCheck.remaining),
+				'X-RateLimit-Reset': String(Math.ceil(limitCheck.resetAt / 1000)),
 			},
-			{
-				headers: {
-					'X-RateLimit-Limit': String(RATE_LIMITS.LOGO_UPLOAD.maxRequests),
-					'X-RateLimit-Remaining': String(rateLimitCheck.remaining),
-				},
-			}
-		)
-	} catch (error) {
-		logger.error('Ошибка загрузки логотипа:', error)
-		return NextResponse.json(
-			{
-				error: 'Внутренняя ошибка сервера',
-				details: error instanceof Error ? error.message : 'Неизвестная ошибка',
-			},
-			{ status: 500 }
-		)
-	}
+		}
+	)
 }
 
-export async function DELETE(request: NextRequest) {
-	try {
-		// 1. Rate Limiting
-		const rateLimitCheck = createRateLimitMiddleware(RATE_LIMITS.LOGO_DELETE)(
-			request
-		)
-
-		if (!rateLimitCheck.allowed) {
-			return NextResponse.json(
-				{
-					error: `Слишком много запросов. Попробуйте через ${rateLimitCheck.retryAfter} сек.`,
-					retryAfter: rateLimitCheck.retryAfter,
-				},
-				{
-					status: 429,
-					headers: {
-						'Retry-After': String(rateLimitCheck.retryAfter || 60),
-					},
-				}
-			)
-		}
-
-		// 2. Удаление всех логотипов
-		const cleanup = await cleanupOldLogos()
-
-		logger.info(
-			`Удалено ${cleanup.deleted} логотипов, ошибок: ${cleanup.errors}`
-		)
-
-		// 3. Удаление пути из базы данных
-		try {
-			const { prisma } = await import('@/lib/prisma')
-			const existing = await prisma.organization.findFirst()
-
-			if (existing) {
-				await prisma.organization.update({
-					where: { id: existing.id },
-					data: { logoUrl: null },
-				})
-				logger.info('✅ Logo path removed from database')
-			}
-		} catch (dbError) {
-			logger.error('⚠️ Failed to remove logo from database:', dbError)
-		}
-
-		return NextResponse.json(
-			{
-				success: true,
-				message: 'Логотип удален',
-				deleted: cleanup.deleted,
-				errors: cleanup.errors,
-			},
-			{
-				headers: {
-					'X-RateLimit-Limit': String(RATE_LIMITS.LOGO_DELETE.maxRequests),
-					'X-RateLimit-Remaining': String(rateLimitCheck.remaining),
-				},
-			}
-		)
-	} catch (error) {
-		logger.error('Ошибка удаления логотипа:', error)
-		return NextResponse.json(
-			{
-				error: 'Внутренняя ошибка сервера',
-				details: error instanceof Error ? error.message : 'Неизвестная ошибка',
-			},
-			{ status: 500 }
-		)
+export const POST = withApiHandler(async (request: NextRequest) => {
+	const limitCheck = uploadLimiter(request)
+	if (!limitCheck.allowed) {
+		return rateLimitResponse(limitCheck, RATE_LIMITS.LOGO_UPLOAD.maxRequests)
 	}
-}
+
+	const formData = await request.formData()
+	const file = formData.get('file')
+
+	if (!(file instanceof File)) {
+		throw new ApiError(400, 'Файл не предоставлен')
+	}
+
+	const buffer = Buffer.from(await file.arrayBuffer())
+	const validation = await validateLogoBuffer(buffer, file.type, file.name)
+
+	if (!validation.valid) {
+		throw new ApiError(400, validation.error || 'Файл не прошел валидацию')
+	}
+
+	const saveResult = await saveLogoFile(buffer, file.name)
+	if (!saveResult.success) {
+		throw new ApiError(500, saveResult.error || 'Не удалось сохранить файл')
+	}
+
+	const cleanup = await optimizeLogoStorage(1)
+	logger.info(
+		`Очистка логотипов завершена: сохранено ${cleanup.kept}, удалено ${cleanup.deleted}`
+	)
+
+	try {
+		const organization = await ensureOrganization()
+		await prisma.organization.update({
+			where: { id: organization.id },
+			data: { logoUrl: saveResult.path },
+		})
+		logger.info(`✅ Logo path saved to database: ${saveResult.path}`)
+	} catch (error) {
+		logger.error('⚠️ Failed to save logo to database:', error)
+	}
+
+	return json(
+		{
+			success: true,
+			path: saveResult.path,
+			message: 'Логотип успешно загружен',
+			metadata: {
+				...validation.metadata,
+				hash: saveResult.metadata?.hash,
+				fileName: saveResult.metadata?.fileName,
+			},
+		},
+		{
+			headers: {
+				'X-RateLimit-Limit': String(RATE_LIMITS.LOGO_UPLOAD.maxRequests),
+				'X-RateLimit-Remaining': String(limitCheck.remaining),
+			},
+		}
+	)
+})
+
+export const DELETE = withApiHandler(async (request: NextRequest) => {
+	const limitCheck = deleteLimiter(request)
+	if (!limitCheck.allowed) {
+		return rateLimitResponse(limitCheck, RATE_LIMITS.LOGO_DELETE.maxRequests)
+	}
+
+	const cleanup = await cleanupOldLogos()
+	logger.info(`Удалено ${cleanup.deleted} логотипов, ошибок: ${cleanup.errors}`)
+
+	try {
+		const organization = await ensureOrganization()
+		await prisma.organization.update({
+			where: { id: organization.id },
+			data: { logoUrl: null },
+		})
+		logger.info('✅ Logo path removed from database')
+	} catch (error) {
+		logger.error('⚠️ Failed to remove logo from database:', error)
+	}
+
+	return json(
+		{
+			success: true,
+			message: 'Логотип удален',
+			deleted: cleanup.deleted,
+			errors: cleanup.errors,
+		},
+		{
+			headers: {
+				'X-RateLimit-Limit': String(RATE_LIMITS.LOGO_DELETE.maxRequests),
+				'X-RateLimit-Remaining': String(limitCheck.remaining),
+			},
+		}
+	)
+})

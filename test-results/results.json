@@ -1,0 +1,494 @@
+{
+  "config": {
+    "configFile": "/Users/ruslanmekeidze/Desktop/mini-website/MODOCRM/playwright.config.ts",
+    "rootDir": "/Users/ruslanmekeidze/Desktop/mini-website/MODOCRM/tests",
+    "forbidOnly": false,
+    "fullyParallel": true,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 5
+    },
+    "preserveOutput": "always",
+    "reporter": [
+      [
+        "html",
+        null
+      ],
+      [
+        "list",
+        null
+      ],
+      [
+        "json",
+        {
+          "outputFile": "test-results/results.json"
+        }
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "quiet": false,
+    "projects": [
+      {
+        "outputDir": "/Users/ruslanmekeidze/Desktop/mini-website/MODOCRM/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 5
+        },
+        "id": "chromium",
+        "name": "chromium",
+        "testDir": "/Users/ruslanmekeidze/Desktop/mini-website/MODOCRM/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      }
+    ],
+    "shard": null,
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.56.0",
+    "workers": 5,
+    "webServer": {
+      "command": "npm run dev",
+      "url": "http://localhost:3000",
+      "reuseExistingServer": true,
+      "timeout": 120000
+    }
+  },
+  "suites": [
+    {
+      "title": "auth-e2e.spec.ts",
+      "file": "auth-e2e.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "Аутентификация",
+          "file": "auth-e2e.spec.ts",
+          "line": 13,
+          "column": 6,
+          "specs": [
+            {
+              "title": "Вход с правильными данными",
+              "ok": false,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "failed",
+                      "duration": 6289,
+                      "error": {
+                        "message": "TimeoutError: page.waitForURL: Timeout 5000ms exceeded.\n=========================== logs ===========================\nwaiting for navigation to \"**/clients\" until \"load\"\n  navigated to \"http://localhost:3000/auth/signin?callbackUrl=%2Fclients\"\n  navigated to \"http://localhost:3000/auth/signin?callbackUrl=%2Fclients\"\n  navigated to \"http://localhost:3000/auth/signin?callbackUrl=%2Fclients\"\n  navigated to \"http://localhost:3000/auth/signin?callbackUrl=%2Fclients\"\n  navigated to \"http://localhost:3000/auth/signin?callbackUrl=%2Fclients\"\n  navigated to \"http://localhost:3000/auth/signin?callbackUrl=%2Fclients\"\n============================================================",
+                        "stack": "TimeoutError: page.waitForURL: Timeout 5000ms exceeded.\n=========================== logs ===========================\nwaiting for navigation to \"**/clients\" until \"load\"\n  navigated to \"http://localhost:3000/auth/signin?callbackUrl=%2Fclients\"\n  navigated to \"http://localhost:3000/auth/signin?callbackUrl=%2Fclients\"\n  navigated to \"http://localhost:3000/auth/signin?callbackUrl=%2Fclients\"\n  navigated to \"http://localhost:3000/auth/signin?callbackUrl=%2Fclients\"\n  navigated to \"http://localhost:3000/auth/signin?callbackUrl=%2Fclients\"\n  navigated to \"http://localhost:3000/auth/signin?callbackUrl=%2Fclients\"\n============================================================\n    at /Users/ruslanmekeidze/Desktop/mini-website/MODOCRM/tests/auth-e2e.spec.ts:28:14",
+                        "location": {
+                          "file": "/Users/ruslanmekeidze/Desktop/mini-website/MODOCRM/tests/auth-e2e.spec.ts",
+                          "column": 14,
+                          "line": 28
+                        },
+                        "snippet": "  26 | \t\t\n  27 | \t\t// Ждем редиректа на /clients\n> 28 | \t\tawait page.waitForURL('**/clients', { timeout: 5000 })\n     | \t\t           ^\n  29 | \t\t\n  30 | \t\t// Проверяем, что мы на странице клиентов\n  31 | \t\texpect(page.url()).toContain('/clients')"
+                      },
+                      "errors": [
+                        {
+                          "location": {
+                            "file": "/Users/ruslanmekeidze/Desktop/mini-website/MODOCRM/tests/auth-e2e.spec.ts",
+                            "column": 14,
+                            "line": 28
+                          },
+                          "message": "TimeoutError: page.waitForURL: Timeout 5000ms exceeded.\n=========================== logs ===========================\nwaiting for navigation to \"**/clients\" until \"load\"\n  navigated to \"http://localhost:3000/auth/signin?callbackUrl=%2Fclients\"\n  navigated to \"http://localhost:3000/auth/signin?callbackUrl=%2Fclients\"\n  navigated to \"http://localhost:3000/auth/signin?callbackUrl=%2Fclients\"\n  navigated to \"http://localhost:3000/auth/signin?callbackUrl=%2Fclients\"\n  navigated to \"http://localhost:3000/auth/signin?callbackUrl=%2Fclients\"\n  navigated to \"http://localhost:3000/auth/signin?callbackUrl=%2Fclients\"\n============================================================\n\n  26 | \t\t\n  27 | \t\t// Ждем редиректа на /clients\n> 28 | \t\tawait page.waitForURL('**/clients', { timeout: 5000 })\n     | \t\t           ^\n  29 | \t\t\n  30 | \t\t// Проверяем, что мы на странице клиентов\n  31 | \t\texpect(page.url()).toContain('/clients')\n    at /Users/ruslanmekeidze/Desktop/mini-website/MODOCRM/tests/auth-e2e.spec.ts:28:14"
+                        }
+                      ],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2025-12-06T22:29:35.319Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "/Users/ruslanmekeidze/Desktop/mini-website/MODOCRM/test-results/auth-e2e-Аутентификация-Вход-с-правильными-данными-chromium/test-failed-1.png"
+                        },
+                        {
+                          "name": "video",
+                          "contentType": "video/webm",
+                          "path": "/Users/ruslanmekeidze/Desktop/mini-website/MODOCRM/test-results/auth-e2e-Аутентификация-Вход-с-правильными-данными-chromium/video.webm"
+                        },
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "/Users/ruslanmekeidze/Desktop/mini-website/MODOCRM/test-results/auth-e2e-Аутентификация-Вход-с-правильными-данными-chromium/error-context.md"
+                        }
+                      ],
+                      "errorLocation": {
+                        "file": "/Users/ruslanmekeidze/Desktop/mini-website/MODOCRM/tests/auth-e2e.spec.ts",
+                        "column": 14,
+                        "line": 28
+                      }
+                    }
+                  ],
+                  "status": "unexpected"
+                }
+              ],
+              "id": "35767b8965642a2bdeb3-7c97759ff75fa021f8d6",
+              "file": "auth-e2e.spec.ts",
+              "line": 19,
+              "column": 6
+            },
+            {
+              "title": "Вход с неверным паролем",
+              "ok": false,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 1,
+                      "status": "failed",
+                      "duration": 4290,
+                      "error": {
+                        "message": "TimeoutError: page.waitForSelector: Timeout 3000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('text=/неверный|non validi/i') to be visible\u001b[22m\n",
+                        "stack": "TimeoutError: page.waitForSelector: Timeout 3000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('text=/неверный|non validi/i') to be visible\u001b[22m\n\n    at /Users/ruslanmekeidze/Desktop/mini-website/MODOCRM/tests/auth-e2e.spec.ts:41:14",
+                        "location": {
+                          "file": "/Users/ruslanmekeidze/Desktop/mini-website/MODOCRM/tests/auth-e2e.spec.ts",
+                          "column": 14,
+                          "line": 41
+                        },
+                        "snippet": "  39 | \t\t\n  40 | \t\t// Ждем появления toast с ошибкой\n> 41 | \t\tawait page.waitForSelector('text=/неверный|non validi/i', { timeout: 3000 })\n     | \t\t           ^\n  42 | \t\t\n  43 | \t\t// Проверяем, что остались на странице входа\n  44 | \t\texpect(page.url()).toContain('/auth/signin')"
+                      },
+                      "errors": [
+                        {
+                          "location": {
+                            "file": "/Users/ruslanmekeidze/Desktop/mini-website/MODOCRM/tests/auth-e2e.spec.ts",
+                            "column": 14,
+                            "line": 41
+                          },
+                          "message": "TimeoutError: page.waitForSelector: Timeout 3000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('text=/неверный|non validi/i') to be visible\u001b[22m\n\n\n  39 | \t\t\n  40 | \t\t// Ждем появления toast с ошибкой\n> 41 | \t\tawait page.waitForSelector('text=/неверный|non validi/i', { timeout: 3000 })\n     | \t\t           ^\n  42 | \t\t\n  43 | \t\t// Проверяем, что остались на странице входа\n  44 | \t\texpect(page.url()).toContain('/auth/signin')\n    at /Users/ruslanmekeidze/Desktop/mini-website/MODOCRM/tests/auth-e2e.spec.ts:41:14"
+                        }
+                      ],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2025-12-06T22:29:35.326Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "/Users/ruslanmekeidze/Desktop/mini-website/MODOCRM/test-results/auth-e2e-Аутентификация-Вход-с-неверным-паролем-chromium/test-failed-1.png"
+                        },
+                        {
+                          "name": "video",
+                          "contentType": "video/webm",
+                          "path": "/Users/ruslanmekeidze/Desktop/mini-website/MODOCRM/test-results/auth-e2e-Аутентификация-Вход-с-неверным-паролем-chromium/video.webm"
+                        },
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "/Users/ruslanmekeidze/Desktop/mini-website/MODOCRM/test-results/auth-e2e-Аутентификация-Вход-с-неверным-паролем-chromium/error-context.md"
+                        }
+                      ],
+                      "errorLocation": {
+                        "file": "/Users/ruslanmekeidze/Desktop/mini-website/MODOCRM/tests/auth-e2e.spec.ts",
+                        "column": 14,
+                        "line": 41
+                      }
+                    }
+                  ],
+                  "status": "unexpected"
+                }
+              ],
+              "id": "35767b8965642a2bdeb3-d9f8016d3d24177dff04",
+              "file": "auth-e2e.spec.ts",
+              "line": 34,
+              "column": 6
+            },
+            {
+              "title": "Вход с несуществующим email",
+              "ok": false,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 2,
+                      "parallelIndex": 2,
+                      "status": "failed",
+                      "duration": 4283,
+                      "error": {
+                        "message": "TimeoutError: page.waitForSelector: Timeout 3000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('text=/неверный|non validi/i') to be visible\u001b[22m\n",
+                        "stack": "TimeoutError: page.waitForSelector: Timeout 3000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('text=/неверный|non validi/i') to be visible\u001b[22m\n\n    at /Users/ruslanmekeidze/Desktop/mini-website/MODOCRM/tests/auth-e2e.spec.ts:54:14",
+                        "location": {
+                          "file": "/Users/ruslanmekeidze/Desktop/mini-website/MODOCRM/tests/auth-e2e.spec.ts",
+                          "column": 14,
+                          "line": 54
+                        },
+                        "snippet": "  52 | \t\t\n  53 | \t\t// Ждем появления toast с ошибкой\n> 54 | \t\tawait page.waitForSelector('text=/неверный|non validi/i', { timeout: 3000 })\n     | \t\t           ^\n  55 | \t\t\n  56 | \t\texpect(page.url()).toContain('/auth/signin')\n  57 | \t})"
+                      },
+                      "errors": [
+                        {
+                          "location": {
+                            "file": "/Users/ruslanmekeidze/Desktop/mini-website/MODOCRM/tests/auth-e2e.spec.ts",
+                            "column": 14,
+                            "line": 54
+                          },
+                          "message": "TimeoutError: page.waitForSelector: Timeout 3000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('text=/неверный|non validi/i') to be visible\u001b[22m\n\n\n  52 | \t\t\n  53 | \t\t// Ждем появления toast с ошибкой\n> 54 | \t\tawait page.waitForSelector('text=/неверный|non validi/i', { timeout: 3000 })\n     | \t\t           ^\n  55 | \t\t\n  56 | \t\texpect(page.url()).toContain('/auth/signin')\n  57 | \t})\n    at /Users/ruslanmekeidze/Desktop/mini-website/MODOCRM/tests/auth-e2e.spec.ts:54:14"
+                        }
+                      ],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2025-12-06T22:29:35.319Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "/Users/ruslanmekeidze/Desktop/mini-website/MODOCRM/test-results/auth-e2e-Аутентификация-Вход-с-несуществующим-email-chromium/test-failed-1.png"
+                        },
+                        {
+                          "name": "video",
+                          "contentType": "video/webm",
+                          "path": "/Users/ruslanmekeidze/Desktop/mini-website/MODOCRM/test-results/auth-e2e-Аутентификация-Вход-с-несуществующим-email-chromium/video.webm"
+                        },
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "/Users/ruslanmekeidze/Desktop/mini-website/MODOCRM/test-results/auth-e2e-Аутентификация-Вход-с-несуществующим-email-chromium/error-context.md"
+                        }
+                      ],
+                      "errorLocation": {
+                        "file": "/Users/ruslanmekeidze/Desktop/mini-website/MODOCRM/tests/auth-e2e.spec.ts",
+                        "column": 14,
+                        "line": 54
+                      }
+                    }
+                  ],
+                  "status": "unexpected"
+                }
+              ],
+              "id": "35767b8965642a2bdeb3-a62b1c5473bdb2c8b81f",
+              "file": "auth-e2e.spec.ts",
+              "line": 47,
+              "column": 6
+            },
+            {
+              "title": "Переход на страницу восстановления пароля",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 3,
+                      "parallelIndex": 3,
+                      "status": "passed",
+                      "duration": 2346,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2025-12-06T22:29:35.320Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "35767b8965642a2bdeb3-c7be20ffd4a7b85ad0f2",
+              "file": "auth-e2e.spec.ts",
+              "line": 59,
+              "column": 6
+            },
+            {
+              "title": "Запрос восстановления пароля",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 4,
+                      "parallelIndex": 4,
+                      "status": "passed",
+                      "duration": 2622,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2025-12-06T22:29:35.321Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "35767b8965642a2bdeb3-3095d080ced0da9a3d66",
+              "file": "auth-e2e.spec.ts",
+              "line": 68,
+              "column": 6
+            },
+            {
+              "title": "Выход из системы",
+              "ok": false,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 3,
+                      "parallelIndex": 3,
+                      "status": "failed",
+                      "duration": 5737,
+                      "error": {
+                        "message": "TimeoutError: page.waitForURL: Timeout 5000ms exceeded.\n=========================== logs ===========================\nwaiting for navigation to \"**/clients\" until \"load\"\n  navigated to \"http://localhost:3000/auth/signin\"\n  navigated to \"http://localhost:3000/auth/signin\"\n  navigated to \"http://localhost:3000/auth/signin\"\n  navigated to \"http://localhost:3000/auth/signin\"\n  navigated to \"http://localhost:3000/auth/signin\"\n============================================================",
+                        "stack": "TimeoutError: page.waitForURL: Timeout 5000ms exceeded.\n=========================== logs ===========================\nwaiting for navigation to \"**/clients\" until \"load\"\n  navigated to \"http://localhost:3000/auth/signin\"\n  navigated to \"http://localhost:3000/auth/signin\"\n  navigated to \"http://localhost:3000/auth/signin\"\n  navigated to \"http://localhost:3000/auth/signin\"\n  navigated to \"http://localhost:3000/auth/signin\"\n============================================================\n    at /Users/ruslanmekeidze/Desktop/mini-website/MODOCRM/tests/auth-e2e.spec.ts:87:14",
+                        "location": {
+                          "file": "/Users/ruslanmekeidze/Desktop/mini-website/MODOCRM/tests/auth-e2e.spec.ts",
+                          "column": 14,
+                          "line": 87
+                        },
+                        "snippet": "  85 | \t\tawait page.fill('input[type=\"password\"]', TEST_USER.password)\n  86 | \t\tawait page.click('button[type=\"submit\"]')\n> 87 | \t\tawait page.waitForURL('**/clients', { timeout: 5000 })\n     | \t\t           ^\n  88 | \t\t\n  89 | \t\t// Ищем меню пользователя (обычно в правом верхнем углу)\n  90 | \t\t// Попробуем найти по email или имени пользователя"
+                      },
+                      "errors": [
+                        {
+                          "location": {
+                            "file": "/Users/ruslanmekeidze/Desktop/mini-website/MODOCRM/tests/auth-e2e.spec.ts",
+                            "column": 14,
+                            "line": 87
+                          },
+                          "message": "TimeoutError: page.waitForURL: Timeout 5000ms exceeded.\n=========================== logs ===========================\nwaiting for navigation to \"**/clients\" until \"load\"\n  navigated to \"http://localhost:3000/auth/signin\"\n  navigated to \"http://localhost:3000/auth/signin\"\n  navigated to \"http://localhost:3000/auth/signin\"\n  navigated to \"http://localhost:3000/auth/signin\"\n  navigated to \"http://localhost:3000/auth/signin\"\n============================================================\n\n  85 | \t\tawait page.fill('input[type=\"password\"]', TEST_USER.password)\n  86 | \t\tawait page.click('button[type=\"submit\"]')\n> 87 | \t\tawait page.waitForURL('**/clients', { timeout: 5000 })\n     | \t\t           ^\n  88 | \t\t\n  89 | \t\t// Ищем меню пользователя (обычно в правом верхнем углу)\n  90 | \t\t// Попробуем найти по email или имени пользователя\n    at /Users/ruslanmekeidze/Desktop/mini-website/MODOCRM/tests/auth-e2e.spec.ts:87:14"
+                        }
+                      ],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2025-12-06T22:29:38.079Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "/Users/ruslanmekeidze/Desktop/mini-website/MODOCRM/test-results/auth-e2e-Аутентификация-Выход-из-системы-chromium/test-failed-1.png"
+                        },
+                        {
+                          "name": "video",
+                          "contentType": "video/webm",
+                          "path": "/Users/ruslanmekeidze/Desktop/mini-website/MODOCRM/test-results/auth-e2e-Аутентификация-Выход-из-системы-chromium/video.webm"
+                        },
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "/Users/ruslanmekeidze/Desktop/mini-website/MODOCRM/test-results/auth-e2e-Аутентификация-Выход-из-системы-chromium/error-context.md"
+                        }
+                      ],
+                      "errorLocation": {
+                        "file": "/Users/ruslanmekeidze/Desktop/mini-website/MODOCRM/tests/auth-e2e.spec.ts",
+                        "column": 14,
+                        "line": 87
+                      }
+                    }
+                  ],
+                  "status": "unexpected"
+                }
+              ],
+              "id": "35767b8965642a2bdeb3-dc4ea0dce374216bc186",
+              "file": "auth-e2e.spec.ts",
+              "line": 82,
+              "column": 6
+            },
+            {
+              "title": "Валидация формы входа",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 4,
+                      "parallelIndex": 4,
+                      "status": "passed",
+                      "duration": 462,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2025-12-06T22:29:38.347Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "35767b8965642a2bdeb3-c5f7d11432d277b7cfdc",
+              "file": "auth-e2e.spec.ts",
+              "line": 114,
+              "column": 6
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2025-12-06T22:29:34.862Z",
+    "duration": 8989.98,
+    "expected": 3,
+    "skipped": 0,
+    "unexpected": 4,
+    "flaky": 0
+  }
+}

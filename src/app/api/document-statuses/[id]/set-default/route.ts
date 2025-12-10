@@ -1,106 +1,81 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { logger } from '@/lib/logger'
+import { ApiError, parseJson, success, withApiHandler } from '@/lib/api-handler'
+import {
+	documentStatusSetDefaultBodySchema,
+	ensureStatusIdFromParams,
+} from '../../helpers'
 
-/**
- * POST /api/document-statuses/[id]/set-default
- * Установить или снять пометку "основной" для статуса в конкретном типе документа
- */
-export async function POST(
-	request: NextRequest,
-	{ params }: { params: Promise<{ id: string }> }
-) {
-	try {
-		const { id } = await params
-		const body = await request.json()
-		const { documentTypeId, isDefault } = body
+export const POST = withApiHandler(async (request: NextRequest, { params }) => {
+	const id = ensureStatusIdFromParams(params)
+	const payload = await parseJson(request, documentStatusSetDefaultBodySchema)
 
-		if (!documentTypeId) {
-			return NextResponse.json(
-				{ error: 'documentTypeId is required' },
-				{ status: 400 }
-			)
-		}
-
-		const statusId = parseInt(id)
-		const docTypeId = parseInt(documentTypeId)
-
-		// Проверяем существование связи
-		const statusType = await prisma.documentStatusType.findUnique({
-			where: {
-				documentTypeId_statusId: {
-					documentTypeId: docTypeId,
-					statusId: statusId,
-				},
+	// Проверяем, существует ли статус
+	const status = await prisma.documentStatus.findUnique({
+		where: { id },
+		include: {
+			documentTypes: {
+				include: { documentType: true },
 			},
-			include: {
-				status: true,
-				documentType: true,
-			},
-		})
+		},
+	})
 
-		if (!statusType) {
-			return NextResponse.json(
-				{ error: 'Status not found for this document type' },
-				{ status: 404 }
-			)
-		}
+	if (!status) {
+		throw new ApiError(404, 'Status not found')
+	}
 
-		// Если устанавливаем как основной - снимаем пометку с других статусов этого типа
-		if (isDefault) {
-			await prisma.documentStatusType.updateMany({
+	// Получаем все типы документов, к которым привязан этот статус
+	const attachedDocumentTypeIds = status.documentTypes.map(dt => dt.documentTypeId)
+
+	if (attachedDocumentTypeIds.length === 0) {
+		throw new ApiError(400, 'Status is not attached to any document types')
+	}
+
+	// Используем транзакцию для атомарности
+	await prisma.$transaction(async (tx) => {
+		if (payload.isDefault) {
+			// Устанавливаем статус как главный для всех типов документов, к которым он привязан
+			// ВАЖНО: Снимаем флаг isDefault со ВСЕХ статусов во ВСЕХ типах документов
+			// чтобы гарантировать, что только один статус будет главным
+			await tx.documentStatusType.updateMany({
 				where: {
-					documentTypeId: docTypeId,
 					isDefault: true,
 				},
-				data: {
-					isDefault: false,
-				},
+				data: { isDefault: false },
 			})
 
-			logger.info(
-				`✅ Removed default flag from other statuses for document type ${statusType.documentType.name}`
-			)
-		}
-
-		// Обновляем статус
-		const updated = await prisma.documentStatusType.update({
-			where: {
-				documentTypeId_statusId: {
-					documentTypeId: docTypeId,
-					statusId: statusId,
+			// Затем устанавливаем isDefault для этого статуса во всех типах документов, к которым он привязан
+			await tx.documentStatusType.updateMany({
+				where: {
+					statusId: id,
+					documentTypeId: { in: attachedDocumentTypeIds },
 				},
-			},
-			data: {
-				isDefault: Boolean(isDefault),
-			},
-			include: {
-				status: true,
-				documentType: true,
-			},
-		})
+				data: { isDefault: true },
+			})
+		} else {
+			// Снимаем флаг isDefault для этого статуса во всех типах документов
+			await tx.documentStatusType.updateMany({
+				where: {
+					statusId: id,
+					documentTypeId: { in: attachedDocumentTypeIds },
+				},
+				data: { isDefault: false },
+			})
+		}
+	})
 
-		logger.info(
-			`✅ ${isDefault ? 'Set' : 'Removed'} default status: ${updated.status.name} for ${updated.documentType.name}`
-		)
-
-		return NextResponse.json({
-			success: true,
-			statusType: {
-				...updated,
-				status: updated.status,
-				documentType: updated.documentType,
+	// Возвращаем обновленные данные
+	const updatedStatus = await prisma.documentStatus.findUnique({
+		where: { id },
+		include: {
+			documentTypes: {
+				include: { documentType: true },
 			},
-		})
-	} catch (error) {
-		logger.error('❌ Error setting default status:', error || undefined)
-		return NextResponse.json(
-			{
-				error: 'Failed to set default status',
-				details: String(error),
-			},
-			{ status: 500 }
-		)
-	}
-}
+		},
+	})
 
+	return success({
+		success: true,
+		status: updatedStatus,
+	})
+})

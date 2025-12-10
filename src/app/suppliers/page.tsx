@@ -29,15 +29,26 @@ import { useSorting } from '@/hooks/use-sorting'
 import { multiSearch } from '@/lib/multi-search'
 import { SupplierFormModal } from '@/components/supplier-form-modal'
 import { useLanguage } from '@/contexts/LanguageContext'
+import { toast } from 'sonner'
+import { ConfirmDeleteDialog } from '@/components/confirm-delete-dialog'
 
 export default function SuppliersPage() {
-	const { t } = useLanguage()
+	const { t, locale } = useLanguage()
 	const [searchTerm, setSearchTerm] = useState('')
 	const [isFormOpen, setIsFormOpen] = useState(false)
 	const [editingSupplier, setEditingSupplier] = useState<any>(null)
 
 	const [suppliers, setSuppliers] = useState<any[]>([])
 	const [isLoading, setIsLoading] = useState(true)
+	const [deleteDialog, setDeleteDialog] = useState<{
+		isOpen: boolean
+		supplier: any | null
+		isDeleting: boolean
+	}>({
+		isOpen: false,
+		supplier: null,
+		isDeleting: false,
+	})
 
 	// Загрузка поставщиков из API
 	useEffect(() => {
@@ -62,7 +73,7 @@ export default function SuppliersPage() {
 	// Множественная фильтрация
 	const filteredSuppliers = multiSearch(suppliers, searchTerm, [
 		'name',
-		'contact',
+		'contactPerson',
 		'phone',
 		'email',
 	])
@@ -101,15 +112,52 @@ export default function SuppliersPage() {
 		setIsFormOpen(true)
 	}
 
-	const handleDelete = async (id: number) => {
-		if (!confirm(t('confirmDeleteSupplier'))) return
+	const handleDeleteClick = (supplier: any) => {
+		setDeleteDialog({
+			isOpen: true,
+			supplier,
+			isDeleting: false,
+		})
+	}
+
+	const handleDeleteConfirm = async () => {
+		if (!deleteDialog.supplier) return
+
+		setDeleteDialog(prev => ({ ...prev, isDeleting: true }))
 
 		try {
-			await fetch(`/api/suppliers?id=${id}`, { method: 'DELETE' })
-			await fetchSuppliers()
+			const response = await fetch(
+				`/api/suppliers?id=${deleteDialog.supplier.id}`,
+				{
+					method: 'DELETE',
+				}
+			)
+
+			if (response.ok) {
+				toast.success(
+					locale === 'ru' ? 'Поставщик успешно удален' : 'Fornitore eliminato con successo',
+					{ duration: 2000 }
+				)
+				await fetchSuppliers()
+				setDeleteDialog({ isOpen: false, supplier: null, isDeleting: false })
+			} else {
+				// Обработка ошибок от API
+				const errorData = await response.json().catch(() => ({}))
+				const errorMessage =
+					errorData.error ||
+					errorData.message ||
+					t('errorDeleting') ||
+					'Не удалось удалить поставщика'
+				toast.error(errorMessage, { duration: 4000 })
+			}
 		} catch (error) {
 			logger.error('Error deleting supplier:', error)
-			alert(t('errorDeleting'))
+			toast.error(
+				t('errorDeleting') || 'Ошибка при удалении поставщика',
+				{ duration: 4000 }
+			)
+		} finally {
+			setDeleteDialog(prev => ({ ...prev, isDeleting: false }))
 		}
 	}
 
@@ -172,10 +220,10 @@ export default function SuppliersPage() {
 								</TableHead>
 								<TableHead
 									className='text-xs cursor-pointer hover:bg-gray-50'
-									onClick={() => requestSort('contact')}
+									onClick={() => requestSort('contactPerson')}
 								>
 									<div className='flex items-center gap-1'>
-										{t('contactPerson')} {getSortIcon('contact')}
+										{t('contactPerson')} {getSortIcon('contactPerson')}
 									</div>
 								</TableHead>
 								<TableHead className='text-xs'>{t('phone')}</TableHead>
@@ -200,7 +248,7 @@ export default function SuppliersPage() {
 										{highlightText(supplier.name, searchTerm)}
 									</TableCell>
 									<TableCell className='text-sm text-gray-600'>
-										{highlightText(supplier.contact, searchTerm)}
+										{highlightText(supplier.contactPerson, searchTerm)}
 									</TableCell>
 									<TableCell className='text-sm text-gray-600'>
 										{highlightText(supplier.phone, searchTerm)}
@@ -232,7 +280,7 @@ export default function SuppliersPage() {
 											<Button
 												variant='outline'
 												size='sm'
-												onClick={() => handleDelete(supplier.id)}
+												onClick={() => handleDeleteClick(supplier)}
 												className='text-red-600 hover:bg-red-50'
 											>
 												<Trash2 className='h-4 w-4' />
@@ -244,6 +292,19 @@ export default function SuppliersPage() {
 						</TableBody>
 					</Table>
 				</div>
+
+				{/* Диалог подтверждения удаления */}
+				<ConfirmDeleteDialog
+					isOpen={deleteDialog.isOpen}
+					onClose={() =>
+						setDeleteDialog({ isOpen: false, supplier: null, isDeleting: false })
+					}
+					onConfirm={handleDeleteConfirm}
+					title={locale === 'ru' ? 'Удаление поставщика' : 'Eliminazione fornitore'}
+					itemName={deleteDialog.supplier?.name || ''}
+					itemType={locale === 'ru' ? 'поставщика' : 'fornitore'}
+					isLoading={deleteDialog.isDeleting}
+				/>
 			</div>
 		</AppLayout>
 	)

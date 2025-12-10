@@ -1,165 +1,71 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { logger } from '@/lib/logger'
+import { parseJson, success, withApiHandler } from '@/lib/api-handler'
+import {
+	buildSupplierParameterOverrideCreateData,
+	ensureNoDuplicateOverride,
+	ensureParameterExists,
+	ensureSupplierExists,
+	ensureSupplierId,
+	supplierParameterOverrideCreateBodySchema,
+} from '@/app/api/supplier-parameter-overrides/helpers'
 
-// GET /api/suppliers/[id]/parameter-overrides
-// Получить все переопределения параметров для поставщика
-export async function GET(
-	request: NextRequest,
-	{ params }: { params: Promise<{ id: string }> }
-) {
-	try {
-		const { id } = await params
-		const supplierId = parseInt(id)
-
-		if (isNaN(supplierId)) {
-			return NextResponse.json(
-				{ error: 'Invalid supplier ID' },
-				{ status: 400 }
-			)
-		}
-
-		// Проверяем существование поставщика
-		const supplier = await prisma.supplier.findUnique({
-			where: { id: supplierId },
-		})
-
-		if (!supplier) {
-			return NextResponse.json({ error: 'Supplier not found' }, { status: 404 })
-		}
-
-		// Получаем все переопределения параметров для этого поставщика
-		const overrides = await prisma.supplierParameterOverride.findMany({
-			where: {
-				supplierId: supplierId,
+const overrideInclude = {
+	parameter: {
+		include: {
+			values: {
+				where: { isActive: true },
+				orderBy: { order: 'asc' },
 			},
-			include: {
-				parameter: {
-					include: {
-						values: {
-							where: { isActive: true },
-							orderBy: { order: 'asc' },
-						},
-					},
-				},
-			},
-			orderBy: {
-				parameter: {
-					name: 'asc',
-				},
-			},
-		})
+		},
+	},
+} as const
 
-		logger.info(
-			`✅ Found ${overrides.length} parameter overrides for supplier ${supplierId}`
-		)
+type SupplierRouteParams = { id: string }
 
-		return NextResponse.json(overrides)
-	} catch (error) {
-		logger.error('❌ Error fetching supplier parameter overrides:', error)
-		return NextResponse.json(
-			{ error: 'Failed to fetch parameter overrides' },
-			{ status: 500 }
-		)
-	}
+type SupplierParamsInput =
+	| SupplierRouteParams
+	| Record<string, string | string[]>
+	| undefined
+
+async function resolveSupplierId(params: SupplierParamsInput | Promise<SupplierParamsInput>) {
+	const resolved = await params
+	const value = resolved && 'id' in resolved ? resolved.id : resolved?.['id']
+	const id = Array.isArray(value) ? value[0] ?? null : value ?? null
+	return ensureSupplierId(id)
 }
 
-// POST /api/suppliers/[id]/parameter-overrides
-// Создать новое переопределение параметра для поставщика
-export async function POST(
-	request: NextRequest,
-	{ params }: { params: Promise<{ id: string }> }
-) {
-	try {
-		const { id } = await params
-		const supplierId = parseInt(id)
+export const GET = withApiHandler(async (_request, { params }) => {
+	const supplierId = await resolveSupplierId(params)
 
-		if (isNaN(supplierId)) {
-			return NextResponse.json(
-				{ error: 'Invalid supplier ID' },
-				{ status: 400 }
-			)
-		}
+	await ensureSupplierExists(supplierId)
 
-		const body = await request.json()
-		const { parameterId, customValues, minValue, maxValue, isAvailable } = body
-
-		// Валидация
-		if (!parameterId) {
-			return NextResponse.json(
-				{ error: 'Parameter ID is required' },
-				{ status: 400 }
-			)
-		}
-
-		// Проверяем существование поставщика
-		const supplier = await prisma.supplier.findUnique({
-			where: { id: supplierId },
-		})
-
-		if (!supplier) {
-			return NextResponse.json({ error: 'Supplier not found' }, { status: 404 })
-		}
-
-		// Проверяем существование параметра
-		const parameter = await prisma.parameterTemplate.findUnique({
-			where: { id: parameterId },
-		})
-
-		if (!parameter) {
-			return NextResponse.json(
-				{ error: 'Parameter not found' },
-				{ status: 404 }
-			)
-		}
-
-		// Проверяем, нет ли уже переопределения для этого параметра
-		const existing = await prisma.supplierParameterOverride.findFirst({
-			where: {
-				supplierId: supplierId,
-				parameterId: parameterId,
+	const overrides = await prisma.supplierParameterOverride.findMany({
+		where: { supplierId },
+		include: overrideInclude,
+		orderBy: {
+			parameter: {
+				name: 'asc',
 			},
-		})
+		},
+	})
 
-		if (existing) {
-			return NextResponse.json(
-				{ error: 'Override for this parameter already exists' },
-				{ status: 400 }
-			)
-		}
+	return success(overrides)
+})
 
-		// Создаем переопределение
-		const override = await prisma.supplierParameterOverride.create({
-			data: {
-				supplierId: supplierId,
-				parameterId: parameterId,
-				customValues: customValues || null,
-				minValue: minValue !== undefined ? minValue : null,
-				maxValue: maxValue !== undefined ? maxValue : null,
-				isAvailable: isAvailable !== undefined ? isAvailable : true,
-			},
-			include: {
-				parameter: {
-					include: {
-						values: {
-							where: { isActive: true },
-							orderBy: { order: 'asc' },
-						},
-					},
-				},
-			},
-		})
+export const POST = withApiHandler(async (request: NextRequest, { params }) => {
+	const supplierId = await resolveSupplierId(params)
+	await ensureSupplierExists(supplierId)
 
-		logger.info(
-			`✅ Created parameter override for supplier ${supplierId}, parameter ${parameterId}`
-		)
+	const payload = await parseJson(request, supplierParameterOverrideCreateBodySchema)
 
-		return NextResponse.json(override, { status: 201 })
-	} catch (error) {
-		logger.error('❌ Error creating supplier parameter override:', error)
-		return NextResponse.json(
-			{ error: 'Failed to create parameter override' },
-			{ status: 500 }
-		)
-	}
-}
+	await ensureParameterExists(payload.parameterId)
+	await ensureNoDuplicateOverride(supplierId, payload.parameterId)
+
+	const override = await prisma.supplierParameterOverride.create({
+		data: buildSupplierParameterOverrideCreateData(supplierId, payload),
+		include: overrideInclude,
+	})
+
+	return success(override, 201)
+})

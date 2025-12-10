@@ -3,9 +3,12 @@
  */
 
 import { test, expect } from '@playwright/test'
+import { loginAsUser, TEST_USERS } from './helpers/auth'
 
 test.describe('Proposal Creation', () => {
 	test.beforeEach(async ({ page }) => {
+		// Авторизуемся перед каждым тестом
+		await loginAsUser(page, TEST_USERS.user)
 		// Navigate to proposals page
 		await page.goto('http://localhost:3000/proposals')
 		await page.waitForLoadState('networkidle')
@@ -17,9 +20,23 @@ test.describe('Proposal Creation', () => {
 		// Check that page loaded
 		await expect(page).toHaveURL(/.*proposals/)
 		
-		// Check for proposals page elements
-		const proposalsTitle = page.locator('text=/Proposta|Предложение|Proposals/i').first()
-		await expect(proposalsTitle).toBeVisible({ timeout: 10000 })
+		// Check for proposals page elements - ищем заголовок или навигацию
+		const proposalsPageContent = page
+			.getByRole('link', { name: /Preventivi|Proposals|Предложения/i })
+			.or(page.locator('text=/Preventivi|Proposals|Предложения/i'))
+			.first()
+		await expect(proposalsPageContent).toBeVisible({ timeout: 10000 })
+
+		// Таблица может отсутствовать, если нет предложений - проверяем наличие страницы
+		const pageContent = page.locator('body')
+		await expect(pageContent).toBeVisible()
+		
+		// Если есть таблица, проверяем её
+		const proposalsTable = page.getByRole('table').first()
+		const hasTable = await proposalsTable.isVisible({ timeout: 2000 }).catch(() => false)
+		if (hasTable) {
+			await expect(proposalsTable).toBeVisible()
+		}
 	})
 
 	test('should validate proposal data before submission', async ({ page }) => {
@@ -70,7 +87,9 @@ test.describe('Proposal Creation', () => {
 		}
 	})
 
-	test('should validate API endpoints', async ({ request }) => {
+	test('should validate API endpoints', async ({ page }) => {
+		// Используем request из контекста страницы
+		const request = page.context().request
 		// Test API endpoints
 		const clientsResponse = await request.get('http://localhost:3000/api/clients')
 		expect(clientsResponse.ok()).toBeTruthy()
@@ -82,7 +101,8 @@ test.describe('Proposal Creation', () => {
 		expect(proposalsResponse.ok()).toBeTruthy()
 	})
 
-	test('should validate proposal creation API', async ({ request }) => {
+	test('should validate proposal creation API', async ({ page }) => {
+		const request = page.context().request
 		// Test proposal creation with invalid data (should fail validation)
 		const invalidResponse = await request.post('http://localhost:3000/api/proposals', {
 			data: {

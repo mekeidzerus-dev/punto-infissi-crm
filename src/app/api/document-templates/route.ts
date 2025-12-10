@@ -1,82 +1,47 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { logger } from '@/lib/logger'
+import { parseJson, success, withApiHandler } from '@/lib/api-handler'
+import {
+	buildDocumentTemplateCreateData,
+	parseDocumentTemplateQuery,
+	documentTemplateCreateBodySchema,
+} from './helpers'
+import { getCurrentOrganizationId } from '@/lib/organization-context'
 
-export async function GET(request: NextRequest) {
-	try {
-		const { searchParams } = new URL(request.url)
-		const type = searchParams.get('type') // privacy_policy, sales_terms, warranty
+export const GET = withApiHandler(async (request: NextRequest) => {
+	const query = parseDocumentTemplateQuery(request.nextUrl.searchParams)
+	const organizationId = await getCurrentOrganizationId()
 
-		logger.info('🔍 Fetching document templates...')
+	const templates = await prisma.documentTemplate.findMany({
+		where: {
+			isActive: true,
+			...(query.type ? { type: query.type } : {}),
+			...(organizationId ? { organizationId } : {}),
+		},
+		orderBy: [{ isDefault: 'desc' }, { createdAt: 'desc' }],
+	})
 
-		const templates = await prisma.documentTemplate.findMany({
+	return success(templates)
+})
+
+export const POST = withApiHandler(async (request: NextRequest) => {
+	const payload = await parseJson(request, documentTemplateCreateBodySchema)
+	const organizationId = await getCurrentOrganizationId()
+
+	if (payload.isDefault) {
+		await prisma.documentTemplate.updateMany({
 			where: {
-				isActive: true,
-				...(type && { type }),
+				type: payload.type,
+				isDefault: true,
+				...(organizationId ? { organizationId } : {}),
 			},
-			orderBy: [
-				{ isDefault: 'desc' }, // Сначала дефолтные
-				{ createdAt: 'desc' },
-			],
+			data: { isDefault: false },
 		})
-
-		logger.info(`✅ Found ${templates.length} document templates`)
-		return NextResponse.json(templates)
-	} catch (error) {
-		logger.error('❌ Error fetching document templates:', error)
-		return NextResponse.json(
-			{ error: 'Failed to fetch document templates', details: String(error) },
-			{ status: 500 }
-		)
 	}
-}
 
-export async function POST(request: NextRequest) {
-	try {
-		logger.info('📝 Creating document template...')
+	const template = await prisma.documentTemplate.create({
+		data: await buildDocumentTemplateCreateData(payload),
+	})
 
-		const body = await request.json()
-		const { name, type, contentRu, contentIt, isDefault } = body
-
-		if (!name || !type) {
-			return NextResponse.json(
-				{ error: 'Name and type are required' },
-				{ status: 400 }
-			)
-		}
-
-		if (!contentRu && !contentIt) {
-			return NextResponse.json(
-				{ error: 'At least one language content is required' },
-				{ status: 400 }
-			)
-		}
-
-		// Если устанавливаем как дефолтный, снимаем дефолт с других шаблонов того же типа
-		if (isDefault) {
-			await prisma.documentTemplate.updateMany({
-				where: { type, isDefault: true },
-				data: { isDefault: false },
-			})
-		}
-
-		const template = await prisma.documentTemplate.create({
-			data: {
-				name,
-				type,
-				contentRu,
-				contentIt,
-				isDefault: isDefault || false,
-			},
-		})
-
-		logger.info(`✅ Created document template: ${template.name}`)
-		return NextResponse.json(template, { status: 201 })
-	} catch (error) {
-		logger.error('❌ Error creating document template:', error)
-		return NextResponse.json(
-			{ error: 'Failed to create document template', details: String(error) },
-			{ status: 500 }
-		)
-	}
-}
+	return success(template, 201)
+})

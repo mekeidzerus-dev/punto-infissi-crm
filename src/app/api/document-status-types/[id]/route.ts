@@ -1,107 +1,81 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { logger } from '@/lib/logger'
+import { ApiError, parseJson, success, withApiHandler } from '@/lib/api-handler'
+import {
+	documentStatusTypeOrderBodySchema,
+	ensureDocumentStatusTypeId,
+	DocumentStatusTypeOrderInput,
+} from '../helpers'
 
-// PUT - изменить порядок статуса (↑↓)
-export async function PUT(
-	request: NextRequest,
-	{ params }: { params: Promise<{ id: string }> }
+async function updateOrderByDirection(
+	linkId: number,
+	payload: DocumentStatusTypeOrderInput
 ) {
-	try {
-		const { id } = await params
-		const body = await request.json()
-		const { direction, order } = body
+	const currentLink = await prisma.documentStatusType.findUnique({
+		where: { id: linkId },
+	})
 
-		// Если передан order, просто обновляем его
-		if (typeof order === 'number') {
-			const updated = await prisma.documentStatusType.update({
-				where: { id: parseInt(id) },
-				data: { order },
-			})
-			logger.info(`✅ Updated status order: ${id} → ${order}`)
-			return NextResponse.json({ success: true })
-		}
-
-		// Обработка direction (старый способ через ↑↓)
-		if (!direction || !['up', 'down'].includes(direction)) {
-			return NextResponse.json(
-				{ error: 'Direction must be "up" or "down"' },
-				{ status: 400 }
-			)
-		}
-
-		// Получаем текущую связь
-		const currentLink = await prisma.documentStatusType.findUnique({
-			where: { id: parseInt(id) },
-		})
-
-		if (!currentLink) {
-			return NextResponse.json(
-				{ error: 'DocumentStatusType not found' },
-				{ status: 404 }
-			)
-		}
-
-		// Получаем все связи для этого типа документа, отсортированные по order
-		const allLinks = await prisma.documentStatusType.findMany({
-			where: { documentTypeId: currentLink.documentTypeId },
-			orderBy: { order: 'asc' },
-		})
-
-		// Находим индекс текущей связи
-		const currentIndex = allLinks.findIndex(link => link.id === currentLink.id)
-
-		if (currentIndex === -1) {
-			return NextResponse.json(
-				{ error: 'Current link not found in sorted list' },
-				{ status: 500 }
-			)
-		}
-
-		// Определяем индекс соседней связи
-		let targetIndex: number
-		if (direction === 'up') {
-			targetIndex = currentIndex - 1
-			if (targetIndex < 0) {
-				return NextResponse.json(
-					{ error: 'Cannot move up: already first' },
-					{ status: 400 }
-				)
-			}
-		} else {
-			targetIndex = currentIndex + 1
-			if (targetIndex >= allLinks.length) {
-				return NextResponse.json(
-					{ error: 'Cannot move down: already last' },
-					{ status: 400 }
-				)
-			}
-		}
-
-		const targetLink = allLinks[targetIndex]
-
-		// Меняем order местами
-		await prisma.$transaction([
-			prisma.documentStatusType.update({
-				where: { id: currentLink.id },
-				data: { order: targetLink.order },
-			}),
-			prisma.documentStatusType.update({
-				where: { id: targetLink.id },
-				data: { order: currentLink.order },
-			}),
-		])
-
-		logger.info(
-			`✅ Moved status ${direction}: ${currentLink.id} ↔ ${targetLink.id}`
-		)
-		return NextResponse.json({ success: true })
-	} catch (error) {
-		logger.error('Error updating status order:', error || undefined)
-		return NextResponse.json(
-			{ error: 'Failed to update status order' },
-			{ status: 500 }
-		)
+	if (!currentLink) {
+		throw new ApiError(404, 'DocumentStatusType not found')
 	}
+
+	const allLinks = await prisma.documentStatusType.findMany({
+		where: { documentTypeId: currentLink.documentTypeId },
+		orderBy: { order: 'asc' },
+	})
+
+	const currentIndex = allLinks.findIndex(link => link.id === currentLink.id)
+
+	if (currentIndex === -1) {
+		throw new ApiError(500, 'Current link not found in sorted list')
+	}
+
+	let targetIndex: number
+	if (payload.direction === 'up') {
+		targetIndex = currentIndex - 1
+		if (targetIndex < 0) {
+			throw new ApiError(400, 'Cannot move up: already first')
+		}
+	} else {
+		targetIndex = currentIndex + 1
+		if (targetIndex >= allLinks.length) {
+			throw new ApiError(400, 'Cannot move down: already last')
+		}
+	}
+
+	const targetLink = allLinks[targetIndex]
+
+	await prisma.$transaction([
+		prisma.documentStatusType.update({
+			where: { id: currentLink.id },
+			data: { order: targetLink.order },
+		}),
+		prisma.documentStatusType.update({
+			where: { id: targetLink.id },
+			data: { order: currentLink.order },
+		}),
+	])
 }
+
+export const PUT = withApiHandler(async (request: NextRequest, { params }) => {
+	const id = ensureDocumentStatusTypeId(params?.id as string)
+	const payload = await parseJson(request, documentStatusTypeOrderBodySchema)
+
+	if (payload.order !== undefined && payload.order !== null) {
+		await prisma.documentStatusType.update({
+			where: { id },
+			data: { order: payload.order },
+		})
+
+		return success({ success: true })
+	}
+
+	if (!payload.direction) {
+		throw new ApiError(400, 'Direction must be provided when order not set')
+	}
+
+	await updateOrderByDirection(id, payload)
+
+	return success({ success: true })
+})
 

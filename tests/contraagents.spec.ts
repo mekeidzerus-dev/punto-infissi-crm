@@ -1,9 +1,12 @@
 import { test, expect } from '@playwright/test'
+import { loginAsUser, TEST_USERS } from './helpers/auth'
 
 test.use({ browserName: 'chromium' })
 
 test.describe('Contraagents Section', () => {
 	test.beforeEach(async ({ page }) => {
+		// Авторизуемся перед каждым тестом
+		await loginAsUser(page, TEST_USERS.user)
 		// Очищаем localStorage перед каждым тестом
 		await page.goto('/')
 		await page.evaluate(() => {

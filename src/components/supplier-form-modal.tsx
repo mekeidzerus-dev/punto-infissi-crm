@@ -423,7 +423,7 @@ export function SupplierFormModal({
 										setFormData({ ...formData, status: value })
 									}
 								>
-									<SelectTrigger>
+									<SelectTrigger data-testid='supplier-status-trigger'>
 										<SelectValue placeholder={t('status')} />
 									</SelectTrigger>
 									<SelectContent>

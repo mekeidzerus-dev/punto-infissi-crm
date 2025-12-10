@@ -1,4 +1,4 @@
-# 🤖 AI Instructions for Punto Infissi CRM
+# 🤖 AI Instructions for MODOCRM
 
 ## How Cursor AI Should Use This Project
 
@@ -9,7 +9,7 @@ This document provides clear instructions for AI assistants working on this code
 ## 📁 Project Structure
 
 ```
-punto-infissi-crm/
+modocrm/
 ├── .cursorrules                    # ⭐ Primary AI instructions (START HERE)
 ├── README-AI.md                    # This file - project overview for AI
 ├── .cursor/                        # 📁 Cursor AI documentation folder

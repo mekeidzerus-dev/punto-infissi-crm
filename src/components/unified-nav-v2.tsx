@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Plus } from 'lucide-react'
+import { useLanguage } from '@/contexts/LanguageContext'
 
 export interface NavItem {
 	id: string
@@ -22,9 +23,11 @@ interface UnifiedNavV2Props {
 export function UnifiedNavV2({
 	items,
 	onAddClick,
-	addButtonText = 'Добавить',
+	addButtonText,
 }: UnifiedNavV2Props) {
 	const pathname = usePathname()
+	const { t } = useLanguage()
+	const addLabel = addButtonText ?? t('add')
 
 	return (
 		<div className='unified-nav-v2'>
@@ -61,7 +64,7 @@ export function UnifiedNavV2({
 					size='sm'
 				>
 					<Plus className='h-4 w-4 mr-1' />
-					{addButtonText}
+					{addLabel}
 				</Button>
 			)}
 		</div>

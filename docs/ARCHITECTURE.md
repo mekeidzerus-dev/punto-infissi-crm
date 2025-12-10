@@ -1,6 +1,8 @@
-# Архитектура приложения
+# Архитектура приложения MODOCRM
 
-**Тип:** Монолитное Next.js приложение
+**Тип:** Монолитное Next.js приложение  
+**Версия:** 1.4.0  
+**Статус:** Production Ready
 
 ## Структура
 
@@ -12,9 +14,12 @@ Frontend (React) → API Routes → Prisma → PostgreSQL
 
 - **Next.js 15** - App Router
 - **React 19** - UI
-- **Prisma** - ORM
+- **Prisma 6.16.3** - ORM
 - **PostgreSQL** - БД
-- **TypeScript** - типизация
+- **TypeScript 5** - типизация
+- **NextAuth 4.24** - аутентификация
+- **Tailwind CSS 4** - стилизация
+- **Shadcn/UI** - компоненты UI
 
 ## Модули
 
@@ -167,3 +172,45 @@ src/constants/
 **Сделать после (средний приоритет):** 2. ✅ E2E-тесты для критичных сценариев (2-3 часа) 3. ⚠️ Unit-тесты для бизнес-логики (когда появится сложная логика)
 
 **Не делать:** 4. ❌ Дизайн-токены (Tailwind решает) 5. ❌ Storybook (избыточно)
+
+---
+
+## Установка и запуск
+
+### Быстрый старт
+
+```bash
+# Установка
+npm install
+
+# Настройка БД
+cp env.example .env.local
+# Заполнить DATABASE_URL
+
+# Миграции
+npx prisma migrate deploy
+
+# Seed данных (опционально)
+npm run seed:dev
+
+# Запуск
+npm run dev
+```
+
+Откройте: http://localhost:3000
+
+### Production
+
+```bash
+npm run build
+npm start
+```
+
+### Переменные окружения
+
+- `DATABASE_URL` - строка подключения БД
+- `NEXTAUTH_SECRET` - секрет для аутентификации
+- `NEXTAUTH_URL` - URL приложения
+- `CRON_SECRET` - секрет для cron jobs (очистка неактивных аккаунтов)
+
+> Подробная документация по установке: см. `SETUP.md`

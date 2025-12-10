@@ -1,143 +1,124 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
+import { NextRequest } from 'next/server'
+import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
+import { ApiError, parseJson, success, withApiHandler } from '@/lib/api-handler'
+import { clientUpdateSchema } from '@/lib/validation/client'
+import {
+	buildClientUpdateData,
+	ensureClientId,
+} from '../helpers'
+import { getCurrentOrganizationId } from '@/lib/organization-context'
 
-const prisma = new PrismaClient()
+const clientUpdateBodySchema = clientUpdateSchema.omit({ id: true })
 
-// GET /api/clients/[id] - получить клиента по ID
-export async function GET(
-	request: NextRequest,
-	{ params }: { params: Promise<{ id: string }> }
-) {
-	try {
-		const { id } = await params
-		const clientId = parseInt(id)
+type Params = Record<string, string | string[]>
 
-		if (isNaN(clientId)) {
-			return NextResponse.json({ error: 'Invalid client ID' }, { status: 400 })
-		}
-
-		logger.info(`🔍 Fetching client: ${clientId}`)
-
-		const client = await prisma.client.findUnique({
-			where: { id: clientId },
-		})
-
-		if (!client) {
-			logger.info(`❌ Client not found: ${clientId}`)
-			return NextResponse.json({ error: 'Client not found' }, { status: 404 })
-		}
-
-		logger.info(`✅ Found client: ${client.firstName} ${client.lastName}`)
-		return NextResponse.json(client)
-	} catch (error) {
-		logger.error('❌ Error fetching client:', error)
-		return NextResponse.json(
-			{ error: 'Failed to fetch client' },
-			{ status: 500 }
-		)
-	}
+function extractId(params?: Params): number {
+	const raw = params?.id
+	const value = Array.isArray(raw) ? raw[0] ?? null : raw ?? null
+	return ensureClientId(value)
 }
 
-// PUT /api/clients/[id] - обновить клиента
-export async function PUT(
-	request: NextRequest,
-	{ params }: { params: Promise<{ id: string }> }
-) {
-	try {
-		const { id } = await params
-		const clientId = parseInt(id)
+export const GET = withApiHandler(async (_request, { params }) => {
+	const id = extractId(params)
+	const organizationId = await getCurrentOrganizationId()
+	logger.info('🔍 Fetching client by id', { id, organizationId })
 
-		if (isNaN(clientId)) {
-			return NextResponse.json({ error: 'Invalid client ID' }, { status: 400 })
-		}
+	const client = await prisma.client.findFirst({
+		where: {
+			id,
+			...(organizationId ? { organizationId } : {}),
+		},
+	})
 
-		const data = await request.json()
-		logger.info(`📝 Updating client: ${clientId}`)
-
-		// Проверяем что клиент существует
-		const existingClient = await prisma.client.findUnique({
-			where: { id: clientId },
-		})
-
-		if (!existingClient) {
-			logger.info(`❌ Client not found: ${clientId}`)
-			return NextResponse.json({ error: 'Client not found' }, { status: 404 })
-		}
-
-		// Обновляем клиента
-		const updatedClient = await prisma.client.update({
-			where: { id: clientId },
-			data: {
-				type: data.type,
-				firstName: data.firstName,
-				lastName: data.lastName,
-				companyName: data.companyName,
-				phone: data.phone,
-				email: data.email,
-				address: data.address,
-				codiceFiscale: data.codiceFiscale,
-				partitaIVA: data.partitaIVA,
-				legalAddress: data.legalAddress,
-				contactPerson: data.contactPerson,
-				source: data.source,
-				notes: data.notes,
-				updatedAt: new Date(),
-			},
-		})
-
-		logger.info(
-			`✅ Updated client: ${updatedClient.firstName} ${updatedClient.lastName}`
-		)
-		return NextResponse.json(updatedClient)
-	} catch (error) {
-		logger.error('❌ Error updating client:', error)
-		return NextResponse.json(
-			{ error: 'Failed to update client' },
-			{ status: 500 }
-		)
+	if (!client) {
+		throw new ApiError(404, 'Client not found')
 	}
-}
 
-// DELETE /api/clients/[id] - удалить клиента
-export async function DELETE(
-	request: NextRequest,
-	{ params }: { params: Promise<{ id: string }> }
-) {
-	try {
-		const { id } = await params
-		const clientId = parseInt(id)
+	return success(client)
+})
 
-		if (isNaN(clientId)) {
-			return NextResponse.json({ error: 'Invalid client ID' }, { status: 400 })
-		}
+export const PUT = withApiHandler(async (request: NextRequest, { params }) => {
+	const id = extractId(params)
+	const organizationId = await getCurrentOrganizationId()
+	const payload = await parseJson(request, clientUpdateBodySchema)
+	logger.info('📝 Updating client via /[id]', { id, organizationId })
 
-		logger.info(`🗑️ Deleting client: ${clientId}`)
+	// Проверяем принадлежность записи к организации
+	const existing = await prisma.client.findFirst({
+		where: {
+			id,
+			...(organizationId ? { organizationId } : {}),
+		},
+	})
 
-		// Проверяем что клиент существует
-		const existingClient = await prisma.client.findUnique({
-			where: { id: clientId },
-		})
-
-		if (!existingClient) {
-			logger.info(`❌ Client not found: ${clientId}`)
-			return NextResponse.json({ error: 'Client not found' }, { status: 404 })
-		}
-
-		// Удаляем клиента
-		await prisma.client.delete({
-			where: { id: clientId },
-		})
-
-		logger.info(
-			`✅ Deleted client: ${existingClient.firstName} ${existingClient.lastName}`
-		)
-		return NextResponse.json({ success: true })
-	} catch (error) {
-		logger.error('❌ Error deleting client:', error)
-		return NextResponse.json(
-			{ error: 'Failed to delete client' },
-			{ status: 500 }
-		)
+	if (!existing) {
+		throw new ApiError(404, 'Client not found')
 	}
-}
+
+	try {
+		const client = await prisma.client.update({
+			where: { id },
+			data: buildClientUpdateData({ ...payload, id }),
+		})
+
+		return success(client)
+	} catch (error) {
+		logger.error('❌ Error updating client via /[id]', error)
+		throw error
+	}
+})
+
+export const DELETE = withApiHandler(async (_request, { params }) => {
+	const id = extractId(params)
+	const organizationId = await getCurrentOrganizationId()
+	logger.info('🗑️ Deleting client via /[id]', { id, organizationId })
+
+	// Проверяем принадлежность записи к организации
+	const existing = await prisma.client.findFirst({
+		where: {
+			id,
+			...(organizationId ? { organizationId } : {}),
+		},
+	})
+
+	if (!existing) {
+		throw new ApiError(404, 'Client not found')
+	}
+
+	// Проверяем наличие связанных предложений (только текущей организации)
+	const proposalsCount = await prisma.proposalDocument.count({
+		where: {
+			clientId: id,
+			...(organizationId ? { organizationId } : {}),
+		},
+	})
+
+	if (proposalsCount > 0) {
+		const message =
+			proposalsCount === 1
+				? 'Impossibile eliminare il cliente: esiste ancora un preventivo associato. Elimina o modifica il preventivo prima di procedere.'
+				: `Impossibile eliminare il cliente: esistono ancora ${proposalsCount} preventivi associati. Elimina o modifica i preventivi prima di procedere.`
+		throw new ApiError(409, message)
+	}
+
+	// Проверяем наличие связанных заказов (только текущей организации)
+	const ordersCount = await prisma.order.count({
+		where: {
+			clientId: id,
+			...(organizationId ? { organizationId } : {}),
+		},
+	})
+
+	if (ordersCount > 0) {
+		const message =
+			ordersCount === 1
+				? 'Impossibile eliminare il cliente: esiste ancora un ordine associato. Elimina o modifica l\'ordine prima di procedere.'
+				: `Impossibile eliminare il cliente: esistono ancora ${ordersCount} ordini associati. Elimina o modifica gli ordini prima di procedere.`
+		throw new ApiError(409, message)
+	}
+
+	await prisma.client.delete({ where: { id } })
+
+	return success({ success: true })
+})

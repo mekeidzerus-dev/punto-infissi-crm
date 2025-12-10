@@ -51,6 +51,7 @@ import {
 import { buildProductPosition } from '@/lib/product-position-builder'
 import { generateProductDescription } from '@/lib/product-name-generator'
 import { parseClientInput } from '@/lib/client-input-parser'
+import { toast } from 'sonner'
 
 import type { Client } from '@/types/client'
 import type { VATRate } from '@/types/common'
@@ -194,6 +195,9 @@ export function ProposalFormV3({
 				proposalDate: proposal.proposalDate
 					? new Date(proposal.proposalDate).toISOString().split('T')[0]
 					: new Date().toISOString().split('T')[0],
+				validUntil: proposal.validUntil
+					? new Date(proposal.validUntil).toISOString().split('T')[0]
+					: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
 			})
 		}
 	}, [proposal])
@@ -413,11 +417,22 @@ export function ProposalFormV3({
 			} else {
 				const error = await response.json()
 				logger.error('❌ Ошибка создания клиента:', error)
-				alert(`${t('errorSaving')}: ${error.error || 'Unknown error'}`)
+				const errorMessage = error.error || 'Unknown error'
+				const message =
+					locale === 'ru'
+						? `${t('errorSaving')}: ${errorMessage}`
+						: typeof errorMessage === 'string' && errorMessage.includes('Unknown')
+						? 'Impossibile creare il cliente. Controlla i dati inseriti e riprova.'
+						: `Impossibile creare il cliente: ${errorMessage}`
+				toast.error(message, { duration: 4000 })
 			}
 		} catch (error) {
 			logger.error('❌ Ошибка:', error)
-			alert(t('errorSaving'))
+			const message =
+				locale === 'ru'
+					? t('errorSaving') || 'Ошибка сохранения'
+					: 'Si è verificato un errore durante la creazione del cliente. Riprova più tardi.'
+			toast.error(message, { duration: 4000 })
 		}
 	}
 
@@ -444,11 +459,22 @@ export function ProposalFormV3({
 			} else {
 				const error = await response.json()
 				logger.error('❌ Ошибка обновления клиента:', error)
-				alert(`${t('errorSaving')}: ${error.error || 'Unknown error'}`)
+				const errorMessage = error.error || 'Unknown error'
+				const message =
+					locale === 'ru'
+						? `${t('errorSaving')}: ${errorMessage}`
+						: typeof errorMessage === 'string' && errorMessage.includes('Unknown')
+						? 'Impossibile aggiornare il cliente. Controlla i dati inseriti e riprova.'
+						: `Impossibile aggiornare il cliente: ${errorMessage}`
+				toast.error(message, { duration: 4000 })
 			}
 		} catch (error) {
 			logger.error('❌ Ошибка обновления клиента:', error)
-			alert(t('errorSaving'))
+			const message =
+				locale === 'ru'
+					? t('errorSaving') || 'Ошибка сохранения'
+					: 'Si è verificato un errore durante l\'aggiornamento del cliente. Riprova più tardi.'
+			toast.error(message, { duration: 4000 })
 		}
 	}
 
@@ -465,11 +491,11 @@ export function ProposalFormV3({
 
 		// Если есть критические ошибки, показываем их
 		if (parsed.errors.length > 0) {
-			alert(
-				`Обнаружены ошибки в данных:\n${parsed.errors.join(
-					'\n'
-				)}\n\nПожалуйста, исправьте их в форме.`
-			)
+			const errorMessage =
+				locale === 'ru'
+					? `Обнаружены ошибки в данных:\n${parsed.errors.join('\n')}\n\nПожалуйста, исправьте их в форме.`
+					: `Sono stati rilevati errori nei dati inseriti:\n${parsed.errors.join('\n')}\n\nCorreggi gli errori nel modulo per continuare.`
+			toast.error(errorMessage, { duration: 5000 })
 		}
 
 		// Открываем форму с предзаполненными данными
@@ -606,8 +632,8 @@ export function ProposalFormV3({
 				const errorMessage =
 					locale === 'ru'
 						? `Ошибка: Не удалось найти связь между категорией "${product.category.name}" и поставщиком "${product.supplier.name}". Убедитесь, что поставщик добавлен в эту категорию.`
-						: `Errore: Impossibile trovare il collegamento tra la categoria "${product.category.name}" e il fornitore "${product.supplier.name}". Assicurati che il fornitore sia aggiunto a questa categoria.`
-				alert(errorMessage)
+						: `Il fornitore "${product.supplier.name}" non lavora con la categoria "${product.category.name}".\n\nPer aggiungere questo prodotto, devi prima collegare il fornitore alla categoria nelle impostazioni.`
+				toast.error(errorMessage, { duration: 5000 })
 				logger.error('❌ Supplier category not found:', {
 					categoryId: product.category.id,
 					categoryName: product.category.name,
@@ -661,12 +687,11 @@ export function ProposalFormV3({
 			setCurrentGroupIndex(null)
 		} catch (error: any) {
 			logger.error('❌ Error creating product position:', error)
-			// Показываем ошибку пользователю (можно использовать toast)
-			alert(
+			const errorMessage =
 				locale === 'ru'
 					? error.message || 'Ошибка при создании товара'
-					: error.message || 'Errore nella creazione del prodotto'
-			)
+					: error.message || 'Si è verificato un errore durante la creazione del prodotto. Riprova più tardi.'
+			toast.error(errorMessage, { duration: 4000 })
 		}
 	}
 
@@ -862,7 +887,9 @@ export function ProposalFormV3({
 
 	const handleSave = async () => {
 		if (!formData.clientId || formData.groups.length === 0) {
-			alert(t('selectClientAndAddGroups'))
+			toast.warning(t('selectClientAndAddGroups') || 'Выберите клиента и добавьте группы', {
+				duration: 4000,
+			})
 			return
 		}
 
@@ -870,10 +897,11 @@ export function ProposalFormV3({
 		for (const group of formData.groups) {
 			for (const position of group.positions) {
 				if (!position.categoryId || !position.supplierCategoryId) {
-					alert(
+					toast.error(
 						locale === 'ru'
 							? `Ошибка: Позиция "${position.description || 'без описания'}" не имеет категории или поставщика. Удалите позицию или добавьте её через конфигуратор.`
-							: `Errore: La posizione "${position.description || 'senza descrizione'}" non ha categoria o fornitore. Rimuovi la posizione o aggiungila tramite il configuratore.`
+							: `Il prodotto "${position.description || 'senza descrizione'}" non è completo.\n\nPer salvarlo, devi aggiungerlo tramite il configuratore oppure rimuoverlo dalla lista.`,
+						{ duration: 5000 }
 					)
 					setLoading(false)
 					return
@@ -886,11 +914,13 @@ export function ProposalFormV3({
 			await onSave(formData)
 		} catch (error) {
 			logger.error('Error saving proposal:', error)
-			alert(
+			const errorMessage =
 				locale === 'ru'
 					? `Ошибка сохранения: ${error instanceof Error ? error.message : 'Unknown error'}`
-					: `Errore di salvataggio: ${error instanceof Error ? error.message : 'Unknown error'}`
-			)
+					: error instanceof Error && error.message
+					? `Impossibile salvare il preventivo: ${error.message}`
+					: 'Si è verificato un errore durante il salvataggio. Riprova più tardi.'
+			toast.error(errorMessage, { duration: 4000 })
 		} finally {
 			setLoading(false)
 		}
@@ -1097,7 +1127,10 @@ export function ProposalFormV3({
 												size='sm'
 												onClick={() => {
 													// TODO: Интеграция с IP-телефонией
-													alert(`${t('callClient')}: ${selectedClient.phone}`)
+													toast.info(
+														`${t('callClient')}: ${selectedClient.phone}`,
+														{ duration: 3000 }
+													)
 												}}
 												disabled={!selectedClient.phone}
 												className='h-8 px-3 text-xs'

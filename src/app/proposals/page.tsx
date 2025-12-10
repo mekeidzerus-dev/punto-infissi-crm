@@ -20,6 +20,8 @@ import { multiSearch } from '@/lib/multi-search'
 import { highlightText } from '@/lib/highlight-text'
 import { useLanguage } from '@/contexts/LanguageContext'
 import { pluralizeGroups } from '@/lib/i18n'
+import { toast } from 'sonner'
+import { ConfirmDeleteDialog } from '@/components/confirm-delete-dialog'
 
 interface Client {
 	id: number
@@ -79,6 +81,15 @@ export default function ProposalsPage() {
 		ProposalDocumentView | undefined
 	>()
 	const [isLoading, setIsLoading] = useState(true)
+	const [deleteDialog, setDeleteDialog] = useState<{
+		isOpen: boolean
+		proposal: ProposalDocumentView | null
+		isDeleting: boolean
+	}>({
+		isOpen: false,
+		proposal: null,
+		isDeleting: false,
+	})
 
 	useEffect(() => {
 		fetchProposals()
@@ -91,11 +102,18 @@ export default function ProposalsPage() {
 			
 			if (!response.ok) {
 				const errorData = await response.json().catch(() => ({}))
-			const errorText = errorData.error || errorData.details || 'Unknown error'
-			logger.error('Error fetching proposals:', {
-				status: response.status,
-				error: typeof errorText === 'string' ? errorText : JSON.stringify(errorText),
-			})
+				const errorText = errorData.error || errorData.details || 'Unknown error'
+				logger.error(
+					'Error fetching proposals:',
+					undefined,
+					{
+						status: response.status,
+						error:
+							typeof errorText === 'string'
+								? errorText
+								: JSON.stringify(errorText),
+					}
+				)
 				setProposals([]) // Устанавливаем пустой массив при ошибке
 				return
 			}
@@ -106,15 +124,21 @@ export default function ProposalsPage() {
 			if (Array.isArray(data)) {
 				setProposals(data)
 			} else {
-				logger.error('Invalid data format from API:', data)
+				logger.error('Invalid data format from API:', undefined, {
+					data: JSON.stringify(data),
+				})
 				setProposals([])
 			}
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : String(error)
-			logger.error('Error fetching proposals:', {
-				error: errorMessage,
-				details: error instanceof Error ? error.stack : undefined,
-			})
+			logger.error(
+				'Error fetching proposals:',
+				error instanceof Error ? error : undefined,
+				{
+					error: errorMessage,
+					details: error instanceof Error ? error.stack : undefined,
+				}
+			)
 			setProposals([]) // Устанавливаем пустой массив при ошибке
 		} finally {
 			setIsLoading(false)
@@ -137,22 +161,51 @@ export default function ProposalsPage() {
 			})
 
 			if (response.ok) {
+				toast.success(
+					editingProposal
+						? (locale === 'ru' ? 'Предложение успешно обновлено' : 'Preventivo aggiornato con successo')
+						: (locale === 'ru' ? 'Предложение успешно создано' : 'Preventivo creato con successo'),
+					{ duration: 2000 }
+				)
 				await fetchProposals()
 				setShowForm(false)
 				setEditingProposal(undefined)
 			} else {
-				const error = await response.json()
+				const error = await response.json().catch(() => ({}))
 				logger.error('Error saving proposal:', error || undefined)
-				const errorMessage = error.details || error.error || 'Unknown error'
-				alert(
+				
+				// Правильно сериализуем сообщение об ошибке
+				let errorMessage = 'Unknown error'
+				if (error.details) {
+					errorMessage = typeof error.details === 'string' 
+						? error.details 
+						: JSON.stringify(error.details)
+				} else if (error.error) {
+					errorMessage = typeof error.error === 'string'
+						? error.error
+						: JSON.stringify(error.error)
+				} else if (error.message) {
+					errorMessage = typeof error.message === 'string'
+						? error.message
+						: JSON.stringify(error.message)
+				}
+				
+				const message =
 					locale === 'ru'
 						? `Ошибка: ${errorMessage}`
-						: `Errore: ${errorMessage}`
-				)
+						: errorMessage.includes('Unknown')
+						? 'Si è verificato un errore imprevisto. Riprova più tardi.'
+						: `Si è verificato un errore: ${errorMessage}`
+				toast.error(message, { duration: 4000 })
 			}
-		} catch (error) {
+		} catch (error: any) {
 			logger.error('Error saving proposal:', error || undefined)
-			alert(t('errorOccurred'))
+			const errorMessage = error?.message || error?.error || (typeof error === 'string' ? error : 'Unknown error')
+			const message =
+				locale === 'ru'
+					? `Ошибка: ${errorMessage}`
+					: 'Si è verificato un errore imprevisto. Riprova più tardi.'
+			toast.error(message, { duration: 4000 })
 		}
 	}
 
@@ -228,11 +281,19 @@ export default function ProposalsPage() {
 				setShowForm(true)
 			} else {
 				logger.error('❌ Error loading proposal for edit')
-				alert(t('errorOccurred'))
+				const message =
+					locale === 'ru'
+						? t('errorOccurred') || 'Произошла ошибка'
+						: 'Impossibile caricare il preventivo. Riprova più tardi.'
+				toast.error(message, { duration: 4000 })
 			}
 		} catch (error) {
 			logger.error('❌ Error loading proposal:', error || undefined)
-			alert(t('errorOccurred'))
+			const message =
+				locale === 'ru'
+					? t('errorOccurred') || 'Произошла ошибка'
+					: 'Si è verificato un errore durante il caricamento. Riprova più tardi.'
+			toast.error(message, { duration: 4000 })
 		}
 	}
 
@@ -241,26 +302,47 @@ export default function ProposalsPage() {
 		setShowPdfPreview(true)
 	}
 
-	const handleDelete = async (proposalId: string) => {
-		if (!confirm(t('confirmDelete'))) {
-			return
-		}
+	const handleDeleteClick = (proposal: ProposalDocumentView) => {
+		setDeleteDialog({
+			isOpen: true,
+			proposal,
+			isDeleting: false,
+		})
+	}
+
+	const handleDeleteConfirm = async () => {
+		if (!deleteDialog.proposal) return
+
+		setDeleteDialog(prev => ({ ...prev, isDeleting: true }))
 
 		try {
-			const response = await fetch(`/api/proposals/${proposalId}`, {
+			const response = await fetch(`/api/proposals/${deleteDialog.proposal.id}`, {
 				method: 'DELETE',
 			})
 
 			if (response.ok) {
+				toast.success(
+					locale === 'ru' ? 'Предложение успешно удалено' : 'Preventivo eliminato con successo',
+					{ duration: 2000 }
+				)
 				await fetchProposals()
+				setDeleteDialog({ isOpen: false, proposal: null, isDeleting: false })
 			} else {
 				const error = await response.json()
 				logger.error('Error deleting proposal:', error || undefined)
-				alert(t('errorOccurred') + ': ' + (error.error || 'Unknown error'))
+				const errorMessage =
+					error.error || error.message || t('errorOccurred') || 'Unknown error'
+				toast.error(errorMessage, { duration: 4000 })
 			}
 		} catch (error) {
 			logger.error('Error deleting proposal:', error || undefined)
-			alert(t('errorOccurred'))
+			const message =
+				locale === 'ru'
+					? t('errorOccurred') || 'Произошла ошибка'
+					: 'Si è verificato un errore durante l\'eliminazione. Riprova più tardi.'
+			toast.error(message, { duration: 4000 })
+		} finally {
+			setDeleteDialog(prev => ({ ...prev, isDeleting: false }))
 		}
 	}
 
@@ -464,7 +546,7 @@ export default function ProposalsPage() {
 													<Button
 														variant='outline'
 														size='sm'
-														onClick={() => handleDelete(proposal.id)}
+														onClick={() => handleDeleteClick(proposal)}
 														className='text-red-600 hover:bg-red-50'
 													>
 														<Trash2 className='w-4 h-4' />
@@ -519,6 +601,19 @@ export default function ProposalsPage() {
 					}}
 				/>
 			)}
+
+			{/* Диалог подтверждения удаления */}
+			<ConfirmDeleteDialog
+				isOpen={deleteDialog.isOpen}
+				onClose={() =>
+					setDeleteDialog({ isOpen: false, proposal: null, isDeleting: false })
+				}
+				onConfirm={handleDeleteConfirm}
+				title={locale === 'ru' ? 'Удаление предложения' : 'Eliminazione preventivo'}
+				itemName={deleteDialog.proposal?.number || ''}
+				itemType={locale === 'ru' ? 'предложение' : 'preventivo'}
+				isLoading={deleteDialog.isDeleting}
+			/>
 		</AppLayout>
 	)
 }

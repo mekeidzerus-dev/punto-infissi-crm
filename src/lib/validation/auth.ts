@@ -1,0 +1,45 @@
+import { z } from 'zod'
+
+export const registerSchema = z.object({
+	email: z.string().email('Invalid email format'),
+	password: z
+		.string()
+		.min(8, 'Password must be at least 8 characters')
+		.regex(/[a-zA-Z]/, 'Password must contain at least one letter')
+		.regex(/[0-9]/, 'Password must contain at least one number'),
+	name: z.string().optional(),
+})
+
+export const loginSchema = z.object({
+	email: z.string().email('Invalid email format'),
+	password: z.string().min(1, 'Password is required'),
+})
+
+export const inviteSchema = z.object({
+	email: z.string().email('Invalid email format'),
+})
+
+export const acceptInviteSchema = z.object({
+	token: z.string().min(1, 'Token is required'),
+	email: z.string().email('Invalid email format'),
+	password: z
+		.string()
+		.min(8, 'Password must be at least 8 characters')
+		.regex(/[a-zA-Z]/, 'Password must contain at least one letter')
+		.regex(/[0-9]/, 'Password must contain at least one number'),
+	name: z.string().optional(),
+})
+
+export const forgotPasswordSchema = z.object({
+	email: z.string().email('Invalid email format'),
+})
+
+export const resetPasswordSchema = z.object({
+	token: z.string().min(1, 'Token is required'),
+	password: z
+		.string()
+		.min(8, 'Password must be at least 8 characters')
+		.regex(/[a-zA-Z]/, 'Password must contain at least one letter')
+		.regex(/[0-9]/, 'Password must contain at least one number'),
+})
+

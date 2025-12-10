@@ -1,96 +1,71 @@
-import { NextRequest, NextResponse } from 'next/server'
+
+import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { logger } from '@/lib/logger'
+import { ApiError, parseJson, success, withApiHandler } from '@/lib/api-handler'
 import { syncParameterGlobalStatus } from '@/lib/parameter-utils'
+import {
+	categoryParameterLinkBodySchema,
+	ensureCategoryId,
+	ensureParameterId,
+} from '@/app/api/category-parameters/helpers'
 
-// POST /api/categories/[id]/parameters - привязать параметр к категории
-export async function POST(
-	request: NextRequest,
-	{ params }: { params: Promise<{ id: string }> }
-) {
-	try {
-		const { id: categoryId } = await params
-		const body = await request.json()
-		const {
-			parameterId,
-			isRequired = false,
-			isVisible = true,
-			order = 0,
-		} = body
+type CategoryRouteParams = { id: string }
 
-		// Проверяем, существует ли уже связь
-		const existingLink = await prisma.categoryParameter.findFirst({
-			where: {
-				categoryId,
-				parameterId,
-			},
-		})
+type CategoryRouteParamsInput =
+	| CategoryRouteParams
+	| Record<string, string | string[]>
+	| undefined
 
-		if (existingLink) {
-			return NextResponse.json(
-				{ error: 'Parameter already linked to category' },
-				{ status: 400 }
-			)
-		}
+type CategoryParamsOrPromise =
+	| CategoryRouteParamsInput
+	| Promise<CategoryRouteParamsInput>
 
-		// Создаем связь
-		const categoryParameter = await prisma.categoryParameter.create({
-			data: {
-				categoryId,
-				parameterId,
-				isRequired,
-				isVisible,
-				order,
-			},
-		})
-
-		// Синхронизируем статус isGlobal параметра после привязки
-		await syncParameterGlobalStatus(parameterId)
-
-		return NextResponse.json(categoryParameter)
-	} catch (error) {
-		logger.error('Error linking parameter to category:', error)
-		return NextResponse.json(
-			{ error: 'Failed to link parameter to category' },
-			{ status: 500 }
-		)
+async function resolveCategoryId(params: CategoryParamsOrPromise) {
+	const resolved = await params
+	const idValue = resolved?.id
+	if (!idValue) {
+		throw new ApiError(400, 'Category id is required')
 	}
+	const id = Array.isArray(idValue) ? idValue[0] : idValue
+	return ensureCategoryId(id)
 }
 
-// DELETE /api/categories/[id]/parameters - отвязать параметр от категории
-export async function DELETE(
-	request: NextRequest,
-	{ params }: { params: Promise<{ id: string }> }
-) {
-	try {
-		const { id: categoryId } = await params
-		const { searchParams } = new URL(request.url)
-		const parameterId = searchParams.get('parameterId')
+export const POST = withApiHandler(async (request: NextRequest, { params }) => {
+	const categoryId = await resolveCategoryId(params)
+	const payload = await parseJson(request, categoryParameterLinkBodySchema)
 
-		if (!parameterId) {
-			return NextResponse.json(
-				{ error: 'Parameter ID is required' },
-				{ status: 400 }
-			)
-		}
+	const existingLink = await prisma.categoryParameter.findFirst({
+		where: { categoryId, parameterId: payload.parameterId },
+	})
 
-		// Удаляем связь
-		await prisma.categoryParameter.deleteMany({
-			where: {
-				categoryId,
-				parameterId,
-			},
-		})
-
-		// Синхронизируем статус isGlobal параметра после отвязки
-		await syncParameterGlobalStatus(parameterId)
-
-		return NextResponse.json({ success: true })
-	} catch (error) {
-		logger.error('Error unlinking parameter from category:', error)
-		return NextResponse.json(
-			{ error: 'Failed to unlink parameter from category' },
-			{ status: 500 }
-		)
+	if (existingLink) {
+		throw new ApiError(400, 'Parameter already linked to category')
 	}
-}
+
+	const categoryParameter = await prisma.categoryParameter.create({
+		data: {
+			categoryId,
+			parameterId: payload.parameterId,
+			isRequired: payload.isRequired ?? false,
+			isVisible: payload.isVisible ?? true,
+			order: payload.order ?? 0,
+		},
+	})
+
+	await syncParameterGlobalStatus(payload.parameterId)
+
+	return success(categoryParameter)
+})
+
+export const DELETE = withApiHandler(async (request: NextRequest, { params }) => {
+	const categoryId = await resolveCategoryId(params)
+	const parameterId = ensureParameterId(request.nextUrl.searchParams.get('parameterId'))
+
+	await prisma.categoryParameter.deleteMany({
+		where: { categoryId, parameterId },
+	})
+
+	await syncParameterGlobalStatus(parameterId)
+
+	return success({ success: true })
+})

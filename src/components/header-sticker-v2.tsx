@@ -4,6 +4,7 @@ import { Bell, Search, User, Settings } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Label } from '@/components/ui/label'
 
 export function HeaderStickerV2() {
 	return (
@@ -11,8 +12,14 @@ export function HeaderStickerV2() {
 			<div className='flex items-center justify-between'>
 				<div className='flex items-center space-x-8'>
 					<div className='relative'>
+						<Label htmlFor='global-search-compact' className='sr-only'>
+							Поиск по всей системе...
+						</Label>
 						<Search className='absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400' />
 						<Input
+							id='global-search-compact'
+							name='globalSearch'
+							aria-label='Поиск по всей системе...'
 							placeholder='Поиск по всей системе...'
 							className='pl-12 w-96 bg-gradient-to-r from-gray-50 to-white border-gray-200 rounded-2xl focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300 text-base py-3'
 						/>

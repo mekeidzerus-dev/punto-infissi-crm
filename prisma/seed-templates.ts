@@ -15,7 +15,7 @@ async function main() {
 			type: 'privacy_policy',
 			contentRu: `ПОЛИТИКА КОНФИДЕНЦИАЛЬНОСТИ
 
-В соответствии с Регламентом (ЕС) 2016/679 (GDPR), настоящим информируем Вас о том, что Ваши персональные данные будут обработаны PUNTO INFISSI для целей выполнения договорных обязательств.
+В соответствии с Регламентом (ЕС) 2016/679 (GDPR), настоящим информируем Вас о том, что Ваши персональные данные будут обработаны MODOCRM для целей выполнения договорных обязательств.
 
 Ваши данные не будут переданы третьим лицам без Вашего согласия и будут храниться в течение 10 лет в соответствии с налоговым законодательством.
 
@@ -25,7 +25,7 @@ async function main() {
 
 			contentIt: `INFORMATIVA SULLA PRIVACY
 
-In conformità al Regolamento (UE) 2016/679 (GDPR), La informiamo che i Suoi dati personali saranno trattati da PUNTO INFISSI per l'esecuzione degli obblighi contrattuali.
+In conformità al Regolamento (UE) 2016/679 (GDPR), La informiamo che i Suoi dati personali saranno trattati da MODOCRM per l'esecuzione degli obblighi contrattuali.
 
 I Suoi dati non saranno comunicati a terzi senza il Suo consenso e saranno conservati per 10 anni in conformità alla normativa fiscale.
 
@@ -173,7 +173,7 @@ Firmando il presente documento, conferma di aver preso visione dell'informativa 
 			type: 'warranty',
 			contentRu: `ГАРАНТИЙНЫЕ УСЛОВИЯ
 
-PUNTO INFISSI гарантирует качество изделий и работ:
+MODOCRM гарантирует качество изделий и работ:
 
 1. ГАРАНТИЯ НА ИЗДЕЛИЯ: 5 лет
    - Профили и фурнитура
@@ -199,7 +199,7 @@ PUNTO INFISSI гарантирует качество изделий и рабо
 
 			contentIt: `CONDIZIONI DI GARANZIA
 
-PUNTO INFISSI garantisce la qualità dei prodotti e dei lavori:
+MODOCRM garantisce la qualità dei prodotti e dei lavori:
 
 1. GARANZIA SUI PRODOTTI: 5 anni
    - Profili e ferramenta

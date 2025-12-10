@@ -107,7 +107,7 @@ const testClients = [
 
 	// Юридические лица (компании)
 	{
-		type: 'business',
+		type: 'company',
 		companyName: 'Costruzioni Italia SRL',
 		firstName: 'Roberto',
 		lastName: 'Ricci',
@@ -120,7 +120,7 @@ const testClients = [
 		notes: 'Крупный строительный подрядчик',
 	},
 	{
-		type: 'business',
+		type: 'company',
 		companyName: 'Design & Build SPA',
 		firstName: 'Anna',
 		lastName: 'Fontana',
@@ -133,7 +133,7 @@ const testClients = [
 		notes: 'Архитектурная компания, работаем с 2018',
 	},
 	{
-		type: 'business',
+		type: 'company',
 		companyName: 'Renovare Group',
 		firstName: 'Stefano',
 		lastName: 'Costa',
@@ -146,7 +146,7 @@ const testClients = [
 		notes: 'Специализируется на реновации исторических зданий',
 	},
 	{
-		type: 'business',
+		type: 'company',
 		companyName: 'Casa Bella Immobiliare',
 		firstName: 'Valentina',
 		lastName: 'Pellegrini',
@@ -159,7 +159,7 @@ const testClients = [
 		notes: 'Агентство недвижимости, оптовые заказы',
 	},
 	{
-		type: 'business',
+		type: 'company',
 		companyName: 'Edilizia Moderna SNC',
 		firstName: 'Davide',
 		lastName: 'Greco',
@@ -199,7 +199,7 @@ async function main() {
 		})
 		console.log(
 			`✅ Клиент создан: ${
-				client.type === 'business'
+				client.type === 'company'
 					? client.companyName
 					: `${client.firstName} ${client.lastName}`
 			}`

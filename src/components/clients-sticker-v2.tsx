@@ -22,6 +22,8 @@ import { multiSearch } from '@/lib/multi-search'
 import { ClientFormModal } from '@/components/client-form-modal'
 import { useLanguage } from '@/contexts/LanguageContext'
 import type { Client } from '@/types/client'
+import { toast } from 'sonner'
+import { ConfirmDeleteDialog } from '@/components/confirm-delete-dialog'
 
 interface ClientWithCount extends Client {
 	name: string
@@ -32,7 +34,7 @@ interface ClientWithCount extends Client {
 }
 
 export default function ClientsStickerV2() {
-	const { t } = useLanguage()
+	const { t, locale } = useLanguage()
 	const [clients, setClients] = useState<ClientWithCount[]>([])
 	const [searchTerm, setSearchTerm] = useState('')
 	const [isFormOpen, setIsFormOpen] = useState(false)
@@ -40,6 +42,15 @@ export default function ClientsStickerV2() {
 		null
 	)
 	const [isLoading, setIsLoading] = useState(true)
+	const [deleteDialog, setDeleteDialog] = useState<{
+		isOpen: boolean
+		client: ClientWithCount | null
+		isDeleting: boolean
+	}>({
+		isOpen: false,
+		client: null,
+		isDeleting: false,
+	})
 
 	// Загрузка клиентов из API
 	useEffect(() => {
@@ -52,6 +63,12 @@ export default function ClientsStickerV2() {
 			const response = await fetch('/api/clients')
 			if (response.ok) {
 				const data = await response.json()
+				// Проверяем, что data - массив
+				if (!Array.isArray(data)) {
+					logger.error('Invalid response format from API:', data)
+					setClients([])
+					return
+				}
 				// Преобразуем данные из БД в формат компонента
 				const transformedData = data.map((client: any) => ({
 					...client,
@@ -62,9 +79,28 @@ export default function ClientsStickerV2() {
 					company: client.type === 'company' ? client.companyName : undefined,
 				}))
 				setClients(transformedData)
+				logger.info(`✅ Loaded ${transformedData.length} clients`)
+			} else {
+				const errorData = await response.json().catch(() => ({}))
+				logger.error('Error fetching clients:', {
+					status: response.status,
+					error: errorData.error || errorData.message || 'Unknown error',
+				})
+				toast.error(
+					locale === 'ru'
+						? 'Ошибка загрузки клиентов'
+						: 'Errore nel caricamento dei clienti',
+					{ duration: 4000 }
+				)
 			}
 		} catch (error) {
 			logger.error('Error fetching clients:', error)
+			toast.error(
+				locale === 'ru'
+					? 'Ошибка при загрузке клиентов'
+					: 'Errore durante il caricamento dei clienti',
+				{ duration: 4000 }
+			)
 		} finally {
 			setIsLoading(false)
 		}
@@ -82,6 +118,19 @@ export default function ClientsStickerV2() {
 
 				if (response.ok) {
 					await fetchClients()
+					setEditingClient(null)
+					setIsFormOpen(false)
+					toast.success(
+						locale === 'ru' ? 'Клиент успешно обновлен' : 'Cliente aggiornato con successo',
+						{ duration: 2000 }
+					)
+				} else {
+					const errorData = await response.json().catch(() => ({}))
+					toast.error(
+						errorData.error ||
+							(locale === 'ru' ? 'Ошибка обновления клиента' : 'Errore aggiornamento cliente'),
+						{ duration: 4000 }
+					)
 				}
 			} else {
 				// Создание
@@ -92,13 +141,28 @@ export default function ClientsStickerV2() {
 				})
 
 				if (response.ok) {
+					const createdClient = await response.json()
+					logger.info('✅ Client created:', createdClient)
 					await fetchClients()
+					setEditingClient(null)
+					setIsFormOpen(false)
+					toast.success(
+						locale === 'ru' ? 'Клиент успешно создан' : 'Cliente creato con successo',
+						{ duration: 2000 }
+					)
+				} else {
+					const errorData = await response.json().catch(() => ({}))
+					logger.error('Error creating client:', errorData)
+					toast.error(
+						errorData.error ||
+							(locale === 'ru' ? 'Ошибка создания клиента' : 'Errore creazione cliente'),
+						{ duration: 4000 }
+					)
 				}
 			}
-			setEditingClient(null)
 		} catch (error) {
 			logger.error('Error saving client:', error)
-			alert('Ошибка при сохранении клиента')
+			toast.error('Ошибка при сохранении клиента', { duration: 4000 })
 		}
 	}
 
@@ -107,20 +171,45 @@ export default function ClientsStickerV2() {
 		setIsFormOpen(true)
 	}
 
-	const handleDelete = async (id: number) => {
-		if (!confirm('Вы уверены, что хотите удалить этого клиента?')) return
+	const handleDeleteClick = (client: ClientWithCount) => {
+		setDeleteDialog({
+			isOpen: true,
+			client,
+			isDeleting: false,
+		})
+	}
+
+	const handleDeleteConfirm = async () => {
+		if (!deleteDialog.client) return
+
+		setDeleteDialog(prev => ({ ...prev, isDeleting: true }))
 
 		try {
-			const response = await fetch(`/api/clients?id=${id}`, {
+			const response = await fetch(`/api/clients/${deleteDialog.client.id}`, {
 				method: 'DELETE',
 			})
 
 			if (response.ok) {
+				toast.success(
+					locale === 'ru' ? 'Клиент успешно удален' : 'Cliente eliminato con successo',
+					{ duration: 2000 }
+				)
 				await fetchClients()
+				setDeleteDialog({ isOpen: false, client: null, isDeleting: false })
+			} else {
+				// Обработка ошибок от API
+				const errorData = await response.json().catch(() => ({}))
+				const errorMessage =
+					errorData.error ||
+					errorData.message ||
+					'Не удалось удалить клиента'
+				toast.error(errorMessage, { duration: 4000 })
 			}
 		} catch (error) {
 			logger.error('Error deleting client:', error)
-			alert('Ошибка при удалении клиента')
+			toast.error('Ошибка при удалении клиента', { duration: 4000 })
+		} finally {
+			setDeleteDialog(prev => ({ ...prev, isDeleting: false }))
 		}
 	}
 
@@ -260,7 +349,7 @@ export default function ClientsStickerV2() {
 										colSpan={7}
 										className='text-center py-8 text-gray-500'
 									>
-										Загрузка...
+										{t('loading')}
 									</TableCell>
 								</TableRow>
 							) : sortedItems.length === 0 ? (
@@ -270,8 +359,8 @@ export default function ClientsStickerV2() {
 										className='text-center py-8 text-gray-500'
 									>
 										{searchTerm
-											? 'Ничего не найдено'
-											: 'Нет клиентов. Добавьте первого клиента.'}
+											? t('nothingFound')
+											: t('noItems')}
 									</TableCell>
 								</TableRow>
 							) : (
@@ -335,7 +424,7 @@ export default function ClientsStickerV2() {
 												<Button
 													variant='outline'
 													size='sm'
-													onClick={() => handleDelete(Number(client.id))}
+													onClick={() => handleDeleteClick(client)}
 													className='h-8 w-8 p-0 text-red-600 hover:bg-red-50'
 												>
 													<Trash2 className='h-4 w-4' />
@@ -348,6 +437,19 @@ export default function ClientsStickerV2() {
 						</TableBody>
 					</Table>
 				</div>
+
+				{/* Диалог подтверждения удаления */}
+				<ConfirmDeleteDialog
+					isOpen={deleteDialog.isOpen}
+					onClose={() =>
+						setDeleteDialog({ isOpen: false, client: null, isDeleting: false })
+					}
+					onConfirm={handleDeleteConfirm}
+					title={locale === 'ru' ? 'Удаление клиента' : 'Eliminazione cliente'}
+					itemName={deleteDialog.client?.name || ''}
+					itemType={locale === 'ru' ? 'клиента' : 'cliente'}
+					isLoading={deleteDialog.isDeleting}
+				/>
 			</div>
 		</AppLayout>
 	)

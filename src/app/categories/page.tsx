@@ -271,16 +271,27 @@ export default function CategoriesPage() {
 				setEditingCategory(undefined)
 				resetForm()
 				toast.success(
-					editingCategory ? 'Категория обновлена' : 'Категория создана'
+					editingCategory
+						? locale === 'ru'
+							? 'Категория обновлена'
+							: 'Categoria aggiornata'
+						: locale === 'ru'
+						? 'Категория создана'
+						: 'Categoria creata'
 				)
 			} else {
 				const error = await response.json()
 				logger.error('Error saving category:', error)
-				toast.error('Ошибка: ' + (error.error || 'Unknown error'))
+				toast.error(
+					(locale === 'ru' ? 'Ошибка: ' : 'Errore: ') +
+						(error.error || 'Unknown error')
+				)
 			}
 		} catch (error) {
 			logger.error('Error saving category:', error)
-			toast.error('Ошибка при сохранении')
+			toast.error(
+				locale === 'ru' ? 'Ошибка при сохранении' : 'Errore durante il salvataggio'
+			)
 		}
 	}
 
@@ -329,7 +340,9 @@ export default function CategoriesPage() {
 
 			if (response.ok) {
 				await fetchCategories()
-				toast.success('Категория удалена')
+				toast.success(
+					locale === 'ru' ? 'Категория удалена' : 'Categoria eliminata'
+				)
 				setShowDeleteDialog(false)
 				setCategoryToDelete(null)
 			} else {
@@ -442,7 +455,7 @@ export default function CategoriesPage() {
 								<thead>
 									<tr className='border-b'>
 										<th className='text-left py-3 px-4 font-medium'>
-											Название
+											{locale === 'ru' ? 'Название' : 'Nome'}
 										</th>
 										<th className='text-left py-3 px-4 font-medium'>
 											{t('description')}
@@ -574,49 +587,67 @@ export default function CategoriesPage() {
 			{/* Форма категории */}
 			<Dialog open={showForm} onOpenChange={setShowForm}>
 				<DialogContent className='max-w-4xl max-h-[90vh] overflow-y-auto'>
-					<DialogHeader>
-						<DialogTitle>
-							{editingCategory
-								? t('edit') + ' ' + t('category')
-								: t('addCategory')}
-						</DialogTitle>
-					</DialogHeader>
-					<div className='space-y-6 py-4'>
-						{/* Название категории */}
-						<div>
-							<Label htmlFor='categoryName'>Название категории *</Label>
-							<Input
-								id='categoryName'
-								value={formData.name}
-								onChange={e =>
-									setFormData(prev => ({ ...prev, name: e.target.value }))
-								}
-								placeholder='Например: Serramenti, Cassonetti, Avvolgibile...'
-								className='mt-1'
-							/>
-						</div>
+				<DialogHeader>
+					<DialogTitle>
+						{editingCategory
+							? locale === 'ru'
+								? 'Редактировать категорию'
+								: 'Modifica categoria'
+							: locale === 'ru'
+							? 'Новая категория'
+							: 'Nuova categoria'}
+					</DialogTitle>
+				</DialogHeader>
+				<div className='space-y-6 py-4'>
+					{/* Название категории */}
+					<div>
+						<Label htmlFor='categoryName'>
+							{locale === 'ru' ? 'Название категории *' : 'Nome categoria *'}
+						</Label>
+						<Input
+							id='categoryName'
+							value={formData.name}
+							onChange={e =>
+								setFormData(prev => ({ ...prev, name: e.target.value }))
+							}
+							placeholder={
+								locale === 'ru'
+									? 'Например: Serramenti, Cassonetti, Avvolgibile...'
+									: 'Ad esempio: Serramenti, Cassonetti, Avvolgibile...'
+							}
+							className='mt-1'
+						/>
+					</div>
 
-						{/* Описание */}
-						<div>
-							<Label htmlFor='categoryDescription'>Описание</Label>
-							<Textarea
-								id='categoryDescription'
-								value={formData.description}
-								onChange={e =>
-									setFormData(prev => ({
-										...prev,
-										description: e.target.value,
-									}))
-								}
-								placeholder='Опциональное описание категории...'
-								className='mt-1'
-								rows={3}
-							/>
-						</div>
+					{/* Описание */}
+					<div>
+						<Label htmlFor='categoryDescription'>
+							{locale === 'ru' ? 'Описание' : 'Descrizione'}
+						</Label>
+						<Textarea
+							id='categoryDescription'
+							value={formData.description}
+							onChange={e =>
+								setFormData(prev => ({
+									...prev,
+									description: e.target.value,
+								}))
+							}
+							placeholder={
+								locale === 'ru'
+									? 'Опциональное описание категории...'
+									: 'Descrizione opzionale della categoria...'
+							}
+							className='mt-1'
+							rows={3}
+						/>
+					</div>
 
-						{/* Выбор иконки */}
-						<div>
-							<Label>Выберите иконку *</Label>
+					{/* Выбор иконки */}
+					<div>
+						<Label>
+							{locale === 'ru' ? 'Выберите иконку *' : 'Seleziona icona *'}
+						</Label>
 							<div className='mt-3 grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-3'>
 								{DEFAULT_ICONS.map((iconData, index) => (
 									<div
@@ -626,7 +657,10 @@ export default function CategoriesPage() {
 												? 'ring-2 ring-blue-500 bg-blue-50'
 												: 'hover:bg-gray-50'
 										}`}
-										onClick={() => setSelectedIcon(iconData.svg)}
+										onClick={() => {
+											setSelectedIcon(iconData.svg)
+											setFormData(prev => ({ ...prev, icon: iconData.svg }))
+										}}
 									>
 										<div className='flex flex-col items-center space-y-2'>
 											<div
@@ -644,7 +678,11 @@ export default function CategoriesPage() {
 
 						{/* Кастомная иконка */}
 						<div>
-							<Label htmlFor='customIcon'>Кастомная иконка (SVG)</Label>
+							<Label htmlFor='customIcon'>
+								{locale === 'ru'
+									? 'Кастомная иконка (SVG)'
+									: 'Icona personalizzata (SVG)'}
+							</Label>
 							<Textarea
 								id='customIcon'
 								value={formData.icon}
@@ -652,14 +690,18 @@ export default function CategoriesPage() {
 									setFormData(prev => ({ ...prev, icon: e.target.value }))
 									setSelectedIcon(e.target.value)
 								}}
-								placeholder='Вставьте код SVG...'
+								placeholder={
+									locale === 'ru'
+										? 'Вставьте код SVG...'
+										: 'Incolla il codice SVG...'
+								}
 								className='mt-1 font-mono text-sm'
 								rows={4}
 							/>
 							{formData.icon && (
 								<div className='mt-2 p-3 border rounded-lg bg-gray-50'>
 									<div className='text-sm text-gray-600 mb-2'>
-										Предпросмотр:
+										{locale === 'ru' ? 'Предпросмотр:' : 'Anteprima:'}
 									</div>
 									<div
 										className='w-12 h-12 flex items-center justify-center'
@@ -673,27 +715,43 @@ export default function CategoriesPage() {
 					{/* Действия */}
 					<div className='flex justify-end gap-3 pt-4 border-t'>
 						<Button variant='outline' onClick={() => setShowForm(false)}>
-							Отмена
+							{locale === 'ru' ? 'Отмена' : 'Annulla'}
 						</Button>
 						<Button
 							onClick={() => {
 								if (!formData.name.trim()) {
-									toast.error('Название категории обязательно')
+									toast.error(
+										locale === 'ru'
+											? 'Название категории обязательно'
+											: 'Il nome della categoria è obbligatorio'
+									)
 									return
 								}
-								if (!selectedIcon) {
-									toast.error('Выберите иконку')
+								// Используем selectedIcon, если он установлен, иначе formData.icon
+								const iconToSave = selectedIcon || formData.icon
+								if (!iconToSave || !iconToSave.trim()) {
+									toast.error(
+										locale === 'ru'
+											? 'Выберите иконку'
+											: 'Seleziona un\'icona'
+									)
 									return
 								}
 								handleSaveCategory({
 									name: formData.name,
-									icon: selectedIcon,
+									icon: iconToSave,
 									description: formData.description,
 								})
 							}}
 							className='bg-green-600 hover:bg-green-700'
 						>
-							{editingCategory ? 'Сохранить' : 'Создать'}
+							{editingCategory
+								? locale === 'ru'
+									? 'Сохранить'
+									: 'Salva'
+								: locale === 'ru'
+								? 'Создать'
+								: 'Crea'}
 						</Button>
 					</div>
 				</DialogContent>

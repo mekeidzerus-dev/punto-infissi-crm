@@ -101,24 +101,44 @@ export default function InstallersPage() {
 
 	const handleSaveInstaller = async (formData: any) => {
 		try {
-			if (editingInstaller) {
-				await fetch('/api/installers', {
-					method: 'PUT',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({ id: editingInstaller.id, ...formData }),
-				})
-			} else {
-				await fetch('/api/installers', {
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify(formData),
-				})
+			// Преобразуем данные для API
+			const apiData = {
+				...formData,
+				hasTools: formData.hasTools === 'yes' || formData.hasTools === true,
+				hasTransport: formData.hasTransport === 'yes' || formData.hasTransport === true,
+				email: formData.email || null,
+				specialization: formData.specialization || null,
+				experience: formData.experience ? parseInt(formData.experience) : null,
+				rateType: formData.rateType || null,
+				ratePrice: formData.ratePrice ? parseFloat(formData.ratePrice) : null,
+				schedule: formData.schedule || null,
+				rating: formData.rating ? parseInt(formData.rating) : null,
+				notes: formData.notes || null,
 			}
+
+			const response = editingInstaller
+				? await fetch('/api/installers', {
+						method: 'PUT',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify({ id: editingInstaller.id, ...apiData }),
+				  })
+				: await fetch('/api/installers', {
+						method: 'POST',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify(apiData),
+				  })
+
+			if (!response.ok) {
+				const error = await response.json()
+				throw new Error(error.error || 'Failed to save installer')
+			}
+
 			await fetchInstallers()
 			setEditingInstaller(null)
-		} catch (error) {
+			setIsFormOpen(false)
+		} catch (error: any) {
 			logger.error('Error saving installer:', error)
-			alert(t('errorSaving'))
+			alert(error.message || t('errorSaving'))
 		}
 	}
 

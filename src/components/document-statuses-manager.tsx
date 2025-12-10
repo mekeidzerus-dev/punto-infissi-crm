@@ -6,14 +6,6 @@ import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { logger } from '@/lib/logger'
 import {
-	Table,
-	TableBody,
-	TableCell,
-	TableHead,
-	TableHeader,
-	TableRow,
-} from '@/components/ui/table'
-import {
 	Dialog,
 	DialogContent,
 	DialogHeader,
@@ -24,6 +16,7 @@ import { Badge } from '@/components/ui/badge'
 import { Plus, Edit, Trash2, Save, X, GripVertical, Star } from 'lucide-react'
 import { toast } from 'sonner'
 import { useLanguage } from '@/contexts/LanguageContext'
+import { ConfirmDeleteDialog } from '@/components/confirm-delete-dialog'
 import {
 	Select,
 	SelectContent,
@@ -38,7 +31,6 @@ import {
 	PointerSensor,
 	useSensor,
 	useSensors,
-	DragEndEvent,
 } from '@dnd-kit/core'
 import {
 	arrayMove,
@@ -56,6 +48,7 @@ interface DocumentStatus {
 	nameIt: string
 	color: string
 	isActive: boolean
+	globalOrder: number
 	documentTypes: Array<{
 		id: number
 		order: number
@@ -123,6 +116,12 @@ interface SortableStatusRowProps {
 		color: string
 		borderColor: string
 	}
+	attachedDocTypes?: Array<{
+		docType: DocumentType
+		statusTypeId: number
+		order: number
+		isDefault: boolean
+	}>
 }
 
 function SortableStatusRow({
@@ -133,6 +132,7 @@ function SortableStatusRow({
 	onDelete,
 	onSetDefault,
 	getColorStyles,
+	attachedDocTypes = [],
 }: SortableStatusRowProps) {
 	const {
 		attributes,
@@ -141,7 +141,10 @@ function SortableStatusRow({
 		transform,
 		transition,
 		isDragging,
-	} = useSortable({ id: item.statusTypeId })
+	} = useSortable({ 
+		id: item.status.id,
+		disabled: false,
+	})
 
 	const style = {
 		transform: CSS.Transform.toString(transform),
@@ -150,83 +153,128 @@ function SortableStatusRow({
 	}
 
 	return (
-		<TableRow ref={setNodeRef} style={style}>
-			<TableCell>
-				<div
-					{...attributes}
-					{...listeners}
-					className='cursor-grab active:cursor-grabbing hover:bg-gray-100 p-2 rounded flex items-center justify-center'
-				>
-					<GripVertical className='h-5 w-5 text-gray-400' />
+		<div
+			ref={setNodeRef}
+			style={style}
+			{...attributes}
+			className={`grid grid-cols-[48px_1fr_120px_1fr_auto] gap-4 items-center p-3 border-b border-gray-200 hover:bg-gray-50 transition-colors ${
+				isDragging ? 'opacity-50 bg-gray-100 shadow-lg' : ''
+			}`}
+		>
+			{/* Grip handle */}
+			<div
+				{...listeners}
+				className='cursor-grab active:cursor-grabbing hover:bg-gray-200 p-2 rounded flex items-center justify-center touch-none select-none'
+				style={{
+					touchAction: 'none',
+					userSelect: 'none',
+				}}
+			>
+				<GripVertical className='h-5 w-5 text-gray-400' />
+			</div>
+
+			{/* Название */}
+			<div>
+				<div className='font-medium'>
+					{locale === 'ru' ? item.status.nameRu : item.status.nameIt}
 				</div>
-			</TableCell>
-			<TableCell>
-				<div>
-					<div className='font-medium'>
-						{locale === 'ru' ? item.status.nameRu : item.status.nameIt}
-					</div>
-					<div className='text-xs text-gray-500'>{item.status.name}</div>
-				</div>
-			</TableCell>
-			<TableCell>
-				<div className='flex items-center gap-2'>
-					<Badge style={getColorStyles(item.status.color)} className='border'>
-						{locale === 'ru' ? item.status.nameRu : item.status.nameIt}
-					</Badge>
-					{item.isDefault && (
+				<div className='text-xs text-gray-500'>{item.status.name}</div>
+			</div>
+
+			{/* Цвет */}
+			<div>
+				<Badge style={getColorStyles(item.status.color)} className='border'>
+					{locale === 'ru' ? item.status.nameRu : item.status.nameIt}
+				</Badge>
+			</div>
+
+			{/* Типы документов */}
+			<div>
+				<div className='flex flex-wrap gap-2'>
+					{attachedDocTypes.map(({ docType, isDefault }) => (
 						<Badge
-							variant='secondary'
-							className='bg-green-100 text-green-700 border-green-300 text-xs'
+							key={docType.id}
+							variant='outline'
+							className='text-xs'
 						>
-							<Star className='h-3 w-3 mr-1 text-green-600' />
-							{locale === 'ru' ? 'Основной' : 'Principale'}
+							{locale === 'ru' ? docType.nameRu : docType.nameIt}
+							{isDefault && (
+								<Star className='h-3 w-3 ml-1 text-yellow-500 fill-yellow-500' />
+							)}
 						</Badge>
+					))}
+					{attachedDocTypes.length === 0 && (
+						<span className='text-xs text-gray-400'>
+							{locale === 'ru' ? 'Не привязан' : 'Non collegato'}
+						</span>
 					)}
 				</div>
-			</TableCell>
-			<TableCell className='text-right'>
-				<div className='flex justify-end gap-2'>
-					<Button
-						variant='outline'
-						size='sm'
-						onClick={() => onSetDefault(item.status.id, documentTypeId, !item.isDefault)}
-						className={item.isDefault ? 'bg-gray-100 text-gray-700 border-gray-300 hover:bg-gray-200' : ''}
-						title={item.isDefault 
-							? (locale === 'ru' ? 'Снять пометку "Основной"' : 'Rimuovi "Principale"')
-							: (locale === 'ru' ? 'Установить как основной' : 'Imposta come principale')
+			</div>
+
+			{/* Действия */}
+			<div className='flex justify-end gap-2'>
+				<Button
+					variant='outline'
+					size='sm'
+					onClick={(e) => {
+						e.stopPropagation()
+						// Используем первый тип документа для API (но API установит для всех)
+						const firstDocTypeId = attachedDocTypes[0]?.docType.id || documentTypeId || 0
+						if (firstDocTypeId > 0) {
+							onSetDefault(item.status.id, firstDocTypeId, !item.isDefault)
 						}
-					>
-						<Star className={`h-4 w-4 ${item.isDefault ? 'fill-gray-600 text-gray-600' : 'text-gray-400'}`} />
-					</Button>
-					<Button
-						variant='outline'
-						size='sm'
-						onClick={() => onEdit(item.status)}
-					>
-						<Edit className='h-4 w-4' />
-					</Button>
-					<Button
-						variant='outline'
-						size='sm'
-						onClick={() => onDelete(item.status.id)}
-						className='text-red-600 hover:bg-red-50'
-					>
-						<Trash2 className='h-4 w-4' />
-					</Button>
-				</div>
-			</TableCell>
-		</TableRow>
+					}}
+					className={item.isDefault ? 'bg-gray-100 text-gray-700 border-gray-300 hover:bg-gray-200' : ''}
+					title={item.isDefault 
+						? (locale === 'ru' ? 'Снять пометку "Основной"' : 'Rimuovi "Principale"')
+						: (locale === 'ru' ? 'Установить как основной для всех типов документов' : 'Imposta come principale per tutti i tipi di documenti')
+					}
+				>
+					<Star className={`h-4 w-4 ${item.isDefault ? 'fill-gray-600 text-gray-600' : 'text-gray-400'}`} />
+				</Button>
+				<Button
+					variant='outline'
+					size='sm'
+					onClick={(e) => {
+						e.stopPropagation()
+						onEdit(item.status)
+					}}
+				>
+					<Edit className='h-4 w-4' />
+				</Button>
+				<Button
+					variant='outline'
+					size='sm'
+					onClick={(e) => {
+						e.stopPropagation()
+						onDelete(item.status.id)
+					}}
+					className='text-red-600 hover:bg-red-50'
+				>
+					<Trash2 className='h-4 w-4' />
+				</Button>
+			</div>
+		</div>
 	)
 }
 
 export function DocumentStatusesManager() {
-	const { t, locale } = useLanguage()
+	const { locale } = useLanguage()
 	const [statuses, setStatuses] = useState<DocumentStatus[]>([])
 	const [documentTypes, setDocumentTypes] = useState<DocumentType[]>([])
 	const [showModal, setShowModal] = useState(false)
 	const [editingStatus, setEditingStatus] = useState<DocumentStatus | null>(
 		null
 	)
+	const [deleteDialog, setDeleteDialog] = useState<{
+		isOpen: boolean
+		statusId: number | null
+		statusName: string
+	}>({
+		isOpen: false,
+		statusId: null,
+		statusName: '',
+	})
 	const [formData, setFormData] = useState({
 		name: '',
 		nameRu: '',
@@ -234,16 +282,14 @@ export function DocumentStatusesManager() {
 		color: '#gray',
 		documentTypeIds: [] as number[],
 	})
-	const [sortedStatuses, setSortedStatuses] = useState<
-		Record<
-			number,
-			Array<{ status: DocumentStatus; statusTypeId: number; order: number; isDefault: boolean }>
-		>
-	>({})
 	const [isReordering, setIsReordering] = useState(false)
 
 	const sensors = useSensors(
-		useSensor(PointerSensor),
+		useSensor(PointerSensor, {
+			activationConstraint: {
+				distance: 5, // Минимальное расстояние 5px для активации drag
+			},
+		}),
 		useSensor(KeyboardSensor, {
 			coordinateGetter: sortableKeyboardCoordinates,
 		})
@@ -273,7 +319,7 @@ export function DocumentStatusesManager() {
 				return
 			}
 			
-			const data = await response.json()
+				const data = await response.json()
 			
 			// Убеждаемся, что data - массив
 			if (!Array.isArray(data)) {
@@ -282,54 +328,33 @@ export function DocumentStatusesManager() {
 				return
 			}
 			
-			const statusesWithOrder = data.map((status: DocumentStatus) => ({
+			const statusesWithOrder = data.map((status: any) => ({
 				...status,
+				globalOrder: status.globalOrder ?? status.id ?? 0, // Используем globalOrder или id как fallback
 				documentTypes: status.documentTypes.map((dt: any) => ({
 					...dt,
+					// Сохраняем id из структуры API (может быть statusTypeId или id)
+					id: dt.id || dt.statusTypeId || 0,
 					order: dt.order || 0,
 					isDefault: dt.isDefault || false,
 				})),
 			}))
-			setStatuses(statusesWithOrder)
-
-			// Обновляем отсортированные списки для каждого типа документа
-			const newSorted: Record<
-				number,
-				Array<{ status: DocumentStatus; statusTypeId: number; order: number; isDefault: boolean }>
-			> = {}
-			documentTypes.forEach(docType => {
-				const typeStatuses: Array<{ status: DocumentStatus; statusTypeId: number; order: number; isDefault: boolean }> = statusesWithOrder
-					.filter((status: DocumentStatus) =>
-						status.documentTypes.some(
-							(dt: any) => dt.documentType.id === docType.id
-						)
-					)
-					.map((status: DocumentStatus) => {
-						const dt = status.documentTypes.find(
-							(dt: any) => dt.documentType.id === docType.id
-						)
-						return {
-							status,
-							statusTypeId: dt?.id || 0,
-							order: dt?.order || 0,
-							isDefault: dt?.isDefault || false,
-						}
-					})
-					.filter(
-						(item: {
-							status: DocumentStatus
-							statusTypeId: number
-							order: number
-							isDefault: boolean
-						}) => item.statusTypeId !== 0
-					)
-					.sort((a: { order: number }, b: { order: number }) => {
-						// Сортируем только по order, без перемещения основного статуса
-						return a.order - b.order
-					})
-				newSorted[docType.id] = typeStatuses
+			
+			// Сортируем статусы по глобальному порядку
+			const sortedStatuses = statusesWithOrder.sort((a, b) => {
+				// Используем globalOrder (уже установлен выше с fallback)
+				const aOrder = a.globalOrder ?? 0
+				const bOrder = b.globalOrder ?? 0
+				if (aOrder !== bOrder) {
+					return aOrder - bOrder
+				}
+				// Если порядок одинаковый, сортируем по алфавиту
+				return (locale === 'ru' ? a.nameRu : a.nameIt).localeCompare(
+					locale === 'ru' ? b.nameRu : b.nameIt
+				)
 			})
-			setSortedStatuses(newSorted)
+			
+			setStatuses(sortedStatuses)
 		} catch (error) {
 			logger.error('Error loading statuses:', error)
 			setStatuses([])
@@ -349,7 +374,7 @@ export function DocumentStatusesManager() {
 				return
 			}
 			
-			const data = await response.json()
+				const data = await response.json()
 			
 			// Убеждаемся, что data - массив
 			if (!Array.isArray(data)) {
@@ -358,7 +383,7 @@ export function DocumentStatusesManager() {
 				return
 			}
 			
-			setDocumentTypes(data)
+				setDocumentTypes(data)
 		} catch (error) {
 			logger.error('Error loading document types:', error)
 			setDocumentTypes([])
@@ -391,12 +416,9 @@ export function DocumentStatusesManager() {
 
 	const handleSave = async () => {
 		try {
-			const url = editingStatus
-				? '/api/document-statuses'
-				: '/api/document-statuses'
 			const method = editingStatus ? 'PUT' : 'POST'
 
-			const response = await fetch(url, {
+			const response = await fetch('/api/document-statuses', {
 				method,
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
@@ -411,31 +433,49 @@ export function DocumentStatusesManager() {
 				}
 				setShowModal(false)
 				setEditingStatus(null)
-				alert(
+				toast.success(
 					locale === 'ru'
 						? editingStatus
 							? 'Статус обновлен!'
 							: 'Статус создан!'
 						: editingStatus
 						? 'Stato aggiornato!'
-						: 'Stato creato!'
+						: 'Stato creato!',
+					{ duration: 2000 }
 				)
 			} else {
 				const error = await response.json()
-				alert(`Ошибка: ${error.error}`)
+				const errorMessage = error.error || error.details || 'Unknown error'
+				toast.error(
+					locale === 'ru' ? `Ошибка: ${errorMessage}` : `Errore: ${errorMessage}`,
+					{ duration: 4000 }
+				)
 			}
 		} catch (error) {
 			logger.error('Error saving status:', error)
-			alert('Ошибка сохранения')
+			toast.error(
+				locale === 'ru' ? 'Ошибка сохранения' : 'Errore nel salvataggio',
+				{ duration: 3000 }
+			)
 		}
 	}
 
-	const handleDelete = async (id: number) => {
-		if (!confirm(locale === 'ru' ? 'Удалить статус?' : 'Eliminare lo stato?'))
-			return
+	const handleDeleteClick = (id: number) => {
+		const status = statuses.find(s => s.id === id)
+		if (!status) return
+		
+		setDeleteDialog({
+			isOpen: true,
+			statusId: id,
+			statusName: locale === 'ru' ? status.nameRu : status.nameIt,
+		})
+	}
+
+	const handleDeleteConfirm = async () => {
+		if (!deleteDialog.statusId) return
 
 		try {
-			const response = await fetch(`/api/document-statuses?id=${id}`, {
+			const response = await fetch(`/api/document-statuses?id=${deleteDialog.statusId}`, {
 				method: 'DELETE',
 			})
 
@@ -443,14 +483,27 @@ export function DocumentStatusesManager() {
 				if (documentTypes.length > 0) {
 					await loadStatuses()
 				}
-				alert(locale === 'ru' ? 'Статус удален!' : 'Stato eliminato!')
+				setDeleteDialog({ isOpen: false, statusId: null, statusName: '' })
+				toast.success(
+					locale === 'ru' ? 'Статус удален!' : 'Stato eliminato!',
+					{ duration: 2000 }
+				)
 			} else {
 				const error = await response.json()
-				alert(`Ошибка: ${error.error}`)
+				const errorMessage = error.error || error.details || 'Unknown error'
+				setDeleteDialog({ isOpen: false, statusId: null, statusName: '' })
+				toast.error(
+					locale === 'ru' ? `Ошибка: ${errorMessage}` : `Errore: ${errorMessage}`,
+					{ duration: 4000 }
+				)
 			}
 		} catch (error) {
 			logger.error('Error deleting status:', error)
-			alert('Ошибка удаления')
+			setDeleteDialog({ isOpen: false, statusId: null, statusName: '' })
+			toast.error(
+				locale === 'ru' ? 'Ошибка удаления' : 'Errore nell\'eliminazione',
+				{ duration: 3000 }
+			)
 		}
 	}
 
@@ -466,7 +519,7 @@ export function DocumentStatusesManager() {
 					method: 'POST',
 					headers: { 'Content-Type': 'application/json' },
 					body: JSON.stringify({
-						documentTypeId,
+						documentTypeId, // Используется только для валидации, API установит для всех типов
 						isDefault,
 					}),
 				}
@@ -479,10 +532,10 @@ export function DocumentStatusesManager() {
 				toast.success(
 					locale === 'ru'
 						? isDefault
-							? 'Статус установлен как основной'
+							? 'Статус установлен как основной для всех типов документов'
 							: 'Пометка "Основной" снята'
 						: isDefault
-						? 'Stato impostato come principale'
+						? 'Stato impostato come principale per tutti i tipi di documenti'
 						: 'Etichetta "Principale" rimossa',
 					{
 						duration: 2000,
@@ -529,88 +582,6 @@ export function DocumentStatusesManager() {
 		}
 	}
 
-	const handleDragEnd = (
-		event: DragEndEvent,
-		typeStatuses: Array<{
-			status: DocumentStatus
-			statusTypeId: number
-			order: number
-			isDefault: boolean
-		}>,
-		docTypeId: number
-	) => {
-		const { active, over } = event
-
-		if (!over || active.id === over.id || isReordering) return
-
-		const oldIndex = typeStatuses.findIndex(
-			item => item.statusTypeId === active.id
-		)
-		const newIndex = typeStatuses.findIndex(
-			item => item.statusTypeId === over.id
-		)
-
-		if (oldIndex === -1 || newIndex === -1) return
-
-		// Вычисляем новые order для всех элементов
-		const reordered = arrayMove(typeStatuses, oldIndex, newIndex).map(
-			(item, index) => ({
-				...item,
-				order: index,
-			})
-		)
-
-		// Валидация данных
-		if (reordered.length === 0) return
-
-		// Сохраняем предыдущее состояние для отката (deep copy)
-		const previousState = JSON.parse(JSON.stringify(sortedStatuses))
-
-		// Оптимистично обновляем локальное состояние сразу
-		setSortedStatuses(prev => ({
-			...prev,
-			[docTypeId]: reordered,
-		}))
-
-		// Подготавливаем данные для batch update
-		const items = reordered.map(item => ({
-			id: item.statusTypeId,
-			order: item.order,
-		}))
-
-		// Валидация перед отправкой
-		if (items.some(item => !item.id || item.order < 0)) {
-			setSortedStatuses(previousState)
-			logger.error('Invalid reorder data:', items)
-			return
-		}
-
-		setIsReordering(true)
-
-		// Обновляем порядок на сервере
-		fetch('/api/document-status-types/reorder', {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ items, documentTypeId: docTypeId }),
-		})
-			.then(response => {
-				if (!response.ok) {
-					throw new Error('Failed to reorder')
-				}
-			})
-			.catch(error => {
-				logger.error('Error reordering statuses:', error)
-				// Откатываем изменения при ошибке
-				setSortedStatuses(previousState)
-				alert(
-					locale === 'ru' ? 'Ошибка изменения порядка' : 'Errore nel riordinare'
-				)
-			})
-			.finally(() => {
-				setIsReordering(false)
-			})
-	}
-
 	return (
 		<Card>
 			<CardHeader>
@@ -618,95 +589,150 @@ export function DocumentStatusesManager() {
 					<CardTitle>
 						{locale === 'ru' ? 'Статусы документов' : 'Stati dei Documenti'}
 					</CardTitle>
-					<Button onClick={handleAdd} size='sm'>
+					<Button onClick={handleAdd} size='sm' className='bg-green-600 hover:bg-green-700 text-white'>
 						<Plus className='h-4 w-4 mr-2' />
 						{locale === 'ru' ? 'Добавить' : 'Aggiungi'}
 					</Button>
 				</div>
 			</CardHeader>
 			<CardContent>
-				<div className='space-y-6'>
-					{documentTypes.map(docType => {
-						// Используем отсортированный список из состояния или вычисляем из statuses
-						const typeStatuses =
-							sortedStatuses[docType.id] ||
-							statuses
-								.filter(status =>
-									status.documentTypes.some(
-										dt => dt.documentType.id === docType.id
-									)
-								)
-								.map(status => {
-									const dt = status.documentTypes.find(
-										dt => dt.documentType.id === docType.id
-									)
-									const statusTypeId = dt?.id
-									return {
-										status,
-										statusTypeId: statusTypeId || 0,
-										order: dt?.order || 0,
-									}
+				{/* Показываем сообщение если нет статусов */}
+				{statuses.length === 0 ? (
+					<div className='text-center py-8 text-gray-500'>
+						{locale === 'ru'
+							? 'Нет статусов'
+							: 'Nessuno stato'}
+					</div>
+				) : (
+					<DndContext
+						sensors={sensors}
+						collisionDetection={closestCenter}
+						onDragEnd={async (event) => {
+							const { active, over } = event
+							
+							if (!over || active.id === over.id || isReordering) return
+
+							const oldIndex = statuses.findIndex(status => status.id === active.id)
+							const newIndex = statuses.findIndex(status => status.id === over.id)
+
+							if (oldIndex === -1 || newIndex === -1) return
+
+							// Сохраняем предыдущее состояние для отката
+							const previousState = [...statuses]
+
+							// Оптимистично обновляем локальное состояние
+							const reordered = arrayMove(statuses, oldIndex, newIndex).map((status, index) => ({
+								...status,
+								globalOrder: index,
+							}))
+							setStatuses(reordered)
+							setIsReordering(true)
+
+							try {
+								// Обновляем глобальный порядок для всех статусов
+								const items = reordered.map((status, index) => ({
+									id: status.id,
+									globalOrder: index,
+								}))
+
+								const response = await fetch('/api/document-statuses/reorder', {
+									method: 'POST',
+									headers: { 'Content-Type': 'application/json' },
+									body: JSON.stringify({ items }),
 								})
-								.filter(item => item.statusTypeId !== 0)
-								.sort((a, b) => a.order - b.order)
 
-						if (typeStatuses.length === 0) return null
-
-						return (
-							<DndContext
-								key={docType.id}
-								sensors={sensors}
-								collisionDetection={closestCenter}
-								onDragEnd={event =>
-									handleDragEnd(event, typeStatuses, docType.id)
+								if (!response.ok) {
+									const errorData = await response.json().catch(() => ({}))
+									throw new Error(errorData.error || 'Failed to reorder')
 								}
+
+								// Перезагружаем статусы после успешного обновления
+								await loadStatuses()
+								
+								toast.success(
+									locale === 'ru' ? 'Порядок обновлен' : 'Ordine aggiornato',
+									{ duration: 2000 }
+								)
+							} catch (error) {
+								logger.error('Error reordering statuses:', error)
+								// Откатываем при ошибке
+								setStatuses(previousState)
+								toast.error(
+									locale === 'ru' 
+										? `Ошибка изменения порядка: ${error instanceof Error ? error.message : 'Unknown error'}`
+										: `Errore nel riordinare: ${error instanceof Error ? error.message : 'Errore sconosciuto'}`,
+									{ duration: 4000 }
+								)
+							} finally {
+								setIsReordering(false)
+							}
+						}}
+					>
+						<div className='border rounded-lg overflow-hidden bg-white'>
+							{/* Заголовок */}
+							<div className='grid grid-cols-[48px_1fr_120px_1fr_auto] gap-4 items-center p-3 bg-gray-50 border-b border-gray-200 font-medium text-sm text-gray-700'>
+								<div></div>
+								<div>{locale === 'ru' ? 'Название' : 'Nome'}</div>
+								<div>{locale === 'ru' ? 'Цвет' : 'Colore'}</div>
+								<div>{locale === 'ru' ? 'Типы документов' : 'Tipi di Documenti'}</div>
+								<div className='text-right'>{locale === 'ru' ? 'Действия' : 'Azioni'}</div>
+							</div>
+
+							{/* Список статусов */}
+							<SortableContext
+								items={statuses.map(status => status.id)}
+								strategy={verticalListSortingStrategy}
 							>
-								<div className='space-y-2'>
-									<h3 className='text-sm font-semibold text-gray-700'>
-										{locale === 'ru' ? docType.nameRu : docType.nameIt}
-									</h3>
-									<Table>
-										<TableHeader>
-											<TableRow>
-												<TableHead className='w-12'>
-													{locale === 'ru' ? 'Порядок' : 'Ordine'}
-												</TableHead>
-												<TableHead>
-													{locale === 'ru' ? 'Название' : 'Nome'}
-												</TableHead>
-												<TableHead>
-													{locale === 'ru' ? 'Цвет' : 'Colore'}
-												</TableHead>
-												<TableHead className='text-right'>
-													{locale === 'ru' ? 'Действия' : 'Azioni'}
-												</TableHead>
-											</TableRow>
-										</TableHeader>
-										<SortableContext
-											items={typeStatuses.map(item => item.statusTypeId)}
-											strategy={verticalListSortingStrategy}
-										>
-											<TableBody>
-												{typeStatuses.map(item => (
-													<SortableStatusRow
-														key={item.statusTypeId}
-														item={item}
-														documentTypeId={docType.id}
-														locale={locale}
-														onEdit={handleEdit}
-														onDelete={handleDelete}
-														onSetDefault={handleSetDefault}
-														getColorStyles={getColorStyles}
-													/>
-												))}
-											</TableBody>
-										</SortableContext>
-									</Table>
+								<div className='divide-y divide-gray-200'>
+									{statuses.map((status) => {
+										// Получаем все типы документов для этого статуса
+										const attachedDocTypes = status.documentTypes
+											.map((dt: any) => ({
+												docType: dt.documentType,
+												statusTypeId: dt.id || 0,
+												order: dt.order || 0,
+												isDefault: dt.isDefault || false,
+											}))
+											.filter(item => item.statusTypeId !== 0)
+											// Сортируем по порядку типов документов (они уже отсортированы по алфавиту)
+											.sort((a, b) => {
+												return (locale === 'ru' ? a.docType.nameRu : a.docType.nameIt).localeCompare(
+													locale === 'ru' ? b.docType.nameRu : b.docType.nameIt
+												)
+											})
+
+										// Используем первый тип документа для drag&drop
+										const primaryDocType = attachedDocTypes[0]?.docType
+										const primaryStatusTypeId = attachedDocTypes[0]?.statusTypeId || status.id
+										
+										// Проверяем, является ли статус главным хотя бы для одного типа документа
+										// Если статус главный, он должен быть главным для всех типов документов
+										const isDefault = attachedDocTypes.some(dt => dt.isDefault)
+
+										return (
+											<SortableStatusRow
+												key={status.id}
+												item={{
+													status,
+													statusTypeId: primaryStatusTypeId,
+													order: attachedDocTypes[0]?.order || 0,
+													isDefault,
+												}}
+												documentTypeId={primaryDocType?.id || 0}
+												locale={locale}
+												onEdit={handleEdit}
+												onDelete={handleDeleteClick}
+												onSetDefault={handleSetDefault}
+												getColorStyles={getColorStyles}
+												attachedDocTypes={attachedDocTypes}
+											/>
+										)
+									})}
 								</div>
-							</DndContext>
-						)
-					})}
-				</div>
+							</SortableContext>
+						</div>
+					</DndContext>
+				)}
 
 				{/* Модальное окно */}
 				<Dialog open={showModal} onOpenChange={setShowModal}>
@@ -827,6 +853,16 @@ export function DocumentStatusesManager() {
 						</div>
 					</DialogContent>
 				</Dialog>
+
+				{/* Диалог подтверждения удаления */}
+				<ConfirmDeleteDialog
+					isOpen={deleteDialog.isOpen}
+					onClose={() => setDeleteDialog({ isOpen: false, statusId: null, statusName: '' })}
+					onConfirm={handleDeleteConfirm}
+					title={locale === 'ru' ? 'Удалить статус?' : 'Eliminare lo stato?'}
+					itemName={deleteDialog.statusName}
+					itemType={locale === 'ru' ? 'статус' : 'stato'}
+				/>
 			</CardContent>
 		</Card>
 	)

@@ -70,7 +70,7 @@ export function GeneralSettings() {
 				if (org.faviconUrl) {
 					setFavicon(org.faviconUrl)
 					setFaviconPreview(org.faviconUrl)
-					localStorage.setItem('punto-infissi-favicon-path', org.faviconUrl)
+					localStorage.setItem('modocrm-favicon-path', org.faviconUrl)
 					window.dispatchEvent(new Event('favicon-updated'))
 				}
 
@@ -78,7 +78,7 @@ export function GeneralSettings() {
 				if (org.logoUrl) {
 					setLogo(org.logoUrl)
 					setLogoPreview(org.logoUrl)
-					localStorage.setItem('punto-infissi-logo-path', org.logoUrl)
+					localStorage.setItem('modocrm-logo-path', org.logoUrl)
 					window.dispatchEvent(new Event('logo-updated'))
 				}
 
@@ -100,27 +100,35 @@ export function GeneralSettings() {
 		}
 	}
 
-	const handleSave = async () => {
-		setIsSaving(true)
+	const updateOrganization = async (payload: Record<string, unknown>) => {
 		try {
-			// Сохранение данных компании
 			const response = await fetch('/api/organization', {
 				method: 'PUT',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					name: companyData.name,
-					phone: companyData.phone,
-					email: companyData.email,
-					address: companyData.address,
-					currency: selectedCurrency,
-				}),
+				body: JSON.stringify(payload),
 			})
-
-			if (response.ok) {
-				alert('Настройки сохранены!')
-			} else {
-				alert('Ошибка сохранения настроек')
+			if (!response.ok) {
+				throw new Error('Failed to update organization')
 			}
+			return await response.json()
+		} catch (error) {
+			logger.error('Error updating organization settings:', error)
+			throw error
+		}
+	}
+
+	const handleSave = async () => {
+		setIsSaving(true)
+		try {
+			await updateOrganization({
+				name: companyData.name,
+				phone: companyData.phone,
+				email: companyData.email,
+				address: companyData.address,
+				currency: selectedCurrency,
+				faviconUrl: favicon || null,
+			})
+			alert('Настройки сохранены!')
 		} catch (error) {
 			logger.error('Error saving settings:', error)
 			alert('Ошибка сохранения настроек')
@@ -157,8 +165,16 @@ export function GeneralSettings() {
 
 			if (data.success) {
 				setFavicon(data.path)
-				localStorage.setItem('punto-infissi-favicon-path', data.path)
+				localStorage.setItem('modocrm-favicon-path', data.path)
 				window.dispatchEvent(new Event('favicon-updated'))
+				try {
+					await updateOrganization({ faviconUrl: data.path })
+				} catch (error) {
+					logger.error('Ошибка сохранения фавикона в организации:', error)
+					alert(
+						'Фавикон применен локально, но не удалось сохранить в настройках организации'
+					)
+				}
 				alert('Фавикон загружен и применен!')
 			} else {
 				alert('Ошибка загрузки: ' + data.error)
@@ -167,6 +183,26 @@ export function GeneralSettings() {
 		} catch (error) {
 			logger.error('Ошибка загрузки фавикона:', error)
 			alert('Ошибка загрузки файла на сервер')
+		}
+	}
+
+	const handleFaviconReset = async () => {
+		const confirmed = window.confirm(
+			'Сбросить фавикон до значения по умолчанию?'
+		)
+		if (!confirmed) return
+
+		try {
+			await fetch('/api/favicon', { method: 'DELETE' })
+			await updateOrganization({ faviconUrl: null })
+			setFavicon('')
+			setFaviconPreview('')
+			localStorage.removeItem('modocrm-favicon-path')
+			window.dispatchEvent(new Event('favicon-updated'))
+			alert('Фавикон сброшен к стандартному')
+		} catch (error) {
+			logger.error('Ошибка сброса фавикона:', error)
+			alert('Не удалось сбросить фавикон')
 		}
 	}
 
@@ -196,8 +232,16 @@ export function GeneralSettings() {
 
 			if (data.success) {
 				setLogo(data.path)
-				localStorage.setItem('punto-infissi-logo-path', data.path)
+				localStorage.setItem('modocrm-logo-path', data.path)
 				window.dispatchEvent(new Event('logo-updated'))
+				try {
+					await updateOrganization({ logoUrl: data.path })
+				} catch (error) {
+					logger.error('Ошибка сохранения логотипа в организации:', error)
+					alert(
+						'Логотип применен локально, но не удалось сохранить в настройках организации'
+					)
+				}
 				alert('Логотип загружен и применен!')
 			} else {
 				alert('Ошибка загрузки: ' + data.error)
@@ -206,6 +250,26 @@ export function GeneralSettings() {
 		} catch (error) {
 			logger.error('Ошибка загрузки логотипа:', error)
 			alert('Ошибка загрузки файла на сервер')
+		}
+	}
+
+	const handleLogoReset = async () => {
+		const confirmed = window.confirm(
+			'Сбросить логотип до значения по умолчанию?'
+		)
+		if (!confirmed) return
+
+		try {
+			await fetch('/api/logo', { method: 'DELETE' })
+			await updateOrganization({ logoUrl: null })
+			setLogo('')
+			setLogoPreview('')
+			localStorage.removeItem('modocrm-logo-path')
+			window.dispatchEvent(new Event('logo-updated'))
+			alert('Логотип сброшен к стандартному')
+		} catch (error) {
+			logger.error('Ошибка сброса логотипа:', error)
+			alert('Не удалось сбросить логотип')
 		}
 	}
 
@@ -235,7 +299,7 @@ export function GeneralSettings() {
 										name: e.target.value,
 									})
 								}
-								placeholder='PUNTO INFISSI'
+								placeholder='MODOCRM'
 							/>
 						</div>
 						<div className='space-y-2'>
@@ -270,7 +334,7 @@ export function GeneralSettings() {
 										email: e.target.value,
 									})
 								}
-								placeholder='info@puntoinfissi.it'
+								placeholder='info@modocrm.com'
 							/>
 						</div>
 						<div className='space-y-2'>
@@ -306,13 +370,15 @@ export function GeneralSettings() {
 					<div className='space-y-2'>
 						<div className='flex items-center gap-2'>
 							<Globe className='h-4 w-4 text-gray-500' />
-							<Label htmlFor='currency'>Основная валюта</Label>
+							<Label htmlFor='currency-select' id='currency-select-label'>
+								Основная валюта
+							</Label>
 						</div>
 						<Select
 							value={selectedCurrency}
 							onValueChange={setSelectedCurrency}
 						>
-							<SelectTrigger>
+							<SelectTrigger id='currency-select' aria-labelledby='currency-select-label'>
 								<SelectValue placeholder='Выберите валюту' />
 							</SelectTrigger>
 							<SelectContent>
@@ -376,7 +442,7 @@ export function GeneralSettings() {
 								</div>
 							)}
 
-							<div className='flex-1'>
+							<div className='flex items-center gap-2 flex-1'>
 								<input
 									type='file'
 									id='logo-upload'
@@ -393,6 +459,14 @@ export function GeneralSettings() {
 								>
 									<Upload className='h-4 w-4 mr-2' />
 									Загрузить логотип
+								</Button>
+								<Button
+									variant='ghost'
+									size='sm'
+									onClick={handleLogoReset}
+									disabled={!logo && !logoPreview}
+								>
+									Сбросить
 								</Button>
 							</div>
 						</div>
@@ -418,7 +492,7 @@ export function GeneralSettings() {
 								</div>
 							)}
 
-							<div className='flex-1'>
+							<div className='flex items-center gap-2 flex-1'>
 								<input
 									type='file'
 									id='favicon-upload'
@@ -435,6 +509,14 @@ export function GeneralSettings() {
 								>
 									<Upload className='h-4 w-4 mr-2' />
 									Загрузить фавикон
+								</Button>
+								<Button
+									variant='ghost'
+									size='sm'
+									onClick={handleFaviconReset}
+									disabled={!favicon && !faviconPreview}
+								>
+									Сбросить
 								</Button>
 							</div>
 						</div>

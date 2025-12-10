@@ -158,7 +158,7 @@ export function Sidebar() {
 
 	// Загружаем порядок меню из localStorage
 	useEffect(() => {
-		const savedOrder = localStorage.getItem('punto-infissi-menu-order')
+		const savedOrder = localStorage.getItem('modocrm-menu-order')
 		if (savedOrder) {
 			try {
 				const parsed = JSON.parse(savedOrder)
@@ -180,7 +180,7 @@ export function Sidebar() {
 
 				// Сохраняем новый порядок в localStorage
 				localStorage.setItem(
-					'punto-infissi-menu-order',
+					'modocrm-menu-order',
 					JSON.stringify(newOrder)
 				)
 

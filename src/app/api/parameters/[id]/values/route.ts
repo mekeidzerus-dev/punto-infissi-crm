@@ -1,31 +1,14 @@
-import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { logger } from '@/lib/logger'
+import { success, withApiHandler } from '@/lib/api-handler'
+import { ensureParameterIdFromParams } from '../../helpers'
 
-// GET /api/parameters/[id]/values
-// Получить все значения конкретного параметра
-export async function GET(
-	request: NextRequest,
-	{ params }: { params: Promise<{ id: string }> }
-) {
-	try {
-		const { id } = await params
+export const GET = withApiHandler(async (_request, { params }) => {
+	const id = ensureParameterIdFromParams(params)
 
-		const values = await prisma.parameterValue.findMany({
-			where: {
-				parameterId: id,
-			},
-			orderBy: [{ order: 'asc' }, { createdAt: 'asc' }],
-		})
+	const values = await prisma.parameterValue.findMany({
+		where: { parameterId: id },
+		orderBy: [{ order: 'asc' }, { createdAt: 'asc' }],
+	})
 
-		logger.info(`✅ Found ${values.length} values for parameter ${id}`)
-
-		return NextResponse.json(values)
-	} catch (error) {
-		logger.error('❌ Error fetching parameter values:', error)
-		return NextResponse.json(
-			{ error: 'Failed to fetch parameter values' },
-			{ status: 500 }
-		)
-	}
-}
+	return success(values)
+})

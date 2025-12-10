@@ -1,144 +1,73 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { logger } from '@/lib/logger'
+import { ApiError, parseJson, success, withApiHandler } from '@/lib/api-handler'
+import {
+	buildParameterValueCreateData,
+	ensureParameterValueId,
+	parseParameterValueQuery,
+	parameterValueCreateBodySchema,
+} from './helpers'
 
-// GET - получить значения параметра
-export async function GET(request: NextRequest) {
-	try {
-		const { searchParams } = new URL(request.url)
-		const parameterId = searchParams.get('parameterId')
+export const GET = withApiHandler(async (request: NextRequest) => {
+	const query = parseParameterValueQuery(request.nextUrl.searchParams)
 
-		if (!parameterId) {
-			return NextResponse.json(
-				{ error: 'Parameter ID is required' },
-				{ status: 400 }
-			)
-		}
+	const values = await prisma.parameterValue.findMany({
+		where: {
+			parameterId: query.parameterId,
+			isActive: true,
+		},
+		orderBy: { order: 'asc' },
+	})
 
-		const values = await prisma.parameterValue.findMany({
-			where: {
-				parameterId,
-				isActive: true, // Показываем только активные значения
-			},
-			orderBy: { order: 'asc' },
-		})
+	return success(values)
+})
 
-		return NextResponse.json(values)
-	} catch (error) {
-		logger.error('❌ Error fetching parameter values:', error)
-		return NextResponse.json(
-			{ error: 'Failed to fetch values' },
-			{ status: 500 }
-		)
+export const POST = withApiHandler(async (request: NextRequest) => {
+	const { requireAuth } = await import('@/lib/auth-helpers')
+	const { updateUserActivity } = await import('@/lib/activity-tracker')
+	const user = await requireAuth()
+	await updateUserActivity(user.id)
+	const payload = await parseJson(request, parameterValueCreateBodySchema)
+
+	const parameter = await prisma.parameterTemplate.findUnique({
+		where: { id: payload.parameterId },
+	})
+
+	if (!parameter) {
+		throw new ApiError(404, 'Parameter not found')
 	}
-}
 
-// POST - создать новое значение
-export async function POST(request: NextRequest) {
-	try {
-		const body = await request.json()
-		const {
-			parameterId,
-			value,
-			valueIt,
-			displayName,
-			hexColor,
-			ralCode,
-			icon,
-			order,
-		} = body
+	const duplicate = await prisma.parameterValue.findFirst({
+		where: {
+			parameterId: payload.parameterId,
+			value: payload.value.trim(),
+			isActive: true,
+		},
+	})
 
-		if (!parameterId || !value) {
-			return NextResponse.json(
-				{ error: 'Parameter ID and value are required' },
-				{ status: 400 }
-			)
-		}
-
-		// Проверяем существование параметра
-		const parameter = await prisma.parameterTemplate.findUnique({
-			where: { id: parameterId },
-		})
-
-		if (!parameter) {
-			return NextResponse.json(
-				{ error: 'Parameter not found' },
-				{ status: 404 }
-			)
-		}
-
-		// Проверяем дубликаты значений для этого параметра
-		const existingValue = await prisma.parameterValue.findFirst({
-			where: {
-				parameterId,
-				value: value.trim(),
-				isActive: true,
-			},
-		})
-
-		if (existingValue) {
-			return NextResponse.json(
-				{ error: 'Value already exists for this parameter' },
-				{ status: 400 }
-			)
-		}
-
-		// Получаем максимальный order для определения позиции нового значения
-		const maxOrderValue = await prisma.parameterValue.findFirst({
-			where: { parameterId },
-			orderBy: { order: 'desc' },
-			select: { order: true },
-		})
-
-		const parameterValue = await prisma.parameterValue.create({
-			data: {
-				parameterId,
-				value: value.trim(),
-				valueIt: valueIt?.trim() || null,
-				displayName: displayName?.trim() || value.trim(),
-				hexColor: hexColor || null,
-				ralCode: ralCode || null,
-				icon: icon || null,
-				order: order !== undefined ? order : (maxOrderValue?.order ?? -1) + 1,
-				isActive: true,
-			},
-		})
-
-		logger.info(`✅ Created parameter value: ${value}`)
-		return NextResponse.json(parameterValue)
-	} catch (error) {
-		logger.error('❌ Error creating parameter value:', error)
-		return NextResponse.json(
-			{ error: 'Failed to create value' },
-			{ status: 500 }
-		)
+	if (duplicate) {
+		throw new ApiError(400, 'Value already exists for this parameter')
 	}
-}
 
-// DELETE - удалить значение
-export async function DELETE(request: NextRequest) {
-	try {
-		const { searchParams } = new URL(request.url)
-		const id = searchParams.get('id')
+	const maxOrder = await prisma.parameterValue.findFirst({
+		where: { parameterId: payload.parameterId },
+		orderBy: { order: 'desc' },
+		select: { order: true },
+	})
 
-		if (!id) {
-			return NextResponse.json(
-				{ error: 'Value ID is required' },
-				{ status: 400 }
-			)
-		}
+	const order = payload.order ?? (maxOrder?.order ?? -1) + 1
 
-		await prisma.parameterValue.delete({
-			where: { id },
-		})
+	const value = await prisma.parameterValue.create({
+		data: buildParameterValueCreateData(payload, order),
+	})
 
-		logger.info(`✅ Deleted parameter value: ${id}`)
-		return NextResponse.json({ success: true })
-	} catch (error) {
-		logger.error('❌ Error deleting parameter value:', error)
-		return NextResponse.json(
-			{ error: 'Failed to delete value' },
-			{ status: 500 }
-		)
-	}
-}
+	return success(value, 201)
+})
+
+export const DELETE = withApiHandler(async (request: NextRequest) => {
+	const id = ensureParameterValueId(request.nextUrl.searchParams.get('id'))
+
+	await prisma.parameterValue.delete({ where: { id } })
+
+	return success({ success: true })
+})

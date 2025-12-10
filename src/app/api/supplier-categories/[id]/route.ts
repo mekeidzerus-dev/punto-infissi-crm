@@ -1,91 +1,50 @@
-import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { logger } from '@/lib/logger'
+import { ApiError, success, withApiHandler } from '@/lib/api-handler'
+import { ensureSupplierCategoryId } from '../helpers'
 
-// GET - получить связь поставщик-категория по ID
-export async function GET(
-	request: NextRequest,
-	{ params }: { params: Promise<{ id: string }> }
-) {
-	try {
-		const { id } = await params
+export const GET = withApiHandler(async (_request, { params }) => {
+	const id = ensureSupplierCategoryId(params?.id as string)
 
-		const supplierCategory = await prisma.supplierProductCategory.findUnique({
-			where: { id },
-			include: {
-				supplier: true,
-				category: true,
-			},
-		})
+	const supplierCategory = await prisma.supplierProductCategory.findUnique({
+		where: { id },
+		include: {
+			supplier: true,
+			category: true,
+		},
+	})
 
-		if (!supplierCategory) {
-			return NextResponse.json(
-				{ error: 'Supplier category not found' },
-				{ status: 404 }
-			)
-		}
+	if (!supplierCategory) {
+		throw new ApiError(404, 'Supplier category not found')
+	}
 
-		return NextResponse.json(supplierCategory)
-	} catch (error) {
-		logger.error('Error fetching supplier category:', error)
-		return NextResponse.json(
-			{ error: 'Failed to fetch supplier category' },
-			{ status: 500 }
+	return success(supplierCategory)
+})
+
+export const DELETE = withApiHandler(async (_request, { params }) => {
+	const id = ensureSupplierCategoryId(params?.id as string)
+
+	const existingSupplierCategory = await prisma.supplierProductCategory.findUnique({
+		where: { id },
+	})
+
+	if (!existingSupplierCategory) {
+		throw new ApiError(404, 'Supplier category not found')
+	}
+
+	const usedInProposals = await prisma.proposalPosition.findFirst({
+		where: { supplierCategoryId: id },
+	})
+
+	if (usedInProposals) {
+		throw new ApiError(
+			400,
+			'Невозможно удалить связь: она используется в предложениях. Сначала удалите все связанные позиции.'
 		)
 	}
-}
 
-// DELETE - удалить связь поставщик-категория
-export async function DELETE(
-	request: NextRequest,
-	{ params }: { params: Promise<{ id: string }> }
-) {
-	try {
-		const { id } = await params
-		logger.info(`🗑️ Deleting supplier category: ${id}`)
+	await prisma.supplierProductCategory.delete({
+		where: { id },
+	})
 
-		// Проверяем что связь существует
-		const existingSupplierCategory =
-			await prisma.supplierProductCategory.findUnique({
-				where: { id },
-			})
-
-		if (!existingSupplierCategory) {
-			logger.info(`❌ Supplier category not found: ${id}`)
-			return NextResponse.json(
-				{ error: 'Supplier category not found' },
-				{ status: 404 }
-			)
-		}
-
-		// Проверяем, используется ли связь в предложениях
-		const usedInProposals = await prisma.proposalPosition.findFirst({
-			where: { supplierCategoryId: id },
-		})
-
-		if (usedInProposals) {
-			logger.info(`⚠️ Cannot delete: supplier category is used in proposals`)
-			return NextResponse.json(
-				{
-					error:
-						'Невозможно удалить связь: она используется в предложениях. Сначала удалите все связанные позиции.',
-				},
-				{ status: 400 }
-			)
-		}
-
-		// Удаляем связь
-		await prisma.supplierProductCategory.delete({
-			where: { id },
-		})
-
-		logger.info(`✅ Deleted supplier category: ${id}`)
-		return NextResponse.json({ success: true })
-	} catch (error) {
-		logger.error('❌ Error deleting supplier category:', error)
-		return NextResponse.json(
-			{ error: 'Failed to delete supplier category' },
-			{ status: 500 }
-		)
-	}
-}
+	return success({ success: true })
+})

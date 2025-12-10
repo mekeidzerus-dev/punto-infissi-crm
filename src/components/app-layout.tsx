@@ -4,27 +4,30 @@ import { usePathname } from 'next/navigation'
 import { Sidebar } from './sidebar'
 import { HeaderWithLogoV2 } from './header-with-logo-v2'
 import { TopNavStickerV2, type TopNavItem } from './top-nav-sticker-v2'
+import { useLanguage } from '@/contexts/LanguageContext'
 
 interface AppLayoutProps {
 	children: React.ReactNode
 	hideTopNav?: boolean
 }
 
-// Конфигурация топ-навигации для разных разделов
-const topNavConfig: Record<string, TopNavItem[]> = {
-	clients: [
-		{ id: 'clients', name: 'Клиенты', href: '/clients' },
-		{ id: 'suppliers', name: 'Поставщики', href: '/suppliers' },
-		{ id: 'partners', name: 'Партнёры', href: '/partners' },
-		{ id: 'installers', name: 'Монтажники', href: '/installers' },
-	],
+function getTopNavConfig(t: ReturnType<typeof useLanguage>['t']): Record<string, TopNavItem[]> {
+	return {
+		clients: [
+			{ id: 'clients', name: t('clients'), href: '/clients' },
+			{ id: 'suppliers', name: t('suppliers'), href: '/suppliers' },
+			{ id: 'partners', name: t('partners'), href: '/partners' },
+			{ id: 'installers', name: t('installers'), href: '/installers' },
+		],
+	}
 }
 
 export function AppLayout({ children, hideTopNav = false }: AppLayoutProps) {
 	const pathname = usePathname()
+	const { t } = useLanguage()
 
 	const currentSection = pathname.split('/')[1] || ''
-	const topNavItems = topNavConfig[currentSection] || []
+	const topNavItems = getTopNavConfig(t)[currentSection] || []
 
 	return (
 		<div

@@ -97,7 +97,7 @@ export function ProposalPDFPreview({
 			} catch (error) {
 				logger.error('Error fetching company data:', error || undefined)
 				// Fallback на localStorage если API не работает
-				const logoPath = localStorage.getItem('punto-infissi-logo-path')
+				const logoPath = localStorage.getItem('modocrm-logo-path')
 				if (logoPath) setCompanyLogo(logoPath)
 
 				const savedName = localStorage.getItem('company-name')

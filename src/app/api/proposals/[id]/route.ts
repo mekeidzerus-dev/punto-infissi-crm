@@ -1,287 +1,135 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { logger } from '@/lib/logger'
-import { getDefaultVatRate } from '@/lib/vat-utils'
+import { ApiError, parseJson, success, withApiHandler } from '@/lib/api-handler'
+import {
+	buildProposalUpdateData,
+	recalculateProposalTotals,
+	proposalUpdateBodySchema,
+	ensureProposalId,
+} from '../helpers'
+import { getCurrentOrganizationId } from '@/lib/organization-context'
 
-export async function GET(
-	request: NextRequest,
-	{ params }: { params: Promise<{ id: string }> }
+function serializeProposal(
+	proposal: Awaited<ReturnType<typeof prisma.proposalDocument.findUniqueOrThrow>>
 ) {
-	try {
-		const { id } = await params
+	return {
+		...proposal,
+		createdAt: proposal.createdAt.toISOString(),
+		updatedAt: proposal.updatedAt.toISOString(),
+		proposalDate: proposal.proposalDate.toISOString(),
+		validUntil: proposal.validUntil?.toISOString() ?? null,
+		signedAt: proposal.signedAt?.toISOString() ?? null,
+		deliveryDate: proposal.deliveryDate?.toISOString() ?? null,
+	}
+}
 
-		logger.info(`🔍 Fetching proposal: ${id}`)
+const proposalInclude = {
+	client: true,
+	statusRef: true,
+	groups: {
+		include: {
+			positions: {
+				include: {
+					category: true,
+					supplierCategory: { include: { supplier: true } },
+				},
+				orderBy: { sortOrder: 'asc' },
+			},
+		},
+		orderBy: { sortOrder: 'asc' },
+	},
+	templates: { include: { template: true } },
+} as const
 
-		const proposal = await prisma.proposalDocument.findUnique({
-			where: { id },
-			include: {
-				client: true,
-				statusRef: true,
-				groups: {
-					include: {
-						positions: {
-							include: {
-								category: true,
-								supplierCategory: {
-									include: {
-										supplier: true,
-									},
-								},
-							},
-							orderBy: { sortOrder: 'asc' },
-						},
-					},
-					orderBy: { sortOrder: 'asc' },
-				},
-				templates: {
-					include: {
-						template: true,
-					},
-				},
+export const GET = withApiHandler(async (_request, { params }) => {
+	const id = ensureProposalId(params?.id as string)
+	const organizationId = await getCurrentOrganizationId()
+
+	const proposal = await prisma.proposalDocument.findFirst({
+		where: {
+			id,
+			...(organizationId ? { organizationId } : {}),
+		},
+		include: proposalInclude,
+	})
+
+	if (!proposal) {
+		throw new ApiError(404, 'Proposal not found')
+	}
+
+	return success(serializeProposal(proposal))
+})
+
+export const PUT = withApiHandler(async (request: NextRequest, { params }) => {
+	const id = ensureProposalId(params?.id as string)
+	const organizationId = await getCurrentOrganizationId()
+	const payload = await parseJson(request, proposalUpdateBodySchema)
+
+	// Проверяем принадлежность записи к организации
+	const existing = await prisma.proposalDocument.findFirst({
+		where: {
+			id,
+			...(organizationId ? { organizationId } : {}),
+		},
+	})
+
+	if (!existing) {
+		throw new ApiError(404, 'Proposal not found')
+	}
+
+	// Валидация связанных данных: проверяем, что Client принадлежит той же организации
+	if (payload.clientId !== undefined) {
+		const client = await prisma.client.findFirst({
+			where: {
+				id: payload.clientId,
+				...(organizationId ? { organizationId } : {}),
 			},
 		})
 
-		if (!proposal) {
-			return NextResponse.json({ error: 'Proposal not found' }, { status: 404 })
+		if (!client) {
+			throw new ApiError(400, 'Client not found or does not belong to your organization')
 		}
-
-		logger.info(`✅ Found proposal: ${proposal.number}`)
-		return NextResponse.json(proposal)
-	} catch (error) {
-		logger.error('❌ Error fetching proposal:', error || undefined)
-		return NextResponse.json(
-			{ error: 'Failed to fetch proposal', details: String(error) },
-			{ status: 500 }
-		)
 	}
-}
 
-export async function PUT(
-	request: NextRequest,
-	{ params }: { params: Promise<{ id: string }> }
-) {
-	try {
-		const { id } = await params
-		const body = await request.json()
-
-		logger.info(`📝 Updating proposal: ${id}`)
-
-		// Удаляем все старые группы и позиции
-		await prisma.proposalGroup.deleteMany({
-			where: { proposalId: id },
-		})
-
-		// Находим statusId если передан status
-		let actualStatusId = body.statusId
-		if (!actualStatusId && body.status) {
-			const statusDoc = await prisma.documentStatus.findUnique({
-				where: { name: body.status },
-			})
-			actualStatusId = statusDoc?.id
-		}
-
-		// Получаем дефолтную ставку НДС из справочника
-		const defaultVatRate = await getDefaultVatRate()
-
-		// Обновляем предложение с новыми данными
-		const proposal = await prisma.proposalDocument.update({
-			where: { id },
-			data: {
-				...(body.clientId && { clientId: parseInt(body.clientId) }),
-				...(body.proposalDate && {
-					proposalDate: new Date(body.proposalDate),
-				}),
-				...(body.validUntil !== undefined && {
-					validUntil: body.validUntil ? new Date(body.validUntil) : null,
-				}),
-				...(body.responsibleManager && {
-					responsibleManager: body.responsibleManager,
-				}),
-				...(body.status && { status: body.status }),
-				...(actualStatusId !== undefined && { statusId: actualStatusId }),
-				...(body.notes !== undefined && { notes: body.notes }),
-				...(body.vatRate !== undefined && { vatRate: body.vatRate }),
-				groups: body.groups
-					? ({
-							create: (body.groups as Array<Record<string, unknown>>).map(
-								(group: Record<string, unknown>, groupIndex: number) => ({
-									name: String(group.name),
-									description: group.description
-										? String(group.description)
-										: null,
-									sortOrder: groupIndex,
-									positions: {
-										create: (
-											(group.positions as
-												| Array<Record<string, unknown>>
-												| undefined) || []
-										).map(
-											(
-												position: Record<string, unknown>,
-												positionIndex: number
-											) => ({
-												categoryId: String(position.categoryId),
-												supplierCategoryId: String(position.supplierCategoryId),
-												configuration:
-													(position.configuration as Record<string, unknown>) ||
-													{},
-												unitPrice: Number(position.unitPrice) || 0,
-												quantity: Number(position.quantity) || 1,
-												discount: Number(position.discount) || 0,
-												vatRate: Number(position.vatRate) || defaultVatRate,
-												vatAmount: Number(position.vatAmount) || 0,
-												total: Number(position.total) || 0,
-												description: position.description
-													? String(position.description)
-													: null,
-												sortOrder: positionIndex,
-											})
-										),
-									},
-								})
-							),
-					  } as any)
-					: undefined,
-			},
-			include: {
-				client: true,
-				statusRef: true,
-				groups: {
-					include: {
-						positions: {
-							include: {
-								category: true,
-								supplierCategory: {
-									include: {
-										supplier: true,
-									},
-								},
-							},
-							orderBy: { sortOrder: 'asc' },
-						},
-					},
-					orderBy: { sortOrder: 'asc' },
-				},
-			},
-		})
-
-		// Пересчитываем итоги
-		await recalculateProposalTotals(proposal.id)
-
-		logger.info(`✅ Updated proposal: ${proposal.number}`)
-		return NextResponse.json(proposal)
-	} catch (error) {
-		logger.error('❌ Error updating proposal:', error || undefined)
-		return NextResponse.json(
-			{ error: 'Failed to update proposal', details: String(error) },
-			{ status: 500 }
-		)
+	if (payload.groups) {
+		await prisma.proposalGroup.deleteMany({ where: { proposalId: id } })
 	}
-}
 
-export async function DELETE(
-	request: NextRequest,
-	{ params }: { params: Promise<{ id: string }> }
-) {
-	try {
-		const { id } = await params
+	const updateData = await buildProposalUpdateData(payload)
 
-		logger.info(`🗑️ Deleting proposal: ${id}`)
+	const proposal = await prisma.proposalDocument.update({
+		where: { id },
+		data: updateData,
+		include: proposalInclude,
+	})
 
-		await prisma.proposalDocument.delete({
-			where: { id },
-		})
+	await recalculateProposalTotals(proposal.id)
 
-		logger.info('✅ Deleted proposal')
-		return NextResponse.json({ success: true })
-	} catch (error) {
-		logger.error('❌ Error deleting proposal:', error || undefined)
-		return NextResponse.json(
-			{ error: 'Failed to delete proposal', details: String(error) },
-			{ status: 500 }
-		)
+	const reloaded = await prisma.proposalDocument.findUniqueOrThrow({
+		where: { id },
+		include: proposalInclude,
+	})
+
+	return success(serializeProposal(reloaded))
+})
+
+export const DELETE = withApiHandler(async (_request, { params }) => {
+	const id = ensureProposalId(params?.id as string)
+	const organizationId = await getCurrentOrganizationId()
+
+	// Проверяем принадлежность записи к организации
+	const existing = await prisma.proposalDocument.findFirst({
+		where: {
+			id,
+			...(organizationId ? { organizationId } : {}),
+		},
+	})
+
+	if (!existing) {
+		throw new ApiError(404, 'Proposal not found')
 	}
-}
 
-// Helper function для пересчёта итогов
-async function recalculateProposalTotals(proposalId: string) {
-	try {
-		const proposal = await prisma.proposalDocument.findUnique({
-			where: { id: proposalId },
-			include: {
-				groups: {
-					include: {
-						positions: true,
-					},
-				},
-			},
-		})
+	await prisma.proposalDocument.delete({ where: { id } })
 
-		if (!proposal) return
-
-		let totalSubtotal = 0
-		let totalDiscount = 0
-		let totalVatAmount = 0
-
-		// Пересчитываем итоги групп
-		for (const group of proposal.groups) {
-			let groupSubtotal = 0
-			let groupDiscount = 0
-
-			for (const position of group.positions) {
-				const positionSubtotal =
-					Number(position.unitPrice) * Number(position.quantity)
-				const positionDiscountAmount =
-					positionSubtotal * (Number(position.discount) / 100)
-				const positionBeforeVat = positionSubtotal - positionDiscountAmount
-				const positionVatAmount =
-					positionBeforeVat * (Number(position.vatRate) / 100)
-				const positionFinalTotal = positionBeforeVat + positionVatAmount
-
-				groupSubtotal += positionSubtotal
-				groupDiscount += positionDiscountAmount
-				totalVatAmount += positionVatAmount
-
-				// Обновляем позицию
-				await prisma.proposalPosition.update({
-					where: { id: position.id },
-					data: {
-						discountAmount: positionDiscountAmount,
-						vatAmount: positionVatAmount,
-						total: positionFinalTotal,
-					},
-				})
-			}
-
-			// Обновляем группу
-			await prisma.proposalGroup.update({
-				where: { id: group.id },
-				data: {
-					subtotal: groupSubtotal,
-					discount: groupDiscount,
-					total: groupSubtotal - groupDiscount,
-				},
-			})
-
-			totalSubtotal += groupSubtotal
-			totalDiscount += groupDiscount
-		}
-
-		// Пересчитываем общие итоги
-		const total = totalSubtotal - totalDiscount + totalVatAmount
-
-		await prisma.proposalDocument.update({
-			where: { id: proposalId },
-			data: {
-				subtotal: totalSubtotal,
-				discount: totalDiscount,
-				vatAmount: totalVatAmount,
-				total,
-			},
-		})
-
-		logger.info(`✅ Recalculated totals for proposal ${proposalId}`)
-	} catch (error) {
-		logger.error('❌ Error recalculating totals:', error || undefined)
-	}
-}
+	return success({ success: true })
+})

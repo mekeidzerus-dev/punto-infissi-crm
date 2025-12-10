@@ -1,155 +1,57 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { logger } from '@/lib/logger'
+import { ApiError, parseJson, success, withApiHandler } from '@/lib/api-handler'
+import {
+	buildCategoryUpdateData,
+	categoryUpdateBodySchema,
+	ensureCategoryId,
+} from '../helpers'
 
-// GET /api/categories/[id] - получить категорию по ID
-export async function GET(
-	request: NextRequest,
-	{ params }: { params: Promise<{ id: string }> }
-) {
-	try {
-		const { id: categoryId } = await params
+type Params = Record<string, string | string[]>
 
-		const category = await prisma.productCategory.findUnique({
-			where: { id: categoryId },
-		})
-
-		if (!category) {
-			return NextResponse.json({ error: 'Category not found' }, { status: 404 })
-		}
-
-		return NextResponse.json(category)
-	} catch (error) {
-		logger.error('Error fetching category:', error)
-		return NextResponse.json(
-			{ error: 'Failed to fetch category' },
-			{ status: 500 }
-		)
-	}
+function getId(params?: Params): string {
+	const raw = params?.id
+	const value = Array.isArray(raw) ? raw[0] ?? null : raw ?? null
+	return ensureCategoryId(value)
 }
 
-// PUT /api/categories/[id] - обновить категорию
-export async function PUT(
-	request: NextRequest,
-	{ params }: { params: Promise<{ id: string }> }
-) {
-	try {
-		const { id: categoryId } = await params
-		const body = await request.json()
-		const { name, description, icon, isActive } = body
+export const GET = withApiHandler(async (_request, { params }) => {
+	const id = getId(params)
 
-		logger.info(`📝 Updating category: ${categoryId}`)
+	const category = await prisma.productCategory.findUnique({
+		where: { id },
+	})
 
-		// Проверяем что категория существует
-		const existingCategory = await prisma.productCategory.findUnique({
-			where: { id: categoryId },
-		})
-
-		if (!existingCategory) {
-			logger.info(`❌ Category not found: ${categoryId}`)
-			return NextResponse.json({ error: 'Category not found' }, { status: 404 })
-		}
-
-		// Валидация обязательных полей
-		if (name !== undefined && !name.trim()) {
-			return NextResponse.json(
-				{ error: 'Name is required and cannot be empty' },
-				{ status: 400 }
-			)
-		}
-
-		// Обновляем категорию
-		const updatedCategory = await prisma.productCategory.update({
-			where: { id: categoryId },
-			data: {
-				name: name !== undefined ? name : existingCategory.name,
-				icon: icon !== undefined ? icon : existingCategory.icon,
-				description:
-					description !== undefined
-						? description
-						: existingCategory.description,
-				isActive: isActive !== undefined ? isActive : existingCategory.isActive,
-				updatedAt: new Date(),
-			},
-		})
-
-		logger.info(`✅ Updated category: ${updatedCategory.name}`)
-		return NextResponse.json(updatedCategory)
-	} catch (error: unknown) {
-		logger.error('❌ Error updating category:', error)
-		if (error && typeof error === 'object' && 'code' in error && error.code === 'P2025') {
-			return NextResponse.json({ error: 'Category not found' }, { status: 404 })
-		}
-		return NextResponse.json(
-			{ error: 'Failed to update category', details: String(error) },
-			{ status: 500 }
-		)
+	if (!category) {
+		throw new ApiError(404, 'Category not found')
 	}
-}
 
-// DELETE /api/categories/[id] - удалить категорию
-export async function DELETE(
-	request: NextRequest,
-	{ params }: { params: Promise<{ id: string }> }
-) {
-	try {
-		const { id: categoryId } = await params
-		logger.info(`🗑️ Deleting category: ${categoryId}`)
+	return success(category)
+})
 
-		// Проверяем что категория существует
-		const existingCategory = await prisma.productCategory.findUnique({
-			where: { id: categoryId },
-		})
+export const PUT = withApiHandler(async (request: NextRequest, { params }) => {
+	const id = getId(params)
+	const payload = await parseJson(
+		request,
+		categoryUpdateBodySchema.omit({ id: true })
+	)
 
-		if (!existingCategory) {
-			logger.info(`❌ Category not found: ${categoryId}`)
-			return NextResponse.json({ error: 'Category not found' }, { status: 404 })
-		}
+	const category = await prisma.productCategory.update({
+		where: { id },
+		data: buildCategoryUpdateData({ ...payload, id }),
+	})
 
-		// Проверяем есть ли связанные записи поставщиков
-		const supplierCategories = await prisma.supplierProductCategory.findMany({
-			where: { categoryId },
-		})
+	return success(category)
+})
 
-		// Если есть связанные записи, удаляем их сначала
-		if (supplierCategories.length > 0) {
-			logger.info(
-				`🗑️ Deleting ${supplierCategories.length} supplier relationships first`
-			)
-			await prisma.supplierProductCategory.deleteMany({
-				where: { categoryId },
-			})
-		}
+export const DELETE = withApiHandler(async (_request, { params }) => {
+	const id = getId(params)
 
-		// Также удаляем связанные параметры категории
-		const categoryParameters = await prisma.categoryParameter.findMany({
-			where: { categoryId },
-		})
+	await prisma.$transaction(async tx => {
+		await tx.supplierProductCategory.deleteMany({ where: { categoryId: id } })
+		await tx.categoryParameter.deleteMany({ where: { categoryId: id } })
+		await tx.productCategory.delete({ where: { id } })
+	})
 
-		if (categoryParameters.length > 0) {
-			logger.info(
-				`🗑️ Deleting ${categoryParameters.length} category parameters`
-			)
-			await prisma.categoryParameter.deleteMany({
-				where: { categoryId },
-			})
-		}
-
-		// Удаляем категорию
-		await prisma.productCategory.delete({
-			where: { id: categoryId },
-		})
-
-		logger.info(`✅ Deleted category: ${existingCategory.name}`)
-		return NextResponse.json({ success: true })
-	} catch (error: unknown) {
-		logger.error('❌ Error deleting category:', error)
-		if (error && typeof error === 'object' && 'code' in error && error.code === 'P2025') {
-			return NextResponse.json({ error: 'Category not found' }, { status: 404 })
-		}
-		return NextResponse.json(
-			{ error: 'Failed to delete category', details: String(error) },
-			{ status: 500 }
-		)
-	}
-}
+	return success({ success: true })
+})

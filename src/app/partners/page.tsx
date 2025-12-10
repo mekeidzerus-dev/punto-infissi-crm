@@ -95,24 +95,44 @@ export default function PartnersPage() {
 
 	const handleSavePartner = async (formData: any) => {
 		try {
-			if (editingPartner) {
-				await fetch('/api/partners', {
-					method: 'PUT',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({ id: editingPartner.id, ...formData }),
-				})
-			} else {
-				await fetch('/api/partners', {
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify(formData),
-				})
+			// Преобразуем данные для API
+			const apiData = {
+				...formData,
+				commission: formData.commission ? parseFloat(formData.commission) : null,
+				email: formData.email || null,
+				contactPerson: formData.contactPerson || null,
+				address: formData.address || null,
+				type: formData.type || null,
+				region: formData.region || null,
+				codiceFiscale: formData.codiceFiscale || null,
+				partitaIVA: formData.partitaIVA || null,
+				legalAddress: formData.legalAddress || null,
+				notes: formData.notes || null,
 			}
+
+			const response = editingPartner
+				? await fetch('/api/partners', {
+						method: 'PUT',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify({ id: editingPartner.id, ...apiData }),
+				  })
+				: await fetch('/api/partners', {
+						method: 'POST',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify(apiData),
+				  })
+
+			if (!response.ok) {
+				const error = await response.json()
+				throw new Error(error.error || 'Failed to save partner')
+			}
+
 			await fetchPartners()
 			setEditingPartner(null)
-		} catch (error) {
+			setIsFormOpen(false)
+		} catch (error: any) {
 			logger.error('Error saving partner:', error)
-			alert(t('errorSaving'))
+			alert(error.message || t('errorSaving'))
 		}
 	}
 

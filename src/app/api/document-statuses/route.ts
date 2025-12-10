@@ -1,213 +1,147 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { logger } from '@/lib/logger'
+import { ApiError, parseJson, success, withApiHandler } from '@/lib/api-handler'
+import {
+	buildDocumentStatusCreateData,
+	buildDocumentStatusUpdateData,
+	documentStatusCreateBodySchema,
+	documentStatusUpdateBodySchema,
+	ensureStatusId,
+	ensureDocumentTypeName,
+	mapStatusWithCounts,
+	buildStatusTypeUpserts,
+} from './helpers'
 
-// GET - получить все статусы с типами документов
-export async function GET(request: NextRequest) {
-	try {
-		const { searchParams } = new URL(request.url)
-		const documentType = searchParams.get('documentType') // proposal, order, invoice
-
-		if (documentType) {
-			// Получить статусы для конкретного типа документа
-			const type = await prisma.documentType.findUnique({
-				where: { name: documentType },
-				include: {
-					statuses: {
-						include: {
-							status: true,
-						},
-						orderBy: {
-							order: 'asc',
-						},
-					},
-				},
-			})
-
-			if (!type) {
-				return NextResponse.json(
-					{ error: 'Document type not found' },
-					{ status: 404 }
-				)
-			}
-
-			const statuses = type.statuses.map(st => ({
-				...st.status,
-				order: st.order,
-				isDefault: st.isDefault,
-			}))
-
-			// Сортируем только по order, без перемещения основного статуса
-			statuses.sort((a, b) => a.order - b.order)
-
-			return NextResponse.json(statuses)
-		}
-
-		// Получить все статусы
-		const statuses = await prisma.documentStatus.findMany({
-			where: { isActive: true },
-			include: {
-				documentTypes: {
-					include: {
-						documentType: true,
-					},
-					orderBy: {
-						order: 'asc',
-					},
-				},
+async function fetchStatusesByType(documentType: string) {
+	const type = await prisma.documentType.findUnique({
+		where: { name: documentType },
+		include: {
+			statuses: {
+				include: { status: true },
+				orderBy: { order: 'asc' },
 			},
-			orderBy: { name: 'asc' },
-		})
+		},
+	})
 
-		return NextResponse.json(statuses)
-	} catch (error) {
-		const errorMessage = error instanceof Error ? error.message : String(error)
-		const errorStack = error instanceof Error ? error.stack : undefined
-		logger.error('❌ Error fetching document statuses:', error || undefined)
-		logger.error('Error details:', { errorMessage, errorStack })
-		
-		// Безопасный ответ без stack trace в production
-		const isDev =
-			typeof process !== 'undefined' &&
-			process.env?.NODE_ENV === 'development'
-		return NextResponse.json(
-			{
-				error: 'Failed to fetch document statuses',
-				details: isDev ? errorMessage : 'Internal server error',
-			},
-			{ status: 500 }
-		)
+	if (!type) {
+		throw new ApiError(404, 'Document type not found')
 	}
+
+	return type.statuses
+		.map(st => ({
+			...st.status,
+			order: st.order,
+			isDefault: st.isDefault,
+		}))
+		.sort((a, b) => {
+			// Сортируем по глобальному порядку, если он есть
+			const aOrder = (a as any).globalOrder ?? a.order ?? 0
+			const bOrder = (b as any).globalOrder ?? b.order ?? 0
+			return aOrder - bOrder
+		})
 }
 
-// POST - создать новый статус
-export async function POST(request: NextRequest) {
-	try {
-		const body = await request.json()
-		const { name, nameRu, nameIt, color, documentTypeIds } = body
-
-		// Создаем статус
-		const status = await prisma.documentStatus.create({
-			data: {
-				name,
-				nameRu,
-				nameIt,
-				color: color || '#gray',
+async function fetchAllStatuses() {
+	const statuses = await prisma.documentStatus.findMany({
+		where: { isActive: true },
+		include: {
+			documentTypes: {
+				include: { documentType: true },
+				orderBy: { order: 'asc' },
 			},
-		})
+		},
+		orderBy: { globalOrder: 'asc' }, // Сортируем по глобальному порядку
+	})
 
-		// Связываем с типами документов
-		if (documentTypeIds && Array.isArray(documentTypeIds)) {
-			for (let i = 0; i < documentTypeIds.length; i++) {
-				await prisma.documentStatusType.create({
-					data: {
-						documentTypeId: documentTypeIds[i],
-						statusId: status.id,
-						order: i,
-					},
+	// Преобразуем данные, чтобы включить id из DocumentStatusType
+	const statusesWithId = statuses.map(status => ({
+		...status,
+		documentTypes: status.documentTypes.map((dt: any) => ({
+			...dt,
+			id: dt.id, // ID из DocumentStatusType уже должен быть в результате Prisma
+		})),
+	}))
+
+	return mapStatusWithCounts(statusesWithId as any)
+}
+
+export const GET = withApiHandler(async (request: NextRequest) => {
+	const documentType = ensureDocumentTypeName(
+		request.nextUrl.searchParams.get('documentType')
+	)
+
+	if (documentType) {
+		return success(await fetchStatusesByType(documentType))
+	}
+
+	return success(await fetchAllStatuses())
+})
+
+export const POST = withApiHandler(async (request: NextRequest) => {
+	const payload = await parseJson(request, documentStatusCreateBodySchema)
+
+	// Получаем максимальный globalOrder и добавляем 1 для нового статуса
+	const maxOrder = await prisma.documentStatus.aggregate({
+		_max: { globalOrder: true },
+	})
+	const newGlobalOrder = (maxOrder._max.globalOrder ?? -1) + 1
+
+	const status = await prisma.documentStatus.create({
+		data: {
+			...buildDocumentStatusCreateData(payload),
+			globalOrder: newGlobalOrder,
+		},
+	})
+
+	if (payload.documentTypeIds?.length) {
+		await prisma.documentStatusType.createMany({
+			data: buildStatusTypeUpserts(status.id, payload.documentTypeIds),
+		})
+	}
+
+	return success(status, 201)
+})
+
+export const PUT = withApiHandler(async (request: NextRequest) => {
+	const payload = await parseJson(request, documentStatusUpdateBodySchema)
+
+	const status = await prisma.documentStatus.update({
+		where: { id: payload.id },
+		data: buildDocumentStatusUpdateData(payload),
+	})
+
+	if (payload.documentTypeIds) {
+		await prisma.$transaction(async tx => {
+			await tx.documentStatusType.deleteMany({ where: { statusId: status.id } })
+			if (payload.documentTypeIds?.length) {
+				await tx.documentStatusType.createMany({
+					data: buildStatusTypeUpserts(status.id, payload.documentTypeIds),
 				})
 			}
-		}
+		})
+	}
 
-		logger.info(`✅ Created document status: ${status.name}`)
-		return NextResponse.json(status, { status: 201 })
-	} catch (error) {
-		logger.error('Error creating document status:', error || undefined)
-		return NextResponse.json(
-			{ error: 'Failed to create document status' },
-			{ status: 500 }
+	return success(status)
+})
+
+export const DELETE = withApiHandler(async (request: NextRequest) => {
+	const id = ensureStatusId(request.nextUrl.searchParams.get('id'))
+
+	const usageCount = await prisma.proposalDocument.count({
+		where: { statusId: id },
+	})
+
+	if (usageCount > 0) {
+		throw new ApiError(
+			400,
+			`Cannot delete status: used in ${usageCount} document(s)`
 		)
 	}
-}
 
-// PUT - обновить статус
-export async function PUT(request: NextRequest) {
-	try {
-		const body = await request.json()
-		const { id, name, nameRu, nameIt, color, documentTypeIds } = body
+	await prisma.$transaction(async tx => {
+		await tx.documentStatusType.deleteMany({ where: { statusId: id } })
+		await tx.documentStatus.delete({ where: { id } })
+	})
 
-		// Обновляем статус
-		const status = await prisma.documentStatus.update({
-			where: { id: parseInt(id) },
-			data: {
-				...(name && { name }),
-				...(nameRu && { nameRu }),
-				...(nameIt && { nameIt }),
-				...(color && { color }),
-			},
-		})
-
-		// Обновляем связи с типами документов
-		if (documentTypeIds && Array.isArray(documentTypeIds)) {
-			// Удаляем старые связи
-			await prisma.documentStatusType.deleteMany({
-				where: { statusId: status.id },
-			})
-
-			// Создаем новые связи
-			for (let i = 0; i < documentTypeIds.length; i++) {
-				await prisma.documentStatusType.create({
-					data: {
-						documentTypeId: documentTypeIds[i],
-						statusId: status.id,
-						order: i,
-					},
-				})
-			}
-		}
-
-		logger.info(`✅ Updated document status: ${status.name}`)
-		return NextResponse.json(status)
-	} catch (error) {
-		logger.error('Error updating document status:', error || undefined)
-		return NextResponse.json(
-			{ error: 'Failed to update document status' },
-			{ status: 500 }
-		)
-	}
-}
-
-// DELETE - удалить статус
-export async function DELETE(request: NextRequest) {
-	try {
-		const { searchParams } = new URL(request.url)
-		const id = searchParams.get('id')
-
-		if (!id) {
-			return NextResponse.json({ error: 'ID is required' }, { status: 400 })
-		}
-
-		// Проверяем, используется ли статус в документах
-		const usageCount = await prisma.proposalDocument.count({
-			where: { statusId: parseInt(id) },
-		})
-
-		if (usageCount > 0) {
-			return NextResponse.json(
-				{
-					error: `Cannot delete status: used in ${usageCount} document(s)`,
-				},
-				{ status: 400 }
-			)
-		}
-
-		// Удаляем связи
-		await prisma.documentStatusType.deleteMany({
-			where: { statusId: parseInt(id) },
-		})
-
-		// Удаляем статус
-		await prisma.documentStatus.delete({
-			where: { id: parseInt(id) },
-		})
-
-		logger.info(`✅ Deleted document status: ${id}`)
-		return NextResponse.json({ success: true })
-	} catch (error) {
-		logger.error('Error deleting document status:', error || undefined)
-		return NextResponse.json(
-			{ error: 'Failed to delete document status' },
-			{ status: 500 }
-		)
-	}
-}
+	return success({ success: true })
+})

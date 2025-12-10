@@ -134,6 +134,11 @@ export const RATE_LIMITS = {
 		maxRequests: 100,
 		windowMs: 60 * 1000, // 1 минута
 	},
+	// Запрос сброса пароля: 3 запроса в час
+	FORGOT_PASSWORD: {
+		maxRequests: 3,
+		windowMs: 60 * 60 * 1000, // 1 час
+	},
 } as const
 
 /**

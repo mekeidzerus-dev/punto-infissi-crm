@@ -1,68 +1,72 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
+import type { z } from 'zod'
 import { prisma } from '@/lib/prisma'
-import { logger } from '@/lib/logger'
+import { ApiError, parseJson, success, withApiHandler } from '@/lib/api-handler'
+import {
+	buildDocumentTemplateUpdateData,
+	documentTemplateUpdateBodySchema,
+	ensureDocumentTemplateId,
+} from '../helpers'
+import { getCurrentOrganizationId } from '@/lib/organization-context'
 
-export async function PUT(
-	request: NextRequest,
-	{ params }: { params: Promise<{ id: string }> }
-) {
-	try {
-		const { id } = await params
-		const body = await request.json()
-		const { name, type, contentRu, contentIt, isDefault, isActive } = body
+const updateBodyWithoutId = documentTemplateUpdateBodySchema.omit({ id: true })
 
-		// Если устанавливаем как дефолтный, снимаем дефолт с других
-		if (isDefault) {
-			await prisma.documentTemplate.updateMany({
-				where: {
-					type,
-					isDefault: true,
-					NOT: { id },
-				},
-				data: { isDefault: false },
-			})
-		}
+type DocumentTemplateUpdatePayload = z.infer<typeof updateBodyWithoutId>
 
-		const template = await prisma.documentTemplate.update({
-			where: { id },
-			data: {
-				...(name && { name }),
-				...(type && { type }),
-				...(contentRu !== undefined && { contentRu }),
-				...(contentIt !== undefined && { contentIt }),
-				...(isDefault !== undefined && { isDefault }),
-				...(isActive !== undefined && { isActive }),
+export const PUT = withApiHandler(async (request: NextRequest, { params }) => {
+	const id = ensureDocumentTemplateId(params?.id as string)
+	const payload: DocumentTemplateUpdatePayload = await parseJson(request, updateBodyWithoutId)
+	const organizationId = await getCurrentOrganizationId()
+
+	// Проверяем принадлежность записи к организации
+	const template = await prisma.documentTemplate.findFirst({
+		where: {
+			id,
+			...(organizationId ? { organizationId } : {}),
+		},
+	})
+
+	if (!template) {
+		throw new ApiError(404, 'Document template not found')
+	}
+
+	if (payload.isDefault) {
+		await prisma.documentTemplate.updateMany({
+			where: {
+				type: template.type,
+				id: { not: id },
+				isDefault: true,
+				...(organizationId ? { organizationId } : {}),
 			},
+			data: { isDefault: false },
 		})
-
-		logger.info(`✅ Updated template: ${template.name}`)
-		return NextResponse.json(template)
-	} catch (error) {
-		logger.error('❌ Error updating template:', error)
-		return NextResponse.json(
-			{ error: 'Failed to update template', details: String(error) },
-			{ status: 500 }
-		)
 	}
-}
 
-export async function DELETE(
-	request: NextRequest,
-	{ params }: { params: Promise<{ id: string }> }
-) {
-	try {
-		const { id } = await params
-		await prisma.documentTemplate.delete({
-			where: { id },
-		})
+	const updated = await prisma.documentTemplate.update({
+		where: { id },
+		data: buildDocumentTemplateUpdateData({ ...payload, id }),
+	})
 
-		logger.info(`✅ Deleted template: ${id}`)
-		return NextResponse.json({ success: true })
-	} catch (error) {
-		logger.error('❌ Error deleting template:', error)
-		return NextResponse.json(
-			{ error: 'Failed to delete template', details: String(error) },
-			{ status: 500 }
-		)
+	return success(updated)
+})
+
+export const DELETE = withApiHandler(async (_request, { params }) => {
+	const id = ensureDocumentTemplateId(params?.id as string)
+	const organizationId = await getCurrentOrganizationId()
+
+	// Проверяем принадлежность записи к организации
+	const existing = await prisma.documentTemplate.findFirst({
+		where: {
+			id,
+			...(organizationId ? { organizationId } : {}),
+		},
+	})
+
+	if (!existing) {
+		throw new ApiError(404, 'Document template not found')
 	}
-}
+
+	await prisma.documentTemplate.delete({ where: { id } })
+
+	return success({ success: true })
+})

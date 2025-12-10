@@ -5,6 +5,8 @@ import { LogoUpdater } from '@/components/logo-updater'
 import { LanguageProvider } from '@/contexts/LanguageContext'
 import { Footer } from '@/components/footer'
 import { Toaster } from 'sonner'
+import { SessionProvider } from '@/components/auth/session-provider'
+import { AuthGuard } from '@/components/auth/auth-guard'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -18,7 +20,7 @@ export default function RootLayout({
 	return (
 		<html lang='ru' suppressHydrationWarning>
 			<head>
-				<title>PUNTO INFISSI CRM</title>
+				<title>MODOCRM</title>
 				<meta
 					name='description'
 					content='Система управления продажами окон и дверей'
@@ -29,13 +31,17 @@ export default function RootLayout({
 				className={`${inter.className} flex flex-col min-h-screen`}
 				suppressHydrationWarning
 			>
-				<LanguageProvider>
-					<FaviconUpdater />
-					<LogoUpdater />
-					<div className='flex-grow'>{children}</div>
-					<Footer />
-					<Toaster position='top-center' richColors />
-				</LanguageProvider>
+				<SessionProvider>
+					<LanguageProvider>
+						<FaviconUpdater />
+						<LogoUpdater />
+						<AuthGuard>
+							{children}
+						</AuthGuard>
+						<Footer />
+						<Toaster position='top-center' richColors />
+					</LanguageProvider>
+				</SessionProvider>
 			</body>
 		</html>
 	)

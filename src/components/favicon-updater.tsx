@@ -11,7 +11,7 @@ export function FaviconUpdater() {
 			existingLinks.forEach(link => link.remove())
 
 			// Получаем путь к сохраненному фавикону
-			const faviconPath = localStorage.getItem('punto-infissi-favicon-path')
+			const faviconPath = localStorage.getItem('modocrm-favicon-path')
 
 			// Используем кастомный или дефолтный фавикон
 			const finalPath = faviconPath || '/default-favicon.ico'
@@ -47,7 +47,7 @@ export function FaviconUpdater() {
 
 		// Слушаем изменения в localStorage (для обновления в других вкладках)
 		const handleStorageChange = (e: StorageEvent) => {
-			if (e.key === 'punto-infissi-favicon-path') {
+			if (e.key === 'modocrm-favicon-path') {
 				updateFavicon()
 			}
 		}

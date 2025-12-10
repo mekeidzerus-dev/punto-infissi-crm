@@ -38,20 +38,38 @@ model Session {
 }
 
 model User {
-  id               String             @id @default(cuid())
-  name             String?
-  email            String             @unique
-  emailVerified    DateTime?
-  image            String?
-  accounts         Account[]
-  sessions         Session[]
-  createdAt        DateTime           @default(now())
-  updatedAt        DateTime           @updatedAt
-  
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  password      String? // Хэшированный пароль (nullable для OAuth в будущем)
+  accounts      Account[]
+  sessions      Session[]
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
   // Multi-tenant: связь с организациями
-  organizationId   String?
-  organization     Organization?      @relation(fields: [organizationId], references: [id])
-  role             String?            @default("user") // admin, manager, user
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+  role           UserRole?     @default(user)
+
+  // Отслеживание активности для очистки неактивных аккаунтов
+  lastLoginAt           DateTime?
+  lastActivityAt        DateTime?
+  deletionScheduledAt   DateTime?
+  deletionWarningSentAt DateTime?
+
+  // Приглашения
+  invitedBy     String?
+  invitedByUser User?   @relation("UserInvitations", fields: [invitedBy], references: [id])
+  invitedUsers  User[]  @relation("UserInvitations")
+
+  // Приглашения, отправленные этим пользователем
+  sentInvitations Invitation[]
+
+  // Токены для сброса пароля
+  passwordResetTokens PasswordResetToken[] @relation("PasswordResetTokens")
 }
 
 model VerificationToken {
@@ -62,157 +80,212 @@ model VerificationToken {
   @@unique([identifier, token])
 }
 
+model Invitation {
+  id             String       @id @default(cuid())
+  email          String
+  token          String       @unique
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  invitedBy      String
+  inviter        User         @relation(fields: [invitedBy], references: [id], onDelete: Cascade)
+  expiresAt      DateTime
+  acceptedAt     DateTime?
+  createdAt      DateTime     @default(now())
+
+  @@index([token])
+  @@index([email])
+  @@index([organizationId])
+  @@index([expiresAt])
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation("PasswordResetTokens", fields: [userId], references: [id], onDelete: Cascade)
+  token     String   @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([token])
+  @@index([userId])
+  @@index([expiresAt])
+}
+
 model Client {
-  id              Int      @id @default(autoincrement())
-  type            String   @default("individual") // individual, company
-  firstName       String?  // Имя (для физлиц)
-  lastName        String?  // Фамилия (для физлиц)
-  companyName     String?  // Название компании (для юрлиц)
-  phone           String
-  email           String?
-  address         String?
-  
+  id          Int        @id @default(autoincrement())
+  type        ClientType @default(individual)
+  firstName   String?
+  lastName    String?
+  companyName String?
+  phone       String
+  email       String?
+  address     String?
+
   // Реквизиты (для юрлиц)
-  codiceFiscale   String?
-  partitaIVA      String?
-  legalAddress    String?
-  contactPerson   String?
-  
+  codiceFiscale String?
+  partitaIVA    String?
+  legalAddress  String?
+  contactPerson String?
+
   // Дополнительно
-  source          String?
-  notes           String?  @db.Text
-  
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  
-  orders          Order[]
-  proposals       ProposalDocument[]
-  
+  source String?
+  notes  String? @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+
+  orders    Order[]
+  proposals ProposalDocument[]
+
   @@index([phone])
   @@index([email])
+  @@index([organizationId])
 }
 
 model Supplier {
-  id              Int      @id @default(autoincrement())
-  name            String
-  shortName       String?  // Короткое название на русском
-  shortNameIt     String?  // Короткое название на итальянском
-  phone           String
-  email           String?
-  contactPerson   String?
-  address         String?
-  
+  id            Int     @id @default(autoincrement())
+  name          String
+  shortName     String?
+  shortNameIt   String?
+  phone         String
+  email         String?
+  contactPerson String?
+  address       String?
+
   // Реквизиты
-  codiceFiscale   String?
-  partitaIVA      String?
-  legalAddress    String?
-  
+  codiceFiscale String?
+  partitaIVA    String?
+  legalAddress  String?
+
   // Условия работы
-  paymentTerms    String?
-  deliveryDays    Int?
-  minOrderAmount  Decimal? @db.Decimal(10, 2)
-  
+  paymentTerms   String?
+  deliveryDays   Int?
+  minOrderAmount Decimal? @db.Decimal(10, 2)
+
   // Метаданные
-  rating          Int      @default(5)
-  status          String   @default("active") // active, inactive
-  notes           String?  @db.Text
-  
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  
+  rating Int            @default(5)
+  status SupplierStatus @default(active)
+  notes  String?        @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+
   // Связи
-  productCategories SupplierProductCategory[]
+  productCategories  SupplierProductCategory[]
   parameterOverrides SupplierParameterOverride[]
   configuratorDrafts ConfiguratorDraft[]
-  
+
   @@unique([name])
   @@index([status])
+  @@index([organizationId])
 }
 
 model Partner {
-  id              Int      @id @default(autoincrement())
-  name            String
-  phone           String
-  email           String?
-  contactPerson   String?
-  address         String?
-  
+  id            Int     @id @default(autoincrement())
+  name          String
+  phone         String
+  email         String?
+  contactPerson String?
+  address       String?
+
   // Тип партнерства
-  type            String?  // architect, agent, engineer, designer, dealer, distributor, other
-  region          String?
-  commission      Decimal? @db.Decimal(5, 2) // процент комиссии
-  
+  type       String?
+  region     String?
+  commission Decimal? @db.Decimal(5, 2)
+
   // Реквизиты
-  codiceFiscale   String?
-  partitaIVA      String?
-  legalAddress    String?
-  
+  codiceFiscale String?
+  partitaIVA    String?
+  legalAddress  String?
+
   // Метаданные
-  status          String   @default("active") // active, inactive
-  notes           String?  @db.Text
-  
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  
+  status PartnerStatus @default(active)
+  notes  String?       @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+
   @@index([name])
   @@index([type])
   @@index([status])
+  @@index([organizationId])
 }
 
 model Installer {
-  id              Int      @id @default(autoincrement())
-  type            String   @default("individual") // individual, ip, company
-  name            String
-  phone           String
-  email           String?
-  
+  id    Int           @id @default(autoincrement())
+  type  InstallerType @default(individual)
+  name  String
+  phone String
+  email String?
+
   // Профессиональные данные
-  specialization  String?  // windows, doors, balconies, all
-  experience      Int?     // лет
-  hasTools        Boolean  @default(true)
-  hasTransport    Boolean  @default(true)
-  
+  specialization String?
+  experience     Int?
+  hasTools       Boolean @default(true)
+  hasTransport   Boolean @default(true)
+
   // Условия работы
-  rateType        String?  // per-unit, per-hour, per-project
-  ratePrice       Decimal? @db.Decimal(10, 2)
-  schedule        String?
-  
+  rateType  String?
+  ratePrice Decimal? @db.Decimal(10, 2)
+  schedule  String?
+
   // Статус
-  availability    String   @default("available") // available, busy, vacation
-  rating          Int      @default(5)
-  status          String   @default("active") // active, inactive
-  
-  notes           String?  @db.Text
-  
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  
+  availability InstallerAvailability @default(available)
+  rating       Int                   @default(5)
+  status       InstallerStatus       @default(active)
+
+  notes String? @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+
   @@index([name])
   @@index([availability])
   @@index([status])
+  @@index([organizationId])
 }
 
 model Dictionary {
-  id              Int      @id @default(autoincrement())
-  type            String   // sources, partnerTypes, specializations
-  name            String
-  isActive        Boolean  @default(true)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  
+  id             Int           @id @default(autoincrement())
+  type           String
+  name           String
+  isActive       Boolean       @default(true)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+
   @@index([type])
   @@index([isActive])
+  @@index([organizationId])
 }
 
 model Category {
-  id          Int      @id @default(autoincrement())
-  name        String
-  description String?
-  parentId    Int?
-  parent      Category? @relation("CategoryHierarchy", fields: [parentId], references: [id])
-  children    Category[] @relation("CategoryHierarchy")
-  products    Product[]
-  createdAt   DateTime @default(now())
+  id             Int           @id @default(autoincrement())
+  name           String
+  description    String?
+  parentId       Int?
+  parent         Category?     @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  children       Category[]    @relation("CategoryHierarchy")
+  products       Product[]
+  createdAt      DateTime      @default(now())
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId])
 }
 
 model Product {
@@ -222,49 +295,57 @@ model Product {
   categoryId     Int
   category       Category @relation(fields: [categoryId], references: [id])
   basePrice      Decimal  @db.Decimal(10, 2)
-  specifications Json?    // характеристики как JSON
-  images         String[] // массив URL изображений
+  specifications Json?
+  images         String[]
   isActive       Boolean  @default(true)
   createdAt      DateTime @default(now())
-  
+
   orderItems     OrderItem[]
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId])
 }
 
 model Order {
-  id           Int      @id @default(autoincrement())
-  orderNumber  String   @unique @default(cuid())
-  clientId     Int
-  client       Client   @relation(fields: [clientId], references: [id])
-  status       String   @default("draft") // draft, sent, approved, in_production, completed
-  totalAmount  Decimal  @db.Decimal(10, 2)
-  notes        String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-  
-  orderItems   OrderItem[]
-  proposals    Proposal[]
+  id          Int         @id @default(autoincrement())
+  orderNumber String      @unique @default(cuid())
+  clientId    Int
+  client      Client      @relation(fields: [clientId], references: [id])
+  status      OrderStatus @default(draft)
+  totalAmount Decimal     @db.Decimal(10, 2)
+  notes       String?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  orderItems     OrderItem[]
+  proposals      Proposal[]
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId])
 }
 
 model OrderItem {
-  id             Int      @id @default(autoincrement())
+  id             Int     @id @default(autoincrement())
   orderId        Int
-  order          Order    @relation(fields: [orderId], references: [id])
+  order          Order   @relation(fields: [orderId], references: [id])
   productId      Int
-  product        Product  @relation(fields: [productId], references: [id])
-  quantity       Int      @default(1)
-  unitPrice      Decimal  @db.Decimal(10, 2)
-  totalPrice     Decimal  @db.Decimal(10, 2)
-  specifications Json?    // индивидуальные характеристики
+  product        Product @relation(fields: [productId], references: [id])
+  quantity       Int     @default(1)
+  unitPrice      Decimal @db.Decimal(10, 2)
+  totalPrice     Decimal @db.Decimal(10, 2)
+  specifications Json? // индивидуальные характеристики
   notes          String?
 }
 
 model Proposal {
-  id         Int      @id @default(autoincrement())
-  orderId    Int
-  order      Order    @relation(fields: [orderId], references: [id])
-  filePath   String
-  generatedAt DateTime @default(now())
-  expiresAt  DateTime?
+  id          Int       @id @default(autoincrement())
+  orderId     Int
+  order       Order     @relation(fields: [orderId], references: [id])
+  filePath    String
+  generatedAt DateTime  @default(now())
+  expiresAt   DateTime?
 }
 
 // ============================================
@@ -272,160 +353,178 @@ model Proposal {
 // ============================================
 
 model ProductCategory {
-  id          String @id @default(cuid())
-  name        String
-  icon        String  // Emoji или SVG
-  description String?
-  isActive    Boolean @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
+  id             String        @id @default(cuid())
+  name           String
+  icon           String
+  description    String?
+  isActive       Boolean       @default(true)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+
   // Связи
   supplierCategories SupplierProductCategory[]
   proposalPositions  ProposalPosition[]
   categoryParameters CategoryParameter[]
   configuratorDrafts ConfiguratorDraft[]
-  
+
   @@unique([name])
   @@index([isActive])
+  @@index([organizationId])
 }
 
 model SupplierProductCategory {
-  id          String @id @default(cuid())
-  supplierId  Int
-  supplier    Supplier @relation(fields: [supplierId], references: [id])
-  categoryId  String
-  category    ProductCategory @relation(fields: [categoryId], references: [id])
-  parameters  Json    // Гибкая структура параметров
-  isActive    Boolean @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
+  id         String          @id @default(cuid())
+  supplierId Int
+  supplier   Supplier        @relation(fields: [supplierId], references: [id])
+  categoryId String
+  category   ProductCategory @relation(fields: [categoryId], references: [id])
+  parameters Json
+  isActive   Boolean         @default(true)
+  createdAt  DateTime        @default(now())
+  updatedAt  DateTime        @updatedAt
+
   // Связи
   proposalPositions ProposalPosition[]
-  
+  organizationId    String?
+  organization      Organization?      @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+
   @@unique([supplierId, categoryId])
   @@index([supplierId])
   @@index([categoryId])
+  @@index([organizationId])
 }
 
 model ProposalDocument {
-  id          String @id @default(cuid())
-  number      String @unique  // PROP-001
-  
+  id     String @id @default(cuid())
+  number String @unique
+
   // Основная информация
-  proposalDate DateTime @default(now()) // Дата предложения
-  validUntil   DateTime? // Срок действия предложения
-  clientId    Int
-  client      Client @relation(fields: [clientId], references: [id])
-  responsibleManager String? // ФИО ответственного менеджера
-  
-  status      String @default("draft") // draft, sent, confirmed, expired (legacy)
-  statusId    Int?   // Связь с DocumentStatus
-  statusRef   DocumentStatus? @relation(fields: [statusId], references: [id])
-  type        String @default("proposal") // proposal, order
-  
+  proposalDate       DateTime  @default(now())
+  validUntil         DateTime?
+  clientId           Int
+  client             Client    @relation(fields: [clientId], references: [id])
+  responsibleManager String?
+
+  status    ProposalStatus  @default(draft)
+  statusId  Int?
+  statusRef DocumentStatus? @relation(fields: [statusId], references: [id])
+  type      ProposalType    @default(proposal)
+
   // Дополнительные поля для заказов
-  signedAt    DateTime?
+  signedAt     DateTime?
   deliveryDate DateTime?
-  
+
   // Итоги
-  subtotal    Decimal @db.Decimal(10, 2) @default(0)
-  discount    Decimal @db.Decimal(10, 2) @default(0)
-  vatRate     Decimal @db.Decimal(5, 2) @default(0)
-  vatAmount   Decimal @db.Decimal(10, 2) @default(0)
-  total       Decimal @db.Decimal(10, 2) @default(0)
-  
-  notes       String? @db.Text
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
+  subtotal  Decimal @default(0) @db.Decimal(10, 2)
+  discount  Decimal @default(0) @db.Decimal(10, 2)
+  vatRate   Decimal @default(0) @db.Decimal(5, 2)
+  vatAmount Decimal @default(0) @db.Decimal(10, 2)
+  total     Decimal @default(0) @db.Decimal(10, 2)
+
+  notes     String?  @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   // Связи
-  groups      ProposalGroup[]
-  templates   ProposalTemplateLink[] // Связь с шаблонами документов
-  orderId     Int? // Ссылка на заказ, если предложение стало заказом
-  
+  groups         ProposalGroup[]
+  templates      ProposalTemplateLink[]
+  orderId        Int?
+  organizationId String?
+  organization   Organization?          @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+
   @@index([clientId])
   @@index([status])
   @@index([type])
   @@index([number])
   @@index([proposalDate])
+  @@index([organizationId])
 }
 
 model ProposalGroup {
-  id          String @id @default(cuid())
+  id          String           @id @default(cuid())
   proposalId  String
   proposal    ProposalDocument @relation(fields: [proposalId], references: [id], onDelete: Cascade)
-  name        String  // "Окна из алюминия", "Двери из ПВХ"
+  name        String
   description String?
-  sortOrder   Int @default(0)
-  
+  sortOrder   Int              @default(0)
+
   // Итоги группы
-  subtotal    Decimal @db.Decimal(10, 2) @default(0)
-  discount    Decimal @db.Decimal(10, 2) @default(0)
-  total       Decimal @db.Decimal(10, 2) @default(0)
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
+  subtotal Decimal @default(0) @db.Decimal(10, 2)
+  discount Decimal @default(0) @db.Decimal(10, 2)
+  total    Decimal @default(0) @db.Decimal(10, 2)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   // Связи
-  positions   ProposalPosition[]
-  
+  positions      ProposalPosition[]
+  organizationId String?
+  organization   Organization?      @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+
   @@index([proposalId])
   @@index([sortOrder])
+  @@index([organizationId])
 }
 
 model ProposalPosition {
-  id          String @id @default(cuid())
-  groupId     String
-  group       ProposalGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  
+  id      String        @id @default(cuid())
+  groupId String
+  group   ProposalGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
   // Конфигурация продукта
-  categoryId  String
-  category    ProductCategory @relation(fields: [categoryId], references: [id])
+  categoryId         String
+  category           ProductCategory         @relation(fields: [categoryId], references: [id])
   supplierCategoryId String
-  supplierCategory SupplierProductCategory @relation(fields: [supplierCategoryId], references: [id])
-  
+  supplierCategory   SupplierProductCategory @relation(fields: [supplierCategoryId], references: [id])
+
   // Параметры конфигурации
-  configuration Json  // Все выбранные параметры
-  
+  configuration Json
+
   // Ценообразование
-  unitPrice   Decimal @db.Decimal(10, 2)
-  quantity    Decimal @db.Decimal(10, 2) @default(1)
-  discount    Decimal @db.Decimal(5, 2) @default(0) // процент скидки
-  discountAmount Decimal @db.Decimal(10, 2) @default(0) // сумма скидки
-  vatRate     Decimal @db.Decimal(5, 2) @default(0) // НДС для этой позиции
-  vatAmount   Decimal @db.Decimal(10, 2) @default(0) // сумма НДС
-  total       Decimal @db.Decimal(10, 2)
-  
+  unitPrice      Decimal @db.Decimal(10, 2)
+  quantity       Decimal @default(1) @db.Decimal(10, 2)
+  discount       Decimal @default(0) @db.Decimal(5, 2)
+  discountAmount Decimal @default(0) @db.Decimal(10, 2)
+  vatRate        Decimal @default(0) @db.Decimal(5, 2)
+  vatAmount      Decimal @default(0) @db.Decimal(10, 2)
+  total          Decimal @db.Decimal(10, 2)
+
   // Описание для печати
-  description String? @db.Text // Генерируется из конфигурации
-  
-  sortOrder   Int @default(0)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
+  description String? @db.Text
+
+  sortOrder      Int           @default(0)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+
   @@index([groupId])
   @@index([categoryId])
   @@index([sortOrder])
+  @@index([organizationId])
 }
 
 model VATRate {
-  id          String @id @default(cuid())
-  name        String  // "IVA 22%", "IVA 10%", "IVA 4%"
-  percentage  Decimal @db.Decimal(5, 2) // 22.00, 10.00, 4.00
-  description String?
-  isDefault   Boolean @default(false)
-  isActive    Boolean @default(true)
-  isSystem    Boolean @default(false) // Системная ставка (не удаляется)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
-  @@unique([name])
+  id             String        @id @default(cuid())
+  name           String
+  percentage     Decimal       @db.Decimal(5, 2)
+  description    String?
+  isDefault      Boolean       @default(false)
+  isActive       Boolean       @default(true)
+  isSystem       Boolean       @default(false)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+
+  @@unique([organizationId, name])
   @@index([percentage])
   @@index([isDefault])
   @@index([isActive])
   @@index([isSystem])
+  @@index([organizationId])
 }
 
 // ============================================
@@ -433,39 +532,42 @@ model VATRate {
 // ============================================
 
 model DocumentTemplate {
-  id          String @id @default(cuid())
-  name        String // "Privacy Policy GDPR 2025", "Условия продажи"
-  type        String // "privacy_policy", "sales_terms", "warranty"
-  
+  id   String @id @default(cuid())
+  name String
+  type String
+
   // Мультиязычный контент
-  contentRu   String? @db.Text
-  contentIt   String? @db.Text
-  
+  contentRu String? @db.Text
+  contentIt String? @db.Text
+
   // Флаги
-  isDefault   Boolean @default(false) // По умолчанию для этого типа
-  isActive    Boolean @default(true)
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
+  isDefault Boolean @default(false)
+  isActive  Boolean @default(true)
+
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+
   // Связи Many-to-Many с предложениями
-  proposals   ProposalTemplateLink[]
-  
+  proposals ProposalTemplateLink[]
+
   @@index([type])
   @@index([isDefault])
   @@index([isActive])
+  @@index([organizationId])
 }
 
 // Промежуточная таблица для связи Предложение <-> Шаблоны
 model ProposalTemplateLink {
-  id          String @id @default(cuid())
-  proposalId  String
-  proposal    ProposalDocument @relation(fields: [proposalId], references: [id], onDelete: Cascade)
-  templateId  String
-  template    DocumentTemplate @relation(fields: [templateId], references: [id])
-  
-  createdAt   DateTime @default(now())
-  
+  id         String           @id @default(cuid())
+  proposalId String
+  proposal   ProposalDocument @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  templateId String
+  template   DocumentTemplate @relation(fields: [templateId], references: [id])
+
+  createdAt DateTime @default(now())
+
   @@unique([proposalId, templateId])
   @@index([proposalId])
   @@index([templateId])
@@ -476,68 +578,88 @@ model ProposalTemplateLink {
 // ============================================
 
 model Organization {
-  id          String   @id @default(cuid())
-  name        String
-  slug        String   @unique // для URL: punto-infissi.crm.com
-  domain      String?  @unique // кастомный домен: punto-infissi.com
-  
+  id     String  @id @default(cuid())
+  name   String
+  slug   String  @unique // для URL: modocrm.com
+  domain String? @unique // кастомный домен: modocrm.com
+
   // Брендинг
-  faviconUrl  String?  // URL фавикона организации
-  logoUrl     String?  // URL логотипа
+  faviconUrl   String? // URL фавикона организации
+  logoUrl      String? // URL логотипа
   primaryColor String? @default("#dc2626") // Основной цвет бренда
-  
+
   // Контактные данные
-  phone       String?  // Телефон компании
-  email       String?  // Email компании
-  address     String?  // Адрес компании
-  
+  phone   String? // Телефон компании
+  email   String? // Email компании
+  address String? // Адрес компании
+
   // Настройки
-  currency    String   @default("EUR")
-  timezone    String   @default("Europe/Rome")
-  language    String   @default("it")
-  
+  currency String @default("EUR")
+  timezone String @default("Europe/Rome")
+  language String @default("it")
+
   // Подписка
-  plan        String   @default("free") // free, basic, pro, enterprise
-  maxUsers    Int      @default(5)
-  maxStorage  Int      @default(1073741824) // 1GB в байтах
-  
+  plan       String @default("free") // free, basic, pro, enterprise
+  maxUsers   Int    @default(5)
+  maxStorage Int    @default(1073741824) // 1GB в байтах
+
   // Метаданные
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   // Связи
-  users       User[]
-  settings    OrganizationSettings?
-  
+  users                     User[]
+  invitations               Invitation[]
+  settings                  OrganizationSettings?
+  Client                    Client[]
+  Supplier                  Supplier[]
+  Partner                   Partner[]
+  Installer                 Installer[]
+  Dictionary                Dictionary[]
+  Category                  Category[]
+  Product                   Product[]
+  Order                     Order[]
+  ProductCategory           ProductCategory[]
+  SupplierProductCategory   SupplierProductCategory[]
+  ProposalDocument          ProposalDocument[]
+  ProposalGroup             ProposalGroup[]
+  ProposalPosition          ProposalPosition[]
+  VATRate                   VATRate[]
+  DocumentTemplate          DocumentTemplate[]
+  ParameterTemplate         ParameterTemplate[]
+  ParameterValue            ParameterValue[]
+  CategoryParameter         CategoryParameter[]
+  SupplierParameterOverride SupplierParameterOverride[]
+
   @@index([slug])
   @@index([domain])
 }
 
 model OrganizationSettings {
-  id              String       @id @default(cuid())
-  organizationId  String       @unique
-  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  
+  id             String       @id @default(cuid())
+  organizationId String       @unique
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
   // Настройки фавикона
-  faviconFileHash   String?      // MD5 хеш файла
-  faviconFileName   String?      // Имя файла: favicon-{hash}.png
-  faviconSize       Int?         // Размер в байтах
-  faviconWidth      Int?         // Ширина в пикселях
-  faviconHeight     Int?         // Высота в пикселях
-  faviconUpdatedAt  DateTime?    // Когда обновлен
-  faviconUpdatedBy  String?      // Кто обновил (userId)
-  
+  faviconFileHash  String? // MD5 хеш файла
+  faviconFileName  String? // Имя файла: favicon-{hash}.png
+  faviconSize      Int? // Размер в байтах
+  faviconWidth     Int? // Ширина в пикселях
+  faviconHeight    Int? // Высота в пикселях
+  faviconUpdatedAt DateTime? // Когда обновлен
+  faviconUpdatedBy String? // Кто обновил (userId)
+
   // Дополнительные настройки
-  emailNotifications Boolean   @default(true)
-  autoSave           Boolean   @default(true)
-  invoicePrefix      String?   @default("PI") // префикс счетов
-  invoiceCounter     Int       @default(1000)
-  
+  emailNotifications Boolean @default(true)
+  autoSave           Boolean @default(true)
+  invoicePrefix      String? @default("PI") // префикс счетов
+  invoiceCounter     Int     @default(1000)
+
   // Метаданные
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@index([organizationId])
   @@index([faviconFileHash])
 }
@@ -549,121 +671,191 @@ model OrganizationSettings {
 // Глобальные шаблоны параметров
 model ParameterTemplate {
   id          String        @id @default(cuid())
-  name        String        // "Материал", "Цвет", "Размер", "Тип открытия"
-  nameIt      String?       // Итальянское название
-  type        ParameterType // Тип параметра
-  description String?       // Описание параметра
-  unit        String?       // Единица измерения (мм, см, кг)
-  isGlobal    Boolean       @default(true) // Глобальный или специфичный
-  isActive    Boolean       @default(true) // Активен ли параметр
-  isSystem    Boolean       @default(false) // Системный параметр (не удаляется)
-  
+  name        String
+  nameIt      String?
+  type        ParameterType
+  description String?
+  unit        String?
+  isGlobal    Boolean       @default(true)
+  isActive    Boolean       @default(true)
+  isSystem    Boolean       @default(false)
+
   // Валидация для числовых параметров
-  minValue    Float?
-  maxValue    Float?
-  step        Float?
-  
+  minValue Float?
+  maxValue Float?
+  step     Float?
+
   // Метаданные
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  createdBy   String?  // userId создателя или 'admin'
-  
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  createdBy      String?
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+
   // Связи
-  values              ParameterValue[]
-  categoryParameters  CategoryParameter[]
-  supplierOverrides   SupplierParameterOverride[]
-  
+  values             ParameterValue[]
+  categoryParameters CategoryParameter[]
+  supplierOverrides  SupplierParameterOverride[]
+
   @@unique([name])
   @@index([type])
   @@index([isActive])
   @@index([isSystem])
+  @@index([organizationId])
 }
 
 // Возможные значения для параметров типа SELECT
 model ParameterValue {
-  id          String   @id @default(cuid())
+  id          String            @id @default(cuid())
   parameterId String
   parameter   ParameterTemplate @relation(fields: [parameterId], references: [id], onDelete: Cascade)
-  
-  value       String   // "Дуб", "Сосна", "Белый", "RAL 9010"
-  valueIt     String?  // Итальянский перевод
-  displayName String?  // Отображаемое название
-  hexColor    String?  // Для цветов: #FFFFFF
-  ralCode     String?  // Для цветов: RAL 9010
-  icon        String?  // SVG иконка или emoji
-  
-  order       Int      @default(0) // Порядок отображения
-  isActive    Boolean  @default(true)
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  createdBy   String?  // userId создателя или 'admin'
-  
+
+  value       String
+  valueIt     String?
+  displayName String?
+  hexColor    String?
+  ralCode     String?
+  icon        String?
+
+  order    Int     @default(0)
+  isActive Boolean @default(true)
+
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  createdBy      String?
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+
   @@index([parameterId])
   @@index([isActive])
+  @@index([organizationId])
 }
 
 // Привязка параметров к категориям продуктов
 model CategoryParameter {
-  id           String   @id @default(cuid())
-  categoryId   String
-  category     ProductCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  parameterId  String
-  parameter    ParameterTemplate @relation(fields: [parameterId], references: [id], onDelete: Cascade)
-  
+  id          String            @id @default(cuid())
+  categoryId  String
+  category    ProductCategory   @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  parameterId String
+  parameter   ParameterTemplate @relation(fields: [parameterId], references: [id], onDelete: Cascade)
+
   // Настройки для категории
-  isRequired   Boolean  @default(false) // Обязательный параметр?
-  isVisible    Boolean  @default(true)  // Показывать в UI?
-  order        Int      @default(0)     // Порядок отображения
-  displayName  String?  // Переопределение названия
-  displayNameIt String? // Итальянское название
-  defaultValue String?  // Значение по умолчанию
-  helpText     String?  // Подсказка пользователю
-  
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-  
+  isRequired    Boolean @default(false)
+  isVisible     Boolean @default(true)
+  order         Int     @default(0)
+  displayName   String?
+  displayNameIt String?
+  defaultValue  String?
+  helpText      String?
+
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+
   @@unique([categoryId, parameterId])
   @@index([categoryId])
   @@index([parameterId])
+  @@index([organizationId])
 }
 
 // Переопределения параметров для конкретных поставщиков
 model SupplierParameterOverride {
-  id           String   @id @default(cuid())
-  supplierId   Int
-  supplier     Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
-  parameterId  String
-  parameter    ParameterTemplate @relation(fields: [parameterId], references: [id], onDelete: Cascade)
-  
+  id          String            @id @default(cuid())
+  supplierId  Int
+  supplier    Supplier          @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  parameterId String
+  parameter   ParameterTemplate @relation(fields: [parameterId], references: [id], onDelete: Cascade)
+
   // Переопределенные значения
-  customValues Json?    // Специфичные для поставщика значения ["Значение1", "Значение2"]
-  minValue     Float?   // Переопределение мин. значения
-  maxValue     Float?   // Переопределение макс. значения
-  defaultValue String?  // Значение по умолчанию от поставщика
-  
-  isAvailable  Boolean  @default(true) // Доступен ли параметр для этого поставщика
-  priceImpact  Float?   // Влияние на цену (%)
-  notes        String?  // Заметки о параметре
-  
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-  
+  customValues Json?
+  minValue     Float?
+  maxValue     Float?
+  defaultValue String?
+
+  isAvailable Boolean @default(true)
+  priceImpact Float?
+  notes       String?
+
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+
   @@unique([supplierId, parameterId])
   @@index([supplierId])
   @@index([parameterId])
+  @@index([organizationId])
+}
+
+enum ClientType {
+  individual
+  company
+}
+
+enum SupplierStatus {
+  active
+  inactive
+}
+
+enum PartnerStatus {
+  active
+  inactive
+}
+
+enum InstallerType {
+  individual
+  ip
+  company
+}
+
+enum InstallerAvailability {
+  available
+  busy
+  vacation
+}
+
+enum InstallerStatus {
+  active
+  inactive
+}
+
+enum OrderStatus {
+  draft
+  sent
+  approved
+  in_production
+  completed
+}
+
+enum ProposalStatus {
+  draft
+  sent
+  confirmed
+  expired
+}
+
+enum ProposalType {
+  proposal
+  order
 }
 
 // Типы параметров
 enum ParameterType {
-  TEXT          // Текстовое поле
-  NUMBER        // Числовое поле
-  SELECT        // Выпадающий список
-  MULTI_SELECT  // Множественный выбор
-  COLOR         // Цветовой селектор
-  BOOLEAN       // Да/Нет
-  DATE          // Дата
-  RANGE         // Диапазон значений
+  TEXT // Текстовое поле
+  NUMBER // Числовое поле
+  SELECT // Выпадающий список
+  MULTI_SELECT // Множественный выбор
+  COLOR // Цветовой селектор
+  BOOLEAN // Да/Нет
+  DATE // Дата
+  RANGE // Диапазон значений
+}
+
+enum UserRole {
+  admin
+  manager
+  user
 }
 
 // ============================================
@@ -671,28 +863,28 @@ enum ParameterType {
 // ============================================
 
 model ConfiguratorDraft {
-  id                String   @id @default(cuid())
-  
+  id String @id @default(cuid())
+
   // Идентификация пользователя
-  userId            String?  // Для авторизованных пользователей
-  sessionId         String?  // Для неавторизованных пользователей
-  
+  userId    String? // Для авторизованных пользователей
+  sessionId String? // Для неавторизованных пользователей
+
   // Текущее состояние конфигурации
-  currentStep       Int      @default(1) // 1, 2, 3
+  currentStep        Int     @default(1) // 1, 2, 3
   selectedCategoryId String?
   selectedSupplierId Int?
-  
+
   // Сохраненная конфигурация
-  configuration     Json?    // Все выбранные параметры и значения
-  
+  configuration Json? // Все выбранные параметры и значения
+
   // Метаданные
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   // Связи
-  category          ProductCategory? @relation(fields: [selectedCategoryId], references: [id])
-  supplier          Supplier? @relation(fields: [selectedSupplierId], references: [id])
-  
+  category ProductCategory? @relation(fields: [selectedCategoryId], references: [id])
+  supplier Supplier?        @relation(fields: [selectedSupplierId], references: [id])
+
   @@index([userId])
   @@index([sessionId])
   @@index([currentStep])
@@ -705,42 +897,44 @@ model ConfiguratorDraft {
 // ============================================
 
 model DocumentType {
-  id          Int      @id @default(autoincrement())
-  name        String   @unique // "proposal", "order", "invoice"
-  nameRu      String   // "Предложение", "Заказ", "Счет"
-  nameIt      String   // "Proposta", "Ordine", "Fattura"
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  
-  statuses    DocumentStatusType[]
-  
+  id        Int      @id @default(autoincrement())
+  name      String   @unique // "proposal", "order", "invoice"
+  nameRu    String // "Предложение", "Заказ", "Счет"
+  nameIt    String // "Proposta", "Ordine", "Fattura"
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  statuses DocumentStatusType[]
+
   @@index([isActive])
 }
 
 model DocumentStatus {
   id          Int      @id @default(autoincrement())
   name        String   @unique // "draft", "sent", "approved"
-  nameRu      String   // "Черновик", "Отправлено", "Утверждено"
-  nameIt      String   // "Bozza", "Inviato", "Approvato"
-  color       String   @default("#gray") // Цвет для UI
+  nameRu      String // "Черновик", "Отправлено", "Утверждено"
+  nameIt      String // "Bozza", "Inviato", "Approvato"
+  color       String   @default("#9CA3AF") // Цвет для UI
   isActive    Boolean  @default(true)
+  globalOrder Int      @default(0) // Глобальный порядок для всех типов документов
   createdAt   DateTime @default(now())
-  
+
   documentTypes DocumentStatusType[]
   proposals     ProposalDocument[]
-  
+
   @@index([isActive])
+  @@index([globalOrder])
 }
 
 model DocumentStatusType {
-  id              Int      @id @default(autoincrement())
-  documentTypeId  Int
-  documentType    DocumentType @relation(fields: [documentTypeId], references: [id], onDelete: Cascade)
-  statusId        Int
-  status          DocumentStatus @relation(fields: [statusId], references: [id], onDelete: Cascade)
-  order           Int      @default(0) // Порядок отображения
-  isDefault       Boolean  @default(false) // Основной статус для этого типа документа
-  
+  id             Int            @id @default(autoincrement())
+  documentTypeId Int
+  documentType   DocumentType   @relation(fields: [documentTypeId], references: [id], onDelete: Cascade)
+  statusId       Int
+  status         DocumentStatus @relation(fields: [statusId], references: [id], onDelete: Cascade)
+  order          Int            @default(0) // Порядок отображения
+  isDefault      Boolean        @default(false) // Основной статус для этого типа документа
+
   @@unique([documentTypeId, statusId])
   @@index([documentTypeId])
   @@index([statusId])

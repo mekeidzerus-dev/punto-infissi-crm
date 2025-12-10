@@ -1,146 +1,81 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { logger } from '@/lib/logger'
+import { ApiError, parseJson, success, withApiHandler } from '@/lib/api-handler'
+import {
+	buildSupplierParameterOverrideUpdateData,
+	supplierParameterOverrideUpdateBodySchema,
+	ensureOverrideIdFromParams,
+} from '../helpers'
 
-// GET /api/supplier-parameter-overrides/[id]
-// Получить конкретное переопределение
-export async function GET(
-	request: NextRequest,
-	{ params }: { params: Promise<{ id: string }> }
-) {
-	try {
-		const { id } = await params
-		const override = await prisma.supplierParameterOverride.findUnique({
-			where: { id },
-			include: {
-				parameter: {
-					include: {
-						values: {
-							where: { isActive: true },
-							orderBy: { order: 'asc' },
-						},
-					},
-				},
-				supplier: true,
-			},
-		})
+const updateBodyWithoutId = supplierParameterOverrideUpdateBodySchema
 
-		if (!override) {
-			return NextResponse.json(
-				{ error: 'Parameter override not found' },
-				{ status: 404 }
-			)
-		}
+export const GET = withApiHandler(async (_request, { params }) => {
+	const id = ensureOverrideIdFromParams(params)
 
-		return NextResponse.json(override)
-	} catch (error) {
-		logger.error('❌ Error fetching parameter override:', error)
-		return NextResponse.json(
-			{ error: 'Failed to fetch parameter override' },
-			{ status: 500 }
-		)
-	}
-}
-
-// PUT /api/supplier-parameter-overrides/[id]
-// Обновить переопределение параметра
-export async function PUT(
-	request: NextRequest,
-	{ params }: { params: Promise<{ id: string }> }
-) {
-	try {
-		const { id } = await params
-		const body = await request.json()
-		const { customValues, minValue, maxValue, isAvailable } = body
-
-		// Проверяем существование переопределения
-		const existing = await prisma.supplierParameterOverride.findUnique({
-			where: { id },
-		})
-
-		if (!existing) {
-			return NextResponse.json(
-				{ error: 'Parameter override not found' },
-				{ status: 404 }
-			)
-		}
-
-		// Обновляем переопределение
-		const override = await prisma.supplierParameterOverride.update({
-			where: { id },
-			data: {
-				customValues: customValues !== undefined ? customValues : undefined,
-				minValue:
-					minValue !== undefined
-						? minValue === null
-							? null
-							: minValue
-						: undefined,
-				maxValue:
-					maxValue !== undefined
-						? maxValue === null
-							? null
-							: maxValue
-						: undefined,
-				isAvailable: isAvailable !== undefined ? isAvailable : undefined,
-			},
-			include: {
-				parameter: {
-					include: {
-						values: {
-							where: { isActive: true },
-							orderBy: { order: 'asc' },
-						},
+	const override = await prisma.supplierParameterOverride.findUnique({
+		where: { id },
+		include: {
+			parameter: {
+				include: {
+					values: {
+						where: { isActive: true },
+						orderBy: { order: 'asc' },
 					},
 				},
 			},
-		})
+			supplier: true,
+		},
+	})
 
-		logger.info(`✅ Updated parameter override: ${id}`)
-
-		return NextResponse.json(override)
-	} catch (error) {
-		logger.error('❌ Error updating parameter override:', error)
-		return NextResponse.json(
-			{ error: 'Failed to update parameter override' },
-			{ status: 500 }
-		)
+	if (!override) {
+		throw new ApiError(404, 'Parameter override not found')
 	}
-}
 
-// DELETE /api/supplier-parameter-overrides/[id]
-// Удалить переопределение параметра
-export async function DELETE(
-	request: NextRequest,
-	{ params }: { params: Promise<{ id: string }> }
-) {
-	try {
-		const { id } = await params
-		// Проверяем существование переопределения
-		const existing = await prisma.supplierParameterOverride.findUnique({
-			where: { id },
-		})
+	return success(override)
+})
 
-		if (!existing) {
-			return NextResponse.json(
-				{ error: 'Parameter override not found' },
-				{ status: 404 }
-			)
-		}
+export const PUT = withApiHandler(async (request: NextRequest, { params }) => {
+	const id = ensureOverrideIdFromParams(params)
+	const payload = await parseJson(request, updateBodyWithoutId)
 
-		// Удаляем переопределение
-		await prisma.supplierParameterOverride.delete({
-			where: { id },
-		})
+	const existing = await prisma.supplierParameterOverride.findUnique({
+		where: { id },
+	})
 
-		logger.info(`🗑️ Deleted parameter override: ${id}`)
-
-		return NextResponse.json({ success: true })
-	} catch (error) {
-		logger.error('❌ Error deleting parameter override:', error)
-		return NextResponse.json(
-			{ error: 'Failed to delete parameter override' },
-			{ status: 500 }
-		)
+	if (!existing) {
+		throw new ApiError(404, 'Parameter override not found')
 	}
-}
+
+	const override = await prisma.supplierParameterOverride.update({
+		where: { id },
+		data: buildSupplierParameterOverrideUpdateData(payload),
+		include: {
+			parameter: {
+				include: {
+					values: {
+						where: { isActive: true },
+						orderBy: { order: 'asc' },
+					},
+				},
+			},
+		},
+	})
+
+	return success(override)
+})
+
+export const DELETE = withApiHandler(async (_request, { params }) => {
+	const id = ensureOverrideIdFromParams(params)
+
+	const existing = await prisma.supplierParameterOverride.findUnique({
+		where: { id },
+	})
+
+	if (!existing) {
+		throw new ApiError(404, 'Parameter override not found')
+	}
+
+	await prisma.supplierParameterOverride.delete({ where: { id } })
+
+	return success({ success: true })
+})

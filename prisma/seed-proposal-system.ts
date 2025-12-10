@@ -42,11 +42,19 @@ async function main() {
 	]
 
 	for (const vat of vatRates) {
-		await prisma.vATRate.upsert({
-			where: { name: vat.name },
-			update: {},
-			create: vat,
+		const existing = await prisma.vATRate.findFirst({
+			where: { name: vat.name, organizationId: null },
 		})
+		if (existing) {
+			await prisma.vATRate.update({
+				where: { id: existing.id },
+				data: vat,
+			})
+		} else {
+			await prisma.vATRate.create({
+				data: vat,
+			})
+		}
 	}
 
 	console.log(`✅ Created ${vatRates.length} VAT rates`)

@@ -1,112 +1,88 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { logger } from '@/lib/logger'
+import { ApiError, parseJson, success, withApiHandler } from '@/lib/api-handler'
+import {
+	buildPartnerCreateData,
+	buildPartnerUpdateData,
+	ensurePartnerId,
+	partnerCreateBodySchema,
+	partnerUpdateBodySchema,
+} from './helpers'
 
-// GET - получить всех партнеров
-export async function GET() {
-	try {
-		const partners = await prisma.partner.findMany({
-			orderBy: { createdAt: 'desc' },
-		})
+export const GET = withApiHandler(async () => {
+	const { requireAuth } = await import('@/lib/auth-helpers')
+	const { getCurrentOrganizationId } = await import('@/lib/organization-context')
+	const user = await requireAuth()
+	const organizationId = await getCurrentOrganizationId()
+	
+	// Если organizationId есть в сессии, используем его, иначе используем из user
+	const finalOrganizationId = organizationId || user.organizationId
 
-		return NextResponse.json(partners)
-	} catch (error) {
-		logger.error('Error fetching partners:', error)
-		return NextResponse.json(
-			{ error: 'Failed to fetch partners' },
-			{ status: 500 }
-		)
+	const partners = await prisma.partner.findMany({
+		where: finalOrganizationId ? { organizationId: finalOrganizationId } : undefined,
+		orderBy: { createdAt: 'desc' },
+	})
+
+	return success(partners)
+})
+
+export const POST = withApiHandler(async (request: NextRequest) => {
+	const { requireAuth } = await import('@/lib/auth-helpers')
+	const { updateUserActivity } = await import('@/lib/activity-tracker')
+	const user = await requireAuth()
+	await updateUserActivity(user.id)
+	const payload = await parseJson(request, partnerCreateBodySchema)
+
+	const partner = await prisma.partner.create({
+		data: await buildPartnerCreateData(payload),
+	})
+
+	return success(partner, 201)
+})
+
+export const PUT = withApiHandler(async (request: NextRequest) => {
+	const payload = await parseJson(request, partnerUpdateBodySchema)
+	const { getCurrentOrganizationId } = await import('@/lib/organization-context')
+	const organizationId = await getCurrentOrganizationId()
+
+	// Проверяем принадлежность записи к организации
+	const existing = await prisma.partner.findFirst({
+		where: {
+			id: payload.id,
+			...(organizationId ? { organizationId } : {}),
+		},
+	})
+
+	if (!existing) {
+		throw new ApiError(404, 'Partner not found')
 	}
-}
 
-// POST - создать партнера
-export async function POST(request: NextRequest) {
-	try {
-		const body = await request.json()
+	const partner = await prisma.partner.update({
+		where: { id: payload.id },
+		data: buildPartnerUpdateData(payload),
+	})
 
-		const partner = await prisma.partner.create({
-			data: {
-				name: body.name,
-				phone: body.phone,
-				email: body.email,
-				contactPerson: body.contactPerson,
-				address: body.address,
-				type: body.type,
-				region: body.region,
-				commission: body.commission ? parseFloat(body.commission) : null,
-				codiceFiscale: body.codiceFiscale,
-				partitaIVA: body.partitaIVA,
-				legalAddress: body.legalAddress,
-				status: body.status || 'active',
-				notes: body.notes,
-			},
-		})
+	return success(partner)
+})
 
-		return NextResponse.json(partner, { status: 201 })
-	} catch (error) {
-		logger.error('Error creating partner:', error)
-		return NextResponse.json(
-			{ error: 'Failed to create partner' },
-			{ status: 500 }
-		)
+export const DELETE = withApiHandler(async (request: NextRequest) => {
+	const id = ensurePartnerId(request.nextUrl.searchParams.get('id'))
+	const { getCurrentOrganizationId } = await import('@/lib/organization-context')
+	const organizationId = await getCurrentOrganizationId()
+
+	// Проверяем принадлежность записи к организации
+	const existing = await prisma.partner.findFirst({
+		where: {
+			id,
+			...(organizationId ? { organizationId } : {}),
+		},
+	})
+
+	if (!existing) {
+		throw new ApiError(404, 'Partner not found')
 	}
-}
 
-// PUT - обновить партнера
-export async function PUT(request: NextRequest) {
-	try {
-		const body = await request.json()
-		const { id, ...data } = body
+	await prisma.partner.delete({ where: { id } })
 
-		const partner = await prisma.partner.update({
-			where: { id: parseInt(id) },
-			data: {
-				name: data.name,
-				phone: data.phone,
-				email: data.email,
-				contactPerson: data.contactPerson,
-				address: data.address,
-				type: data.type,
-				region: data.region,
-				commission: data.commission ? parseFloat(data.commission) : null,
-				codiceFiscale: data.codiceFiscale,
-				partitaIVA: data.partitaIVA,
-				legalAddress: data.legalAddress,
-				status: data.status,
-				notes: data.notes,
-			},
-		})
-
-		return NextResponse.json(partner)
-	} catch (error) {
-		logger.error('Error updating partner:', error)
-		return NextResponse.json(
-			{ error: 'Failed to update partner' },
-			{ status: 500 }
-		)
-	}
-}
-
-// DELETE - удалить партнера
-export async function DELETE(request: NextRequest) {
-	try {
-		const { searchParams } = new URL(request.url)
-		const id = searchParams.get('id')
-
-		if (!id) {
-			return NextResponse.json({ error: 'ID is required' }, { status: 400 })
-		}
-
-		await prisma.partner.delete({
-			where: { id: parseInt(id) },
-		})
-
-		return NextResponse.json({ success: true })
-	} catch (error) {
-		logger.error('Error deleting partner:', error)
-		return NextResponse.json(
-			{ error: 'Failed to delete partner' },
-			{ status: 500 }
-		)
-	}
-}
+	return success({ success: true })
+})

@@ -1,63 +1,37 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { logger } from '@/lib/logger'
+import { parseJson, success, withApiHandler } from '@/lib/api-handler'
+import {
+	buildProductCategoryCreateData,
+	productCategoryCreateBodySchema,
+} from './helpers'
 
-export async function GET() {
-	try {
-		logger.info('🔍 Fetching product categories...')
-
-		const categories = await prisma.productCategory.findMany({
-			where: { isActive: true },
-			orderBy: { name: 'asc' },
-			include: {
-				supplierCategories: {
-					include: {
-						supplier: true,
-					},
+export const GET = withApiHandler(async () => {
+	const categories = await prisma.productCategory.findMany({
+		where: { isActive: true },
+		orderBy: { name: 'asc' },
+		include: {
+			supplierCategories: {
+				include: {
+					supplier: true,
 				},
 			},
-		})
+		},
+	})
 
-		logger.info(`✅ Found ${categories.length} product categories`)
-		return NextResponse.json(categories)
-	} catch (error) {
-		logger.error('❌ Error fetching product categories:', error)
-		return NextResponse.json(
-			{ error: 'Failed to fetch product categories', details: String(error) },
-			{ status: 500 }
-		)
-	}
-}
+	return success(categories)
+})
 
-export async function POST(request: NextRequest) {
-	try {
-		logger.info('📝 Creating product category...')
+export const POST = withApiHandler(async (request: NextRequest) => {
+	const { requireAuth } = await import('@/lib/auth-helpers')
+	const { updateUserActivity } = await import('@/lib/activity-tracker')
+	const user = await requireAuth()
+	await updateUserActivity(user.id)
+	const payload = await parseJson(request, productCategoryCreateBodySchema)
 
-		const body = await request.json()
-		const { name, icon, description } = body
+	const category = await prisma.productCategory.create({
+		data: buildProductCategoryCreateData(payload),
+	})
 
-		if (!name || !icon) {
-			return NextResponse.json(
-				{ error: 'Name and icon are required' },
-				{ status: 400 }
-			)
-		}
-
-		const category = await prisma.productCategory.create({
-			data: {
-				name,
-				icon,
-				description,
-			},
-		})
-
-		logger.info(`✅ Created product category: ${category.name}`)
-		return NextResponse.json(category, { status: 201 })
-	} catch (error) {
-		logger.error('❌ Error creating product category:', error)
-		return NextResponse.json(
-			{ error: 'Failed to create product category', details: String(error) },
-			{ status: 500 }
-		)
-	}
-}
+	return success(category, 201)
+})

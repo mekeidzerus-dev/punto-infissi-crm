@@ -1,116 +1,88 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { logger } from '@/lib/logger'
+import { ApiError, parseJson, success, withApiHandler } from '@/lib/api-handler'
+import {
+	buildInstallerCreateData,
+	buildInstallerUpdateData,
+	ensureInstallerId,
+	installerCreateBodySchema,
+	installerUpdateBodySchema,
+} from './helpers'
 
-// GET - получить всех монтажников
-export async function GET() {
-	try {
-		const installers = await prisma.installer.findMany({
-			orderBy: { createdAt: 'desc' },
-		})
+export const GET = withApiHandler(async () => {
+	const { requireAuth } = await import('@/lib/auth-helpers')
+	const { getCurrentOrganizationId } = await import('@/lib/organization-context')
+	const user = await requireAuth()
+	const organizationId = await getCurrentOrganizationId()
+	
+	// Если organizationId есть в сессии, используем его, иначе используем из user
+	const finalOrganizationId = organizationId || user.organizationId
 
-		return NextResponse.json(installers)
-	} catch (error) {
-		logger.error('Error fetching installers:', error)
-		return NextResponse.json(
-			{ error: 'Failed to fetch installers' },
-			{ status: 500 }
-		)
+	const installers = await prisma.installer.findMany({
+		where: finalOrganizationId ? { organizationId: finalOrganizationId } : undefined,
+		orderBy: { createdAt: 'desc' },
+	})
+
+	return success(installers)
+})
+
+export const POST = withApiHandler(async (request: NextRequest) => {
+	const { requireAuth } = await import('@/lib/auth-helpers')
+	const { updateUserActivity } = await import('@/lib/activity-tracker')
+	const user = await requireAuth()
+	await updateUserActivity(user.id)
+	const payload = await parseJson(request, installerCreateBodySchema)
+
+	const installer = await prisma.installer.create({
+		data: await buildInstallerCreateData(payload),
+	})
+
+	return success(installer, 201)
+})
+
+export const PUT = withApiHandler(async (request: NextRequest) => {
+	const payload = await parseJson(request, installerUpdateBodySchema)
+	const { getCurrentOrganizationId } = await import('@/lib/organization-context')
+	const organizationId = await getCurrentOrganizationId()
+
+	// Проверяем принадлежность записи к организации
+	const existing = await prisma.installer.findFirst({
+		where: {
+			id: payload.id,
+			...(organizationId ? { organizationId } : {}),
+		},
+	})
+
+	if (!existing) {
+		throw new ApiError(404, 'Installer not found')
 	}
-}
 
-// POST - создать монтажника
-export async function POST(request: NextRequest) {
-	try {
-		const body = await request.json()
+	const installer = await prisma.installer.update({
+		where: { id: payload.id },
+		data: buildInstallerUpdateData(payload),
+	})
 
-		const installer = await prisma.installer.create({
-			data: {
-				type: body.type || 'individual',
-				name: body.name,
-				phone: body.phone,
-				email: body.email,
-				specialization: body.specialization,
-				experience: body.experience ? parseInt(body.experience) : null,
-				hasTools: body.hasTools === 'yes',
-				hasTransport: body.hasTransport === 'yes',
-				rateType: body.rateType,
-				ratePrice: body.ratePrice ? parseFloat(body.ratePrice) : null,
-				schedule: body.schedule,
-				availability: body.availability || 'available',
-				rating: body.rating ? parseInt(body.rating) : 5,
-				status: body.status || 'active',
-				notes: body.notes,
-			},
-		})
+	return success(installer)
+})
 
-		return NextResponse.json(installer, { status: 201 })
-	} catch (error) {
-		logger.error('Error creating installer:', error)
-		return NextResponse.json(
-			{ error: 'Failed to create installer' },
-			{ status: 500 }
-		)
+export const DELETE = withApiHandler(async (request: NextRequest) => {
+	const id = ensureInstallerId(request.nextUrl.searchParams.get('id'))
+	const { getCurrentOrganizationId } = await import('@/lib/organization-context')
+	const organizationId = await getCurrentOrganizationId()
+
+	// Проверяем принадлежность записи к организации
+	const existing = await prisma.installer.findFirst({
+		where: {
+			id,
+			...(organizationId ? { organizationId } : {}),
+		},
+	})
+
+	if (!existing) {
+		throw new ApiError(404, 'Installer not found')
 	}
-}
 
-// PUT - обновить монтажника
-export async function PUT(request: NextRequest) {
-	try {
-		const body = await request.json()
-		const { id, ...data } = body
+	await prisma.installer.delete({ where: { id } })
 
-		const installer = await prisma.installer.update({
-			where: { id: parseInt(id) },
-			data: {
-				type: data.type,
-				name: data.name,
-				phone: data.phone,
-				email: data.email,
-				specialization: data.specialization,
-				experience: data.experience ? parseInt(data.experience) : null,
-				hasTools: data.hasTools === 'yes',
-				hasTransport: data.hasTransport === 'yes',
-				rateType: data.rateType,
-				ratePrice: data.ratePrice ? parseFloat(data.ratePrice) : null,
-				schedule: data.schedule,
-				availability: data.availability,
-				rating: data.rating ? parseInt(data.rating) : 5,
-				status: data.status,
-				notes: data.notes,
-			},
-		})
-
-		return NextResponse.json(installer)
-	} catch (error) {
-		logger.error('Error updating installer:', error)
-		return NextResponse.json(
-			{ error: 'Failed to update installer' },
-			{ status: 500 }
-		)
-	}
-}
-
-// DELETE - удалить монтажника
-export async function DELETE(request: NextRequest) {
-	try {
-		const { searchParams } = new URL(request.url)
-		const id = searchParams.get('id')
-
-		if (!id) {
-			return NextResponse.json({ error: 'ID is required' }, { status: 400 })
-		}
-
-		await prisma.installer.delete({
-			where: { id: parseInt(id) },
-		})
-
-		return NextResponse.json({ success: true })
-	} catch (error) {
-		logger.error('Error deleting installer:', error)
-		return NextResponse.json(
-			{ error: 'Failed to delete installer' },
-			{ status: 500 }
-		)
-	}
-}
+	return success({ success: true })
+})
