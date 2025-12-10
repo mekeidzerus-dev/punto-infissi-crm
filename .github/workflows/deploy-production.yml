@@ -296,20 +296,39 @@ jobs:
               echo "❌ ОШИБКА: Health endpoint не отвечает после $HEALTH_RETRIES попыток!"
               echo "📋 Статус PM2:"
               pm2 list | grep punto-infissi-crm-current || echo "Процесс не найден!"
-              echo "📋 Последние логи PM2:"
+              echo "📋 Детальная информация о процессе:"
+              pm2 describe punto-infissi-crm-current || echo "Описание недоступно"
+              echo "📋 Последние логи PM2 (ошибки):"
+              pm2 logs punto-infissi-crm-current --err --lines 50 --nostream || echo "Логи ошибок недоступны"
+              echo "📋 Последние логи PM2 (все):"
               pm2 logs punto-infissi-crm-current --lines 100 --nostream || echo "Логи недоступны"
               echo "📋 Проверка процесса:"
-              ps aux | grep "node.*start" | grep -v grep || echo "Процесс Node.js не найден"
+              ps aux | grep -E "node|npm" | grep -v grep || echo "Процесс Node.js не найден"
+              echo "📋 Проверка порта 3000:"
+              lsof -i :3000 || ss -tuln | grep 3000 || netstat -tuln | grep 3000 || echo "Порт не слушается"
               exit 1
+            fi
+            
+            # Проверка что процесс стабилен (не перезапускается)
+            echo "📊 Проверяем стабильность процесса..."
+            sleep 5
+            PM2_INFO=$(pm2 describe punto-infissi-crm-current --no-color 2>&1 || echo "")
+            RESTART_COUNT=$(echo "$PM2_INFO" | grep "restart time" | grep -oE "[0-9]+" | head -1 || echo "0")
+            if [ "$RESTART_COUNT" -gt 5 ]; then
+              echo "⚠️  ВНИМАНИЕ: Процесс перезапускался $RESTART_COUNT раз!"
+              echo "📋 Логи для анализа:"
+              pm2 logs punto-infissi-crm-current --lines 50 --nostream
+            else
+              echo "✅ Процесс стабилен (перезапусков: $RESTART_COUNT)"
             fi
             
             # Проверка логов на критические ошибки
             echo "📋 Проверяем логи PM2 на ошибки..."
             PM2_LOGS=$(pm2 logs punto-infissi-crm-current --lines 50 --nostream 2>&1 || echo "")
-            if echo "$PM2_LOGS" | grep -qi "error\|fatal\|cannot find module\|EADDRINUSE"; then
+            if echo "$PM2_LOGS" | grep -qiE "error|fatal|cannot find module|EADDRINUSE|ECONNREFUSED|PrismaClient"; then
               echo "⚠️  Обнаружены возможные ошибки в логах:"
-              echo "$PM2_LOGS" | grep -i "error\|fatal\|cannot find module\|EADDRINUSE" | head -10
-              # Не выходим с ошибкой, так как health endpoint работает
+              echo "$PM2_LOGS" | grep -iE "error|fatal|cannot find module|EADDRINUSE|ECONNREFUSED|PrismaClient" | head -15
+              # Не выходим с ошибкой, так как health endpoint работает, но предупреждаем
             else
               echo "✅ Критических ошибок в логах не обнаружено"
             fi
