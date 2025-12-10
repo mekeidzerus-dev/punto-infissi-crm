@@ -333,6 +333,27 @@ jobs:
               echo "✅ Критических ошибок в логах не обнаружено"
             fi
 
+            # Финальная проверка стабильности процесса
+            echo ""
+            echo "🔍 Финальная проверка стабильности процесса..."
+            sleep 10
+            FINAL_STATUS=$(pm2 describe punto-infissi-crm-current --no-color 2>&1 | grep "status" | head -1 || echo "")
+            FINAL_RESTARTS=$(pm2 describe punto-infissi-crm-current --no-color 2>&1 | grep "restart time" | grep -oE "[0-9]+" | head -1 || echo "0")
+            
+            if echo "$FINAL_STATUS" | grep -q "online"; then
+              echo "✅ Процесс стабилен (статус: online, перезапусков: $FINAL_RESTARTS)"
+            else
+              echo "⚠️  Процесс в статусе: $FINAL_STATUS"
+            fi
+            
+            # Финальная проверка health endpoint
+            if curl -f -s http://localhost:3000/api/health > /dev/null 2>&1; then
+              echo "✅ Health endpoint отвечает финально"
+            else
+              echo "⚠️  Health endpoint не отвечает в финальной проверке"
+              pm2 logs punto-infissi-crm-current --lines 30 --nostream
+            fi
+
             echo ""
             echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
             echo "✅ ВНУТРЕННЯЯ ПРОВЕРКА ЗАВЕРШЕНА"
