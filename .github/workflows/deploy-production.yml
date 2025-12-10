@@ -294,8 +294,12 @@ jobs:
             
             if [ "$HEALTH_SUCCESS" = false ]; then
               echo "❌ ОШИБКА: Health endpoint не отвечает после $HEALTH_RETRIES попыток!"
+              echo "📋 Статус PM2:"
+              pm2 list | grep punto-infissi-crm-current || echo "Процесс не найден!"
               echo "📋 Последние логи PM2:"
-              pm2 logs punto-infissi-crm-current --lines 100 --nostream
+              pm2 logs punto-infissi-crm-current --lines 100 --nostream || echo "Логи недоступны"
+              echo "📋 Проверка процесса:"
+              ps aux | grep "node.*start" | grep -v grep || echo "Процесс Node.js не найден"
               exit 1
             fi
             
