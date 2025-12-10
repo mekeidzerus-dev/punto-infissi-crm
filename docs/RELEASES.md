@@ -16,11 +16,22 @@
 - Исправлены все проваленные тесты авторизации (100% прохождение)
 - Улучшена обработка rate limiting в тестах
 - Оптимизирована структура документации (удалены дубликаты и временные файлы)
+- **КРИТИЧНО:** Исправлена проблема с webpack chunks в dev режиме
+  - Вынесен `authOptions` в отдельный файл (`src/lib/auth-options.ts`)
+  - Добавлен `dynamic = 'force-dynamic'` в profile route
+  - Создан `next.config.mjs` с правильными настройками webpack
+  - Добавлен автоматический prebuild hook для очистки кэша
 
 **Технические изменения:**
 - Обновлен `src/app/auth/forgot-password/page.tsx` - улучшенный UI с отображением токенов
 - Обновлен `src/app/api/auth/forgot-password/route.ts` - поддержка режима без email
-- Создан `docs/PASSWORD-RESET-WITHOUT-EMAIL.md` - документация по работе без email
+- Создан `src/lib/auth-options.ts` - вынесена конфигурация NextAuth
+- Создан `next.config.mjs` - настройки webpack для стабильной сборки
+- Создан `scripts/pre-build-check.ts` - проверка перед сборкой
+- Добавлен скрипт `npm run clean` - очистка кэша
+- Обновлен `package.json` - добавлен `prebuild` hook
+- Создан `docs/BUILD-TROUBLESHOOTING.md` - документация по решению проблем сборки
+- Создан `.github/workflows/pre-deploy-check.yml` - автоматическая проверка перед деплоем
 
 **Тестирование:**
 - ✅ Все тесты авторизации пройдены (9/9 - 100%)

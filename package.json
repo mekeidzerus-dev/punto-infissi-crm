@@ -9,6 +9,8 @@
 	},
 	"scripts": {
 		"dev": "next dev",
+		"clean": "rm -rf .next .next/cache",
+		"prebuild": "npm run clean && npx tsx scripts/pre-build-check.ts",
 		"build": "next build",
 		"start": "next start",
 		"lint": "eslint",
@@ -31,7 +33,8 @@
 		"test:proposal-full": "npx tsx scripts/test-proposal-full.ts",
 		"test:e2e": "playwright test tests/e2e-full-test.spec.ts",
 		"db:status": "npx tsx scripts/check-database-status.ts",
-		"setup:punto-infissi": "npx tsx scripts/setup-punto-infissi-passwords.ts"
+		"setup:punto-infissi": "npx tsx scripts/setup-punto-infissi-passwords.ts",
+		"verify:deploy": "npx tsx scripts/verify-deployment.ts"
 	},
 	"dependencies": {
 		"@dnd-kit/core": "6.3.1",

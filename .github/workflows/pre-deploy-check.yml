@@ -1,0 +1,36 @@
+name: Pre-Deploy Check
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.11.0'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Clean build directory
+        run: npm run clean
+      
+      - name: Pre-build check
+        run: npx tsx scripts/pre-build-check.ts
+      
+      - name: Build
+        run: npm run build
+      
+      - name: Lint
+        run: npm run lint
+

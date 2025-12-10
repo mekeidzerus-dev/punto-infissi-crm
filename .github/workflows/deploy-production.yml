@@ -28,23 +28,53 @@ jobs:
             echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
             PRODUCTION_DIR="/var/www/fastuser/data/www/infissi.omoxsoft.com.ua"
+            BACKUP_DIR="/var/www/fastuser/data/backups/punto-infissi-crm"
 
             cd $PRODUCTION_DIR
 
             # 1️⃣ Создаем бэкап
-            echo "1️⃣ Создаем бэкап..."
-            BACKUP_DIR="/var/www/fastuser/data/backups/punto-infissi-crm"
+            echo ""
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo "1️⃣ СОЗДАНИЕ БЭКАПА"
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
             mkdir -p $BACKUP_DIR
             BACKUP_FILE="$BACKUP_DIR/backup-$(date +%Y%m%d-%H%M%S).tar.gz"
-            tar -czf $BACKUP_FILE .next package-lock.json 2>/dev/null || true
-            echo "✅ Бэкап: $BACKUP_FILE"
+            if [ -d ".next" ]; then
+              tar -czf $BACKUP_FILE .next package-lock.json package.json 2>/dev/null || true
+              if [ -f "$BACKUP_FILE" ]; then
+                echo "✅ Бэкап создан: $BACKUP_FILE"
+                BACKUP_SIZE=$(du -h "$BACKUP_FILE" | cut -f1)
+                echo "   Размер: $BACKUP_SIZE"
+              else
+                echo "⚠️  Бэкап не создан (возможно первый деплой)"
+              fi
+            else
+              echo "⚠️  .next не существует, пропускаем бэкап"
+            fi
 
             # 2️⃣ Останавливаем PM2
-            echo "2️⃣ Останавливаем production..."
+            echo ""
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo "2️⃣ ОСТАНОВКА ПРИЛОЖЕНИЯ"
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo "🛑 Останавливаем PM2 процесс..."
             pm2 stop punto-infissi-crm-current || true
+            sleep 2
+            PM2_STATUS=$(pm2 list | grep punto-infissi-crm-current || echo "")
+            if [ -z "$PM2_STATUS" ] || echo "$PM2_STATUS" | grep -q "stopped"; then
+              echo "✅ Процесс остановлен"
+            else
+              echo "⚠️  Процесс все еще работает, принудительно останавливаем..."
+              pm2 delete punto-infissi-crm-current || true
+              sleep 2
+            fi
+            echo "✅ Приложение остановлено"
 
-            # 3️⃣ Инициализируем Git репозиторий если нужно
-            echo "3️⃣ Проверяем Git репозиторий..."
+            # 3️⃣ Обновление кода
+            echo ""
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo "3️⃣ ОБНОВЛЕНИЕ КОДА"
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
             if [ ! -d ".git" ]; then
               echo "📥 Клонируем репозиторий..."
               cd /var/www/fastuser/data/www/
@@ -57,80 +87,301 @@ jobs:
               git fetch origin
               git reset --hard origin/main
             fi
-            echo "✅ Код обновлен: $(git log --oneline -1)"
-
-            # 4️⃣ Проверяем next.config.ts
-            echo "4️⃣ Проверяем next.config.ts..."
-            if [ -f "next.config.ts" ]; then
-              if grep -q "NODE_ENV" next.config.ts; then
-                echo "❌ ОШИБКА: next.config.ts содержит NODE_ENV!"
+            
+            # Проверка что код обновлен
+            LATEST_COMMIT=$(git log --oneline -1)
+            echo "✅ Код обновлен: $LATEST_COMMIT"
+            
+            # Проверка критичных файлов
+            CRITICAL_FILES=("package.json" "next.config.mjs" "src/lib/auth-options.ts")
+            for file in "${CRITICAL_FILES[@]}"; do
+              if [ ! -f "$file" ]; then
+                echo "❌ ОШИБКА: Критичный файл не найден: $file"
                 exit 1
               fi
-              echo "✅ next.config.ts правильный"
+            done
+            echo "✅ Все критичные файлы на месте"
+
+            # 4️⃣ Проверка конфигурации
+            echo ""
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo "4️⃣ ПРОВЕРКА КОНФИГУРАЦИИ"
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            if [ -f "next.config.mjs" ]; then
+              if grep -q "NODE_ENV" next.config.mjs; then
+                echo "❌ ОШИБКА: next.config.mjs содержит NODE_ENV!"
+                exit 1
+              fi
+              echo "✅ next.config.mjs правильный"
             elif [ -f "next.config.js" ]; then
               if grep -q "NODE_ENV" next.config.js; then
                 echo "❌ ОШИБКА: next.config.js содержит NODE_ENV!"
                 exit 1
               fi
               echo "✅ next.config.js правильный"
+            else
+              echo "⚠️  next.config не найден (используются дефолтные настройки)"
             fi
 
-            # 5️⃣ Устанавливаем зависимости
-            echo "5️⃣ Устанавливаем зависимости..."
-            npm install
+            # 5️⃣ Установка зависимостей
+            echo ""
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo "5️⃣ УСТАНОВКА ЗАВИСИМОСТЕЙ"
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo "📦 Устанавливаем зависимости (npm ci)..."
+            npm ci
+            if [ ! -d "node_modules" ]; then
+              echo "❌ ОШИБКА: node_modules не создан!"
+              exit 1
+            fi
             echo "✅ Зависимости установлены"
 
-            # 6️⃣ Prisma настройка
-            echo "6️⃣ Настраиваем Prisma..."
-            echo "📋 Проверяем .env файл..."
+            # 6️⃣ Настройка Prisma
+            echo ""
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo "6️⃣ НАСТРОЙКА PRISMA"
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
             if [ ! -f ".env" ]; then
               echo "❌ ОШИБКА: .env файл не найден!"
               exit 1
             fi
             echo "✅ .env файл найден"
-
+            
+            # Проверка DATABASE_URL
+            if ! grep -q "DATABASE_URL=" .env; then
+              echo "❌ ОШИБКА: DATABASE_URL не найден в .env!"
+              exit 1
+            fi
+            echo "✅ DATABASE_URL найден в .env"
+            
             echo "🔧 Генерируем Prisma клиент..."
             npx prisma generate
+            if [ ! -d "node_modules/@prisma/client" ]; then
+              echo "❌ ОШИБКА: Prisma Client не сгенерирован!"
+              exit 1
+            fi
             echo "✅ Prisma клиент сгенерирован"
 
-            # 7️⃣ Собираем проект
-            echo "7️⃣ Собираем проект..."
+            # 7️⃣ Сборка проекта
+            echo ""
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo "7️⃣ СБОРКА ПРОЕКТА"
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
             echo "🧹 Очищаем кэш и старые файлы..."
             rm -rf .next
             rm -rf node_modules/.cache
             rm -rf .turbo
             echo "✅ Кэш очищен"
+            
             echo "🔨 Запускаем сборку..."
             npm run build
+            BUILD_EXIT_CODE=$?
+            if [ $BUILD_EXIT_CODE -ne 0 ]; then
+              echo "❌ ОШИБКА: Сборка не удалась (exit code: $BUILD_EXIT_CODE)"
+              exit 1
+            fi
             echo "✅ Проект собран успешно"
             
-            # Проверяем что .next директория создана
+            # Проверка что .next директория создана
             if [ ! -d ".next" ]; then
               echo "❌ ОШИБКА: .next директория не создана после сборки!"
               exit 1
             fi
             echo "✅ .next директория создана"
+            
+            # Проверка что есть server директория
+            if [ ! -d ".next/server" ]; then
+              echo "❌ ОШИБКА: .next/server директория не создана!"
+              exit 1
+            fi
+            echo "✅ .next/server директория создана"
 
-            # 8️⃣ Запускаем PM2
-            echo "8️⃣ Запускаем production..."
+            # 8️⃣ Запуск приложения
+            echo ""
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo "8️⃣ ЗАПУСК ПРИЛОЖЕНИЯ"
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo "🗑️  Удаляем старый PM2 процесс..."
             pm2 delete punto-infissi-crm-current || true
+            sleep 1
+            
+            echo "🚀 Запускаем новый процесс..."
             pm2 start npm --name "punto-infissi-crm-current" -- start -- --port 3000
             pm2 save
-            echo "✅ PM2 процесс запущен"
+            
+            # Проверка статуса PM2
+            sleep 3
+            PM2_STATUS=$(pm2 list | grep punto-infissi-crm-current || echo "")
+            if [ -z "$PM2_STATUS" ]; then
+              echo "❌ ОШИБКА: PM2 процесс не найден!"
+              pm2 logs punto-infissi-crm-current --lines 20 --nostream || true
+              exit 1
+            fi
+            
+            if echo "$PM2_STATUS" | grep -q "online"; then
+              echo "✅ PM2 процесс запущен и работает (online)"
+            elif echo "$PM2_STATUS" | grep -q "errored\|stopped"; then
+              echo "❌ ОШИБКА: PM2 процесс в статусе ошибки!"
+              pm2 logs punto-infissi-crm-current --lines 50 --nostream
+              exit 1
+            else
+              echo "⚠️  PM2 процесс запущен, но статус: $PM2_STATUS"
+            fi
 
-            # 9️⃣ Проверяем статус
-            echo "9️⃣ Проверяем статус..."
-            sleep 5
-            pm2 list | grep current
-
+            # 9️⃣ Внутренняя проверка (на сервере)
+            echo ""
             echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-            echo "✅ PRODUCTION DEPLOYMENT COMPLETED"
+            echo "9️⃣ ВНУТРЕННЯЯ ПРОВЕРКА"
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo "⏳ Ждем 30 секунд для полного запуска приложения..."
+            sleep 30
+            
+            # Проверка что порт 3000 слушается
+            echo "🔍 Проверяем что порт 3000 слушается..."
+            if command -v ss >/dev/null 2>&1; then
+              PORT_CHECK=$(ss -tuln | grep ":3000 " || echo "")
+            elif command -v netstat >/dev/null 2>&1; then
+              PORT_CHECK=$(netstat -tuln | grep ":3000 " || echo "")
+            else
+              PORT_CHECK=""
+            fi
+            
+            if [ -z "$PORT_CHECK" ]; then
+              echo "❌ ОШИБКА: Порт 3000 не слушается!"
+              pm2 logs punto-infissi-crm-current --lines 50 --nostream
+              exit 1
+            fi
+            echo "✅ Порт 3000 слушается"
+            
+            # Проверка health endpoint локально
+            echo "🏥 Проверяем health endpoint локально..."
+            HEALTH_RETRIES=5
+            HEALTH_SUCCESS=false
+            for i in $(seq 1 $HEALTH_RETRIES); do
+              if curl -f -s http://localhost:3000/api/health > /dev/null 2>&1; then
+                HEALTH_RESPONSE=$(curl -s http://localhost:3000/api/health)
+                echo "✅ Health endpoint отвечает:"
+                echo "$HEALTH_RESPONSE" | head -5
+                HEALTH_SUCCESS=true
+                break
+              else
+                echo "   Попытка $i/$HEALTH_RETRIES: health endpoint не отвечает, ждем 5 секунд..."
+                sleep 5
+              fi
+            done
+            
+            if [ "$HEALTH_SUCCESS" = false ]; then
+              echo "❌ ОШИБКА: Health endpoint не отвечает после $HEALTH_RETRIES попыток!"
+              echo "📋 Последние логи PM2:"
+              pm2 logs punto-infissi-crm-current --lines 100 --nostream
+              exit 1
+            fi
+            
+            # Проверка логов на критические ошибки
+            echo "📋 Проверяем логи PM2 на ошибки..."
+            PM2_LOGS=$(pm2 logs punto-infissi-crm-current --lines 50 --nostream 2>&1 || echo "")
+            if echo "$PM2_LOGS" | grep -qi "error\|fatal\|cannot find module\|EADDRINUSE"; then
+              echo "⚠️  Обнаружены возможные ошибки в логах:"
+              echo "$PM2_LOGS" | grep -i "error\|fatal\|cannot find module\|EADDRINUSE" | head -10
+              # Не выходим с ошибкой, так как health endpoint работает
+            else
+              echo "✅ Критических ошибок в логах не обнаружено"
+            fi
+
+            echo ""
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo "✅ ВНУТРЕННЯЯ ПРОВЕРКА ЗАВЕРШЕНА"
             echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
-      - name: 🏥 Health Check
+      - name: 🏥 External Health Check
         run: |
-          echo "⏳ Ждем 15 секунд..."
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "🔟 ВНЕШНЯЯ ПРОВЕРКА"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          
+          echo "⏳ Ждем 15 секунд после внутренней проверки..."
           sleep 15
-          echo "🔍 Проверяем production..."
-          curl -f https://infissi.omoxsoft.com.ua || exit 1
-          echo "✅ Production работает!"
+          
+          PRODUCTION_URL="https://infissi.omoxsoft.com.ua"
+          
+          # Функция для проверки с retry
+          check_url() {
+            local url=$1
+            local max_retries=5
+            local retry_delay=10
+            local attempt=1
+            
+            while [ $attempt -le $max_retries ]; do
+              echo "🔍 Попытка $attempt/$max_retries: проверяем $url..."
+              
+              if curl -f -s --max-time 30 "$url" > /dev/null 2>&1; then
+                echo "✅ $url отвечает успешно"
+                return 0
+              else
+                HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 30 "$url" || echo "000")
+                echo "   HTTP код: $HTTP_CODE"
+                
+                if [ $attempt -lt $max_retries ]; then
+                  echo "   Ждем $retry_delay секунд перед следующей попыткой..."
+                  sleep $retry_delay
+                  attempt=$((attempt + 1))
+                else
+                  echo "❌ ОШИБКА: $url не отвечает после $max_retries попыток"
+                  return 1
+                fi
+              fi
+            done
+          }
+          
+          # Проверка главной страницы
+          echo ""
+          echo "📄 Проверяем главную страницу..."
+          if ! check_url "$PRODUCTION_URL"; then
+            echo "❌ Главная страница не отвечает"
+            exit 1
+          fi
+          
+          # Проверка health endpoint
+          echo ""
+          echo "🏥 Проверяем health endpoint..."
+          HEALTH_URL="$PRODUCTION_URL/api/health"
+          if ! check_url "$HEALTH_URL"; then
+            echo "❌ Health endpoint не отвечает"
+            exit 1
+          fi
+          
+          # Проверка содержимого health endpoint
+          echo ""
+          echo "📊 Проверяем содержимое health endpoint..."
+          HEALTH_RESPONSE=$(curl -s --max-time 30 "$HEALTH_URL" || echo "")
+          if [ -z "$HEALTH_RESPONSE" ]; then
+            echo "❌ Health endpoint не вернул данные"
+            exit 1
+          fi
+          
+          echo "✅ Health endpoint ответ:"
+          echo "$HEALTH_RESPONSE" | head -10
+          
+          # Проверка версии в health endpoint
+          if echo "$HEALTH_RESPONSE" | grep -q '"status":"healthy"'; then
+            echo "✅ Статус: healthy"
+          else
+            echo "⚠️  Статус не healthy, но endpoint отвечает"
+          fi
+          
+          # Проверка страницы входа
+          echo ""
+          echo "🔐 Проверяем страницу входа..."
+          SIGNIN_URL="$PRODUCTION_URL/auth/signin"
+          if ! check_url "$SIGNIN_URL"; then
+            echo "❌ Страница входа не отвечает"
+            exit 1
+          fi
+          
+          echo ""
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "✅ ВСЕ ПРОВЕРКИ ПРОЙДЕНЫ УСПЕШНО"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "🌐 Production URL: $PRODUCTION_URL"
+          echo "🏥 Health endpoint: $HEALTH_URL"
+          echo "✅ Деплой завершен успешно!"
