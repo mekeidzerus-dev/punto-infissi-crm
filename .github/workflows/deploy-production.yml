@@ -22,6 +22,21 @@ jobs:
           key: ${{ secrets.FASTPANEL_SSH_KEY }}
           script: |
             set -e
+            set -o pipefail
+
+            # Функция для обработки ошибок
+            error_handler() {
+              echo ""
+              echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+              echo "❌ ОШИБКА НА ЭТАПЕ: $BASH_COMMAND"
+              echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+              echo "Код ошибки: $?"
+              echo "Текущая директория: $(pwd)"
+              echo "Последние команды:"
+              history | tail -5
+              exit 1
+            }
+            trap 'error_handler' ERR
 
             echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
             echo "🚀 PRODUCTION DEPLOYMENT"
@@ -128,8 +143,15 @@ jobs:
             echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
             echo "5️⃣ УСТАНОВКА ЗАВИСИМОСТЕЙ"
             echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-            echo "📦 Устанавливаем зависимости (npm ci)..."
-            npm ci
+            echo "📦 Устанавливаем зависимости..."
+            # Проверяем наличие package-lock.json для npm ci
+            if [ -f "package-lock.json" ]; then
+              echo "   Используем npm ci (чистая установка)..."
+              npm ci
+            else
+              echo "   ⚠️  package-lock.json не найден, используем npm install..."
+              npm install
+            fi
             if [ ! -d "node_modules" ]; then
               echo "❌ ОШИБКА: node_modules не создан!"
               exit 1
