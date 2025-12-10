@@ -9,8 +9,9 @@ on:
       - main
 
 # Предотвращаем одновременные запуски деплоя
+# Используем SHA коммита - один деплой на коммит, отменяем предыдущие
 concurrency:
-  group: deploy-production
+  group: deploy-production-${{ github.event.workflow_run.head_sha }}
   cancel-in-progress: true
 
 jobs:

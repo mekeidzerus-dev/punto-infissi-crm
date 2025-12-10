@@ -7,8 +7,9 @@ on:
     branches: [main]
 
 # Предотвращаем одновременные запуски проверок
+# Используем SHA коммита для группировки - один деплой на коммит
 concurrency:
-  group: pre-deploy-check
+  group: pre-deploy-check-${{ github.sha }}
   cancel-in-progress: true
 
 # Явно указываем что workflow может быть вызван другими workflow
