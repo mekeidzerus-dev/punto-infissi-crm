@@ -26,15 +26,15 @@ jobs:
 
             # Функция для обработки ошибок
             error_handler() {
+              local exit_code=$?
               echo ""
               echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
               echo "❌ ОШИБКА НА ЭТАПЕ: $BASH_COMMAND"
               echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-              echo "Код ошибки: $?"
+              echo "Код ошибки: $exit_code"
               echo "Текущая директория: $(pwd)"
-              echo "Последние команды:"
-              history | tail -5
-              exit 1
+              echo "Проверьте логи выше для деталей ошибки"
+              exit $exit_code
             }
             trap 'error_handler' ERR
 
