@@ -358,26 +358,40 @@ jobs:
               echo "✅ Критических ошибок в логах не обнаружено"
             fi
 
-            # Финальная проверка стабильности процесса
+            # Финальная проверка стабильности процесса (проверяем несколько раз)
             echo ""
-            echo "🔍 Финальная проверка стабильности процесса..."
-            sleep 10
-            FINAL_STATUS=$(pm2 describe punto-infissi-crm-current --no-color 2>&1 | grep "status" | head -1 || echo "")
-            FINAL_RESTARTS=$(pm2 describe punto-infissi-crm-current --no-color 2>&1 | grep "restart time" | grep -oE "[0-9]+" | head -1 || echo "0")
+            echo "🔍 Финальная проверка стабильности процесса (3 проверки с интервалом 10 сек)..."
+            STABLE_COUNT=0
+            for check_num in 1 2 3; do
+              sleep 10
+              FINAL_STATUS=$(pm2 describe punto-infissi-crm-current --no-color 2>&1 | grep -i "status" | head -1 || echo "")
+              FINAL_RESTARTS=$(pm2 describe punto-infissi-crm-current --no-color 2>&1 | grep "restart time" | grep -oE "[0-9]+" | head -1 || echo "0")
+              
+              if echo "$FINAL_STATUS" | grep -qi "online"; then
+                STABLE_COUNT=$((STABLE_COUNT + 1))
+                echo "   Проверка $check_num/3: ✅ Процесс online (перезапусков: $FINAL_RESTARTS)"
+              else
+                echo "   Проверка $check_num/3: ❌ Процесс не online: $FINAL_STATUS"
+                pm2 logs punto-infissi-crm-current --lines 20 --nostream
+              fi
+              
+              # Проверка health endpoint
+              if curl -f -s http://localhost:3000/api/health > /dev/null 2>&1; then
+                echo "   Health endpoint: ✅ отвечает"
+              else
+                echo "   Health endpoint: ❌ не отвечает"
+              fi
+            done
             
-            if echo "$FINAL_STATUS" | grep -q "online"; then
-              echo "✅ Процесс стабилен (статус: online, перезапусков: $FINAL_RESTARTS)"
-            else
-              echo "⚠️  Процесс в статусе: $FINAL_STATUS"
+            if [ $STABLE_COUNT -lt 2 ]; then
+              echo "❌ ОШИБКА: Процесс нестабилен (только $STABLE_COUNT/3 проверок прошли)"
+              echo "📋 Детальная информация:"
+              pm2 describe punto-infissi-crm-current
+              pm2 logs punto-infissi-crm-current --lines 50 --nostream
+              exit 1
             fi
             
-            # Финальная проверка health endpoint
-            if curl -f -s http://localhost:3000/api/health > /dev/null 2>&1; then
-              echo "✅ Health endpoint отвечает финально"
-            else
-              echo "⚠️  Health endpoint не отвечает в финальной проверке"
-              pm2 logs punto-infissi-crm-current --lines 30 --nostream
-            fi
+            echo "✅ Процесс стабилен ($STABLE_COUNT/3 проверок прошли)"
 
             echo ""
             echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
