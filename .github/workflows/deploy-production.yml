@@ -143,15 +143,31 @@ jobs:
             echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
             echo "5️⃣ УСТАНОВКА ЗАВИСИМОСТЕЙ"
             echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo "🧹 Очищаем node_modules перед установкой..."
+            # Останавливаем процессы которые могут блокировать файлы
+            pm2 stop all || true
+            sleep 2
+            
+            # Удаляем node_modules если есть проблемы
+            if [ -d "node_modules" ]; then
+              echo "   Удаляем старый node_modules..."
+              rm -rf node_modules
+              echo "   ✅ node_modules удален"
+            fi
+            
             echo "📦 Устанавливаем зависимости..."
             # Проверяем наличие package-lock.json для npm ci
             if [ -f "package-lock.json" ]; then
               echo "   Используем npm ci (чистая установка)..."
-              npm ci
+              npm ci --prefer-offline --no-audit || {
+                echo "   ⚠️  npm ci не удался, пробуем npm install..."
+                npm install --prefer-offline --no-audit
+              }
             else
               echo "   ⚠️  package-lock.json не найден, используем npm install..."
-              npm install
+              npm install --prefer-offline --no-audit
             fi
+            
             if [ ! -d "node_modules" ]; then
               echo "❌ ОШИБКА: node_modules не создан!"
               exit 1
