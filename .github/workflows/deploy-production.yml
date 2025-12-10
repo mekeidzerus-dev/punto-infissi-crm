@@ -240,14 +240,15 @@ jobs:
               exit 1
             fi
             
-            # Используем ecosystem.config.js если он есть, иначе стандартный запуск
-            if [ -f "ecosystem.config.js" ]; then
-              echo "   Используем ecosystem.config.js..."
-              pm2 start ecosystem.config.js --update-env
-            else
-              echo "   Используем прямой запуск Next.js..."
-              pm2 start node_modules/.bin/next --name "punto-infissi-crm-current" -- start --port 3000
-            fi
+            # Используем npm start через PM2 (наиболее надежный способ)
+            echo "   Запускаем через npm start..."
+            pm2 start npm --name "punto-infissi-crm-current" -- start -- --port 3000
+            
+            # Альтернатива: использовать ecosystem.config.js если он есть
+            # if [ -f "ecosystem.config.js" ]; then
+            #   echo "   Используем ecosystem.config.js..."
+            #   pm2 start ecosystem.config.js --update-env
+            # fi
             
             # Сохраняем конфигурацию PM2
             pm2 save
