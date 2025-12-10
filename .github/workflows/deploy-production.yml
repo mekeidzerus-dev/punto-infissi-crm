@@ -384,9 +384,15 @@ jobs:
               fi
             done
             
-            if [ $STABLE_COUNT -lt 2 ]; then
-              echo "❌ ОШИБКА: Процесс нестабилен (только $STABLE_COUNT/3 проверок прошли)"
+            if [ $STABLE_COUNT -lt 3 ]; then
+              echo "❌ КРИТИЧЕСКАЯ ОШИБКА: Процесс нестабилен (только $STABLE_COUNT/3 проверок прошли)"
               echo "📋 Детальная информация:"
+              pm2 list
+              pm2 describe punto-infissi-crm-current
+              pm2 logs punto-infissi-crm-current --lines 100 --nostream
+              echo "📋 Проверка порта 3000:"
+              lsof -i :3000 || ss -tuln | grep 3000 || netstat -tuln | grep 3000 || echo "Порт не слушается"
+              exit 1
               pm2 describe punto-infissi-crm-current
               pm2 logs punto-infissi-crm-current --lines 50 --nostream
               exit 1
