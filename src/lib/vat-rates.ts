@@ -89,14 +89,20 @@ export async function createStandardVATRatesForOrganization(
 
 	// Создаем только новые ставки
 	if (ratesToCreate.length > 0) {
-		await prismaClient.vATRate.createMany({
-			data: ratesToCreate.map((rate) => ({
-				...rate,
-				organizationId,
-				isSystem: false,
-			})),
-			skipDuplicates: true,
-		})
+		// Используем create вместо createMany для лучшей совместимости с транзакциями
+		for (const rate of ratesToCreate) {
+			await prismaClient.vATRate.create({
+				data: {
+					name: rate.name,
+					percentage: rate.percentage,
+					description: rate.description,
+					isDefault: rate.isDefault,
+					isActive: rate.isActive,
+					isSystem: false,
+					organizationId,
+				},
+			})
+		}
 	}
 
 		// Возвращаем все ставки организации (существующие + новые)
