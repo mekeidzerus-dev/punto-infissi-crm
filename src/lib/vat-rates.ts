@@ -46,8 +46,9 @@ export async function createStandardVATRatesForOrganization(
 ) {
 	const prismaClient = tx || prisma
 
-	// Проверяем, есть ли уже ставки для этой организации
-	const existingRates = await prismaClient.vATRate.findMany({
+	try {
+		// Проверяем, есть ли уже ставки для этой организации
+		const existingRates = await prismaClient.vATRate.findMany({
 		where: {
 			organizationId,
 			isActive: true,
@@ -98,16 +99,20 @@ export async function createStandardVATRatesForOrganization(
 		})
 	}
 
-	// Возвращаем все ставки организации (существующие + новые)
-	const allRates = await prismaClient.vATRate.findMany({
-		where: {
-			organizationId,
-		},
-		orderBy: {
-			percentage: 'asc',
-		},
-	})
+		// Возвращаем все ставки организации (существующие + новые)
+		const allRates = await prismaClient.vATRate.findMany({
+			where: {
+				organizationId,
+			},
+			orderBy: {
+				percentage: 'asc',
+			},
+		})
 
-	return allRates
+		return allRates
+	} catch (error) {
+		console.error('Error in createStandardVATRatesForOrganization:', error)
+		throw error
+	}
 }
 
