@@ -53,7 +53,10 @@ export const POST = withApiHandler(async (request: NextRequest) => {
 					language: 'it',
 				},
 			})
-			logger.info('Organization created:', { id: organization.id, slug: organization.slug })
+			logger.info('Organization created:', {
+				id: organization.id,
+				slug: organization.slug,
+			})
 
 			// Создаем настройки организации
 			await tx.organizationSettings.create({
@@ -65,9 +68,13 @@ export const POST = withApiHandler(async (request: NextRequest) => {
 
 			// Создаем стандартные налоговые ставки для организации
 			try {
-				logger.info('Creating VAT rates for organization', { organizationId: organization.id })
+				logger.info('Creating VAT rates for organization', {
+					organizationId: organization.id,
+				})
 				await createStandardVATRatesForOrganization(organization.id, tx)
-				logger.info('VAT rates created successfully', { organizationId: organization.id })
+				logger.info('VAT rates created successfully', {
+					organizationId: organization.id,
+				})
 			} catch (vatError) {
 				logger.error('Error creating VAT rates:', vatError)
 				throw vatError

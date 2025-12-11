@@ -43,73 +43,76 @@ export const STANDARD_ITALIAN_VAT_RATES = [
  */
 export async function createStandardVATRatesForOrganization(
 	organizationId: string,
-	tx?: Omit<PrismaClient, '$connect' | '$disconnect' | '$on' | '$transaction' | '$use' | '$extends'>
+	tx?: Omit<
+		PrismaClient,
+		'$connect' | '$disconnect' | '$on' | '$transaction' | '$use' | '$extends'
+	>
 ) {
 	const prismaClient = tx || prisma
 
 	try {
 		// Проверяем, есть ли уже ставки для этой организации
 		const existingRates = await prismaClient.vATRate.findMany({
-		where: {
-			organizationId,
-			isActive: true,
-		},
-	})
-
-	// Если ставки уже есть, не создаем дубликаты
-	if (existingRates.length > 0) {
-		return existingRates
-	}
-
-	// Получаем все существующие ставки для организации одним запросом
-	const existingRatesMap = new Map(
-		(
-			await prismaClient.vATRate.findMany({
-				where: {
-					organizationId,
-				},
-			})
-		).map((rate) => [rate.name, rate])
-	)
-
-	// Снимаем дефолт со всех ставок организации перед созданием новой дефолтной
-	if (existingRatesMap.size > 0) {
-		await prismaClient.vATRate.updateMany({
 			where: {
 				organizationId,
-				isDefault: true,
+				isActive: true,
 			},
-			data: { isDefault: false },
 		})
-	}
 
-	// Фильтруем ставки, которые нужно создать
-	const ratesToCreate = STANDARD_ITALIAN_VAT_RATES.filter(
-		(rate) => !existingRatesMap.has(rate.name)
-	)
+		// Если ставки уже есть, не создаем дубликаты
+		if (existingRates.length > 0) {
+			return existingRates
+		}
 
-	// Создаем только новые ставки
-	if (ratesToCreate.length > 0) {
-		// Используем create вместо createMany для лучшей совместимости с транзакциями
-		for (const rate of ratesToCreate) {
-			try {
-				await prismaClient.vATRate.create({
-					data: {
-						name: rate.name,
-						percentage: new Prisma.Decimal(rate.percentage),
-						description: rate.description || null,
-						isDefault: rate.isDefault || false,
-						isActive: rate.isActive !== undefined ? rate.isActive : true,
-						isSystem: false,
+		// Получаем все существующие ставки для организации одним запросом
+		const existingRatesMap = new Map(
+			(
+				await prismaClient.vATRate.findMany({
+					where: {
 						organizationId,
 					},
 				})
-			} catch (createError) {
-				console.error('Error creating VAT rate:', rate.name, createError)
-				throw createError
+			).map(rate => [rate.name, rate])
+		)
+
+		// Снимаем дефолт со всех ставок организации перед созданием новой дефолтной
+		if (existingRatesMap.size > 0) {
+			await prismaClient.vATRate.updateMany({
+				where: {
+					organizationId,
+					isDefault: true,
+				},
+				data: { isDefault: false },
+			})
+		}
+
+		// Фильтруем ставки, которые нужно создать
+		const ratesToCreate = STANDARD_ITALIAN_VAT_RATES.filter(
+			rate => !existingRatesMap.has(rate.name)
+		)
+
+		// Создаем только новые ставки
+		if (ratesToCreate.length > 0) {
+			// Используем create вместо createMany для лучшей совместимости с транзакциями
+			for (const rate of ratesToCreate) {
+				try {
+					await prismaClient.vATRate.create({
+						data: {
+							name: rate.name,
+							percentage: new Prisma.Decimal(rate.percentage),
+							description: rate.description || null,
+							isDefault: rate.isDefault || false,
+							isActive: rate.isActive !== undefined ? rate.isActive : true,
+							isSystem: false,
+							organizationId,
+						},
+					})
+				} catch (createError) {
+					console.error('Error creating VAT rate:', rate.name, createError)
+					throw createError
+				}
 			}
 		}
-	}
 
 		// Возвращаем все ставки организации (существующие + новые)
 		const allRates = await prismaClient.vATRate.findMany({
@@ -127,4 +130,3 @@ export async function createStandardVATRatesForOrganization(
 		throw error
 	}
 }
-
