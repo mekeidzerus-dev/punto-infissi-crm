@@ -7,7 +7,9 @@ import { createStandardVATRatesForOrganization } from '@/lib/vat-rates'
 import { logger } from '@/lib/logger'
 
 export const POST = withApiHandler(async (request: NextRequest) => {
+	logger.info('Registration request received')
 	const payload = await parseJson(request, registerSchema)
+	logger.info('Payload parsed:', { email: payload.email })
 
 	// Проверяем, не зарегистрирован ли уже пользователь
 	const existingUser = await prisma.user.findUnique({

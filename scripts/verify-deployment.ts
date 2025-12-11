@@ -6,7 +6,8 @@
 
 import { execSync } from 'child_process'
 
-const PRODUCTION_URL = process.env.PRODUCTION_URL || 'https://infissi.omoxsoft.com.ua'
+const PRODUCTION_URL =
+	process.env.PRODUCTION_URL || 'https://infissi.omoxsoft.com.ua'
 const PM2_PROCESS_NAME = 'punto-infissi-crm-current'
 const EXPECTED_PORT = 3000
 const MAX_RETRIES = 5
@@ -21,7 +22,11 @@ interface CheckResult {
 
 const results: CheckResult[] = []
 
-function check(name: string, checkFn: () => Promise<boolean> | boolean, details?: () => Promise<string> | string) {
+function check(
+	name: string,
+	checkFn: () => Promise<boolean> | boolean,
+	details?: () => Promise<string> | string
+) {
 	return async () => {
 		try {
 			const success = await checkFn()
@@ -37,7 +42,9 @@ function check(name: string, checkFn: () => Promise<boolean> | boolean, details?
 			results.push({
 				name,
 				success: false,
-				message: `❌ ${name}: ${error instanceof Error ? error.message : String(error)}`,
+				message: `❌ ${name}: ${
+					error instanceof Error ? error.message : String(error)
+				}`,
 			})
 			return false
 		}
@@ -114,7 +121,7 @@ async function checkHealthEndpoint(): Promise<boolean> {
 			}
 		} catch (error) {
 			if (i < MAX_RETRIES - 1) {
-				await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY))
+				await new Promise(resolve => setTimeout(resolve, RETRY_DELAY))
 				continue
 			}
 			throw error
@@ -136,14 +143,14 @@ async function checkExternalURL(url: string): Promise<boolean> {
 			}
 
 			if (i < MAX_RETRIES - 1) {
-				await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY))
+				await new Promise(resolve => setTimeout(resolve, RETRY_DELAY))
 				continue
 			}
 
 			throw new Error(`HTTP ${response.status}: ${response.statusText}`)
 		} catch (error) {
 			if (i < MAX_RETRIES - 1) {
-				await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY))
+				await new Promise(resolve => setTimeout(resolve, RETRY_DELAY))
 				continue
 			}
 			throw error
@@ -155,9 +162,12 @@ async function checkExternalURL(url: string): Promise<boolean> {
 
 async function getPM2Logs(): Promise<string> {
 	try {
-		const logs = execSync(`pm2 logs ${PM2_PROCESS_NAME} --lines 50 --nostream 2>&1 || echo ""`, {
-			encoding: 'utf-8',
-		}).trim()
+		const logs = execSync(
+			`pm2 logs ${PM2_PROCESS_NAME} --lines 50 --nostream 2>&1 || echo ""`,
+			{
+				encoding: 'utf-8',
+			}
+		).trim()
 		return logs || 'Логи недоступны'
 	} catch {
 		return 'Не удалось получить логи'
@@ -171,7 +181,9 @@ async function main() {
 		check('PM2 процесс запущен', checkPM2Status, getPM2Details),
 		check('Порт 3000 слушается', checkPort),
 		check('Health endpoint локально', checkHealthEndpoint),
-		check(`Главная страница (${PRODUCTION_URL})`, () => checkExternalURL(PRODUCTION_URL)),
+		check(`Главная страница (${PRODUCTION_URL})`, () =>
+			checkExternalURL(PRODUCTION_URL)
+		),
 		check(`Health endpoint (${PRODUCTION_URL}/api/health)`, () =>
 			checkExternalURL(`${PRODUCTION_URL}/api/health`)
 		),
@@ -212,9 +224,7 @@ async function main() {
 	console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n')
 }
 
-main().catch((error) => {
+main().catch(error => {
 	console.error('❌ Ошибка при проверке:', error)
 	process.exit(1)
 })
-
-
