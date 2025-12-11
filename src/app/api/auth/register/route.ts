@@ -38,33 +38,40 @@ export const POST = withApiHandler(async (request: NextRequest) => {
 	}
 
 	// Создаем организацию и пользователя в транзакции
-	const result = await prisma.$transaction(async tx => {
-		// Создаем организацию
-		const organization = await tx.organization.create({
-			data: {
-				name: payload.name || `Organization ${payload.email.split('@')[0]}`,
-				slug: orgSlug,
-				primaryColor: '#dc2626',
-				currency: 'EUR',
-				timezone: 'Europe/Rome',
-				language: 'it',
-			},
-		})
+	let result
+	try {
+		result = await prisma.$transaction(async tx => {
+			logger.info('Starting transaction for organization creation')
+			// Создаем организацию
+			const organization = await tx.organization.create({
+				data: {
+					name: payload.name || `Organization ${payload.email.split('@')[0]}`,
+					slug: orgSlug,
+					primaryColor: '#dc2626',
+					currency: 'EUR',
+					timezone: 'Europe/Rome',
+					language: 'it',
+				},
+			})
+			logger.info('Organization created:', { id: organization.id, slug: organization.slug })
 
-		// Создаем настройки организации
-		await tx.organizationSettings.create({
-			data: {
-				organizationId: organization.id,
-			},
-		})
+			// Создаем настройки организации
+			await tx.organizationSettings.create({
+				data: {
+					organizationId: organization.id,
+				},
+			})
+			logger.info('OrganizationSettings created')
 
-		// Создаем стандартные налоговые ставки для организации
-		try {
-			await createStandardVATRatesForOrganization(organization.id, tx)
-		} catch (vatError) {
-			logger.error('Error creating VAT rates:', vatError)
-			throw vatError
-		}
+			// Создаем стандартные налоговые ставки для организации
+			try {
+				logger.info('Creating VAT rates for organization:', organization.id)
+				await createStandardVATRatesForOrganization(organization.id, tx)
+				logger.info('VAT rates created successfully')
+			} catch (vatError) {
+				logger.error('Error creating VAT rates:', vatError)
+				throw vatError
+			}
 
 		// Создаем пользователя с ролью admin
 		const user = await tx.user.create({
