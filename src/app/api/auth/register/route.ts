@@ -65,29 +65,35 @@ export const POST = withApiHandler(async (request: NextRequest) => {
 
 			// Создаем стандартные налоговые ставки для организации
 			try {
-				logger.info('Creating VAT rates for organization:', organization.id)
+				logger.info('Creating VAT rates for organization', { organizationId: organization.id })
 				await createStandardVATRatesForOrganization(organization.id, tx)
-				logger.info('VAT rates created successfully')
+				logger.info('VAT rates created successfully', { organizationId: organization.id })
 			} catch (vatError) {
 				logger.error('Error creating VAT rates:', vatError)
 				throw vatError
 			}
 
-		// Создаем пользователя с ролью admin
-		const user = await tx.user.create({
-			data: {
-				email: payload.email,
-				name: payload.name,
-				password: hashedPassword,
-				organizationId: organization.id,
-				role: 'admin',
-				lastLoginAt: new Date(),
-				lastActivityAt: new Date(),
-			},
-		})
+			// Создаем пользователя с ролью admin
+			const user = await tx.user.create({
+				data: {
+					email: payload.email,
+					name: payload.name,
+					password: hashedPassword,
+					organizationId: organization.id,
+					role: 'admin',
+					lastLoginAt: new Date(),
+					lastActivityAt: new Date(),
+				},
+			})
+			logger.info('User created:', { id: user.id, email: user.email })
 
-		return { user, organization }
-	})
+			return { user, organization }
+		})
+		logger.info('Transaction completed successfully')
+	} catch (transactionError) {
+		logger.error('Transaction error:', transactionError)
+		throw transactionError
+	}
 
 	return success(
 		{
