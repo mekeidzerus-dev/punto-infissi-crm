@@ -1,4 +1,5 @@
 import type { PrismaClient } from '@prisma/client'
+import { Prisma } from '@prisma/client'
 import { prisma } from './prisma'
 
 /**
@@ -91,17 +92,22 @@ export async function createStandardVATRatesForOrganization(
 	if (ratesToCreate.length > 0) {
 		// Используем create вместо createMany для лучшей совместимости с транзакциями
 		for (const rate of ratesToCreate) {
-			await prismaClient.vATRate.create({
-				data: {
-					name: rate.name,
-					percentage: rate.percentage,
-					description: rate.description,
-					isDefault: rate.isDefault,
-					isActive: rate.isActive,
-					isSystem: false,
-					organizationId,
-				},
-			})
+			try {
+				await prismaClient.vATRate.create({
+					data: {
+						name: rate.name,
+						percentage: new Prisma.Decimal(rate.percentage),
+						description: rate.description || null,
+						isDefault: rate.isDefault || false,
+						isActive: rate.isActive !== undefined ? rate.isActive : true,
+						isSystem: false,
+						organizationId,
+					},
+				})
+			} catch (createError) {
+				console.error('Error creating VAT rate:', rate.name, createError)
+				throw createError
+			}
 		}
 	}
 
