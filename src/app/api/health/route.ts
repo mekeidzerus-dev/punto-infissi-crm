@@ -5,6 +5,7 @@ import { logger } from '@/lib/logger'
 export async function GET() {
 	try {
 		// Проверяем подключение к базе данных
+		// Health check endpoint для мониторинга работоспособности приложения
 		await prisma.$queryRaw`SELECT 1`
 
 		// Получаем информацию о памяти
