@@ -67,15 +67,15 @@ export function withApiHandler(handler: ApiHandler) {
 			}
 
 			logger.error('Unhandled API error', error)
-			// В dev режиме показываем детали ошибки
+			// Временно показываем детали ошибки для диагностики
 			const errorDetails =
-				process.env.NODE_ENV === 'development' && error instanceof Error
+				error instanceof Error
 					? {
 							message: error.message,
-							stack: error.stack,
+							stack: error.stack?.split('\n').slice(0, 5).join('\n'),
 							name: error.name,
 						}
-					: undefined
+					: { error: String(error) }
 			return toJsonResponse('Internal server error', 500, errorDetails)
 		}
 	}

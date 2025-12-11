@@ -24,7 +24,10 @@ export const POST = withApiHandler(async (request: NextRequest) => {
 	const hashedPassword = await hash(payload.password, 10)
 
 	// Генерируем slug для организации из email
-	const emailSlug = payload.email.split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, '-')
+	const emailSlug = payload.email
+		.split('@')[0]
+		.toLowerCase()
+		.replace(/[^a-z0-9]/g, '-')
 	let orgSlug = emailSlug
 	let counter = 1
 
@@ -35,7 +38,7 @@ export const POST = withApiHandler(async (request: NextRequest) => {
 	}
 
 	// Создаем организацию и пользователя в транзакции
-	const result = await prisma.$transaction(async (tx) => {
+	const result = await prisma.$transaction(async tx => {
 		// Создаем организацию
 		const organization = await tx.organization.create({
 			data: {
@@ -55,7 +58,7 @@ export const POST = withApiHandler(async (request: NextRequest) => {
 			},
 		})
 
-			// Создаем стандартные налоговые ставки для организации
+		// Создаем стандартные налоговые ставки для организации
 		try {
 			await createStandardVATRatesForOrganization(organization.id, tx)
 		} catch (vatError) {
@@ -96,4 +99,3 @@ export const POST = withApiHandler(async (request: NextRequest) => {
 		201
 	)
 })
-
