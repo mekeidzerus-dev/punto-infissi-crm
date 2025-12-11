@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { ApiError, parseJson, success, withApiHandler } from '@/lib/api-handler'
 import { registerSchema } from '@/lib/validation/auth'
 import { createStandardVATRatesForOrganization } from '@/lib/vat-rates'
+import { logger } from '@/lib/logger'
 
 export const POST = withApiHandler(async (request: NextRequest) => {
 	const payload = await parseJson(request, registerSchema)
