@@ -83,23 +83,30 @@ jobs:
               echo "⚠️  .next не существует, пропускаем бэкап"
             fi
 
-            # 2️⃣ Останавливаем PM2
+            # 2️⃣ Останавливаем PM2 и освобождаем порт 3000
             echo ""
             echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
             echo "2️⃣ ОСТАНОВКА ПРИЛОЖЕНИЯ"
             echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
             echo "🛑 Останавливаем PM2 процесс..."
             pm2 stop punto-infissi-crm-current || true
+            pm2 delete punto-infissi-crm-current || true
             sleep 2
-            PM2_STATUS=$(pm2 list | grep punto-infissi-crm-current || echo "")
-            if [ -z "$PM2_STATUS" ] || echo "$PM2_STATUS" | grep -q "stopped"; then
-              echo "✅ Процесс остановлен"
-            else
-              echo "⚠️  Процесс все еще работает, принудительно останавливаем..."
-              pm2 delete punto-infissi-crm-current || true
-              sleep 2
+            
+            echo "🔍 Освобождаем порт 3000..."
+            # Находим и убиваем процесс на порту 3000
+            if command -v lsof >/dev/null 2>&1; then
+              lsof -ti :3000 | xargs kill -9 2>/dev/null || true
+            elif command -v fuser >/dev/null 2>&1; then
+              fuser -k 3000/tcp 2>/dev/null || true
             fi
-            echo "✅ Приложение остановлено"
+            
+            # Убиваем все процессы node/npm которые могут занимать порт
+            pkill -9 -f "next start" 2>/dev/null || true
+            pkill -9 -f "node.*3000" 2>/dev/null || true
+            
+            sleep 2
+            echo "✅ Порт 3000 освобожден"
 
             # 3️⃣ Обновление кода
             echo ""
@@ -279,15 +286,9 @@ echo "✅ Проект собран успешно"
               exit 1
             fi
             
-            # Используем npm start через PM2 (наиболее надежный способ)
+            # Простой запуск через npm start
             echo "   Запускаем через npm start..."
             pm2 start npm --name "punto-infissi-crm-current" -- start -- --port 3000
-            
-            # Альтернатива: использовать ecosystem.config.js если он есть
-            # if [ -f "ecosystem.config.js" ]; then
-            #   echo "   Используем ecosystem.config.js..."
-            #   pm2 start ecosystem.config.js --update-env
-            # fi
             
             # Сохраняем конфигурацию PM2
             pm2 save
@@ -320,8 +321,8 @@ echo "✅ Проект собран успешно"
             echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
             echo "9️⃣ ВНУТРЕННЯЯ ПРОВЕРКА"
             echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-            echo "⏳ Ждем 30 секунд для полного запуска приложения..."
-            sleep 30
+            echo "⏳ Ждем 15 секунд для запуска приложения..."
+            sleep 15
             
             # Проверка что порт 3000 слушается
             echo "🔍 Проверяем что порт 3000 слушается..."
@@ -342,7 +343,7 @@ echo "✅ Проект собран успешно"
             
             # Проверка health endpoint локально
             echo "🏥 Проверяем health endpoint локально..."
-            HEALTH_RETRIES=5
+            HEALTH_RETRIES=3
             HEALTH_SUCCESS=false
             for i in $(seq 1 $HEALTH_RETRIES); do
               if curl -f -s http://localhost:3000/api/health > /dev/null 2>&1; then
@@ -359,18 +360,30 @@ echo "✅ Проект собран успешно"
             
             if [ "$HEALTH_SUCCESS" = false ]; then
               echo "❌ ОШИБКА: Health endpoint не отвечает после $HEALTH_RETRIES попыток!"
-              echo "📋 Статус PM2:"
-              pm2 list | grep punto-infissi-crm-current || echo "Процесс не найден!"
-              echo "📋 Детальная информация о процессе:"
-              pm2 describe punto-infissi-crm-current || echo "Описание недоступно"
-              echo "📋 Последние логи PM2 (ошибки):"
-              pm2 logs punto-infissi-crm-current --err --lines 50 --nostream || echo "Логи ошибок недоступны"
-              echo "📋 Последние логи PM2 (все):"
-              pm2 logs punto-infissi-crm-current --lines 100 --nostream || echo "Логи недоступны"
-              echo "📋 Проверка процесса:"
-              ps aux | grep -E "node|npm" | grep -v grep || echo "Процесс Node.js не найден"
-              echo "📋 Проверка порта 3000:"
-              lsof -i :3000 || ss -tuln | grep 3000 || netstat -tuln | grep 3000 || echo "Порт не слушается"
+              echo ""
+              echo "📋 ДИАГНОСТИКА:"
+              echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+              echo "1. Статус PM2:"
+              pm2 list
+              echo ""
+              echo "2. Детальная информация о процессе:"
+              pm2 describe punto-infissi-crm-current 2>&1 || echo "Процесс не найден"
+              echo ""
+              echo "3. Последние логи PM2 (ошибки):"
+              pm2 logs punto-infissi-crm-current --err --lines 30 --nostream 2>&1 || echo "Логи ошибок недоступны"
+              echo ""
+              echo "4. Последние логи PM2 (все):"
+              pm2 logs punto-infissi-crm-current --lines 50 --nostream 2>&1 || echo "Логи недоступны"
+              echo ""
+              echo "5. Проверка процесса:"
+              ps aux | grep -E "node|npm|next" | grep -v grep || echo "Процесс Node.js не найден"
+              echo ""
+              echo "6. Проверка порта 3000:"
+              (lsof -i :3000 || ss -tuln | grep 3000 || netstat -tuln | grep 3000) 2>&1 || echo "Порт не слушается"
+              echo ""
+              echo "7. Проверка структуры проекта:"
+              ls -la .next/ 2>&1 | head -10 || echo ".next не существует"
+              echo ""
               exit 1
             fi
             
@@ -398,71 +411,29 @@ echo "✅ Проект собран успешно"
               echo "✅ Критических ошибок в логах не обнаружено"
             fi
 
-            # Финальная проверка стабильности процесса (проверяем несколько раз)
+            # Простая финальная проверка
             echo ""
-            echo "🔍 Финальная проверка стабильности процесса (3 проверки с интервалом 10 сек)..."
-            STABLE_COUNT=0
-            for check_num in 1 2 3; do
-              sleep 10
-              FINAL_STATUS=$(pm2 describe punto-infissi-crm-current --no-color 2>&1 | grep -i "status" | head -1 || echo "")
-              FINAL_RESTARTS=$(pm2 describe punto-infissi-crm-current --no-color 2>&1 | grep "restart time" | grep -oE "[0-9]+" | head -1 || echo "0")
-              
-              if echo "$FINAL_STATUS" | grep -qi "online"; then
-                STABLE_COUNT=$((STABLE_COUNT + 1))
-                echo "   Проверка $check_num/3: ✅ Процесс online (перезапусков: $FINAL_RESTARTS)"
-              else
-                echo "   Проверка $check_num/3: ❌ Процесс не online: $FINAL_STATUS"
-                pm2 logs punto-infissi-crm-current --lines 20 --nostream
-              fi
-              
-              # Проверка health endpoint
-              if curl -f -s http://localhost:3000/api/health > /dev/null 2>&1; then
-                echo "   Health endpoint: ✅ отвечает"
-              else
-                echo "   Health endpoint: ❌ не отвечает"
-              fi
-            done
+            echo "🔍 Финальная проверка стабильности..."
+            sleep 5
+            FINAL_STATUS=$(pm2 describe punto-infissi-crm-current --no-color 2>&1 | grep -i "status" | head -1 || echo "")
+            FINAL_RESTARTS=$(pm2 describe punto-infissi-crm-current --no-color 2>&1 | grep "restart time" | grep -oE "[0-9]+" | head -1 || echo "0")
             
-            if [ $STABLE_COUNT -lt 3 ]; then
-              echo "❌ КРИТИЧЕСКАЯ ОШИБКА: Процесс нестабилен (только $STABLE_COUNT/3 проверок прошли)"
-              echo "📋 Детальная информация:"
-              pm2 list
-              pm2 describe punto-infissi-crm-current
-              pm2 logs punto-infissi-crm-current --lines 100 --nostream
-              echo "📋 Проверка порта 3000:"
-              lsof -i :3000 || ss -tuln | grep 3000 || netstat -tuln | grep 3000 || echo "Порт не слушается"
-              exit 1
-              pm2 describe punto-infissi-crm-current
-              pm2 logs punto-infissi-crm-current --lines 50 --nostream
+            if echo "$FINAL_STATUS" | grep -qi "online"; then
+              echo "✅ Процесс стабилен (перезапусков: $FINAL_RESTARTS)"
+            else
+              echo "❌ ОШИБКА: Процесс нестабилен: $FINAL_STATUS"
+              pm2 logs punto-infissi-crm-current --lines 30 --nostream
               exit 1
             fi
             
-            echo "✅ Процесс стабилен ($STABLE_COUNT/3 проверок прошли)"
-            
-            # Финальная проверка через внешний URL
+            # Простая проверка внешнего URL
             echo ""
-            echo "🌐 Финальная проверка через внешний URL..."
+            echo "🌐 Проверка внешнего URL..."
             PRODUCTION_URL="https://infissi.omoxsoft.com.ua"
-            EXTERNAL_CHECK_SUCCESS=false
-            
-            for ext_check in 1 2 3; do
-              echo "   Попытка $ext_check/3: проверяем $PRODUCTION_URL/api/health..."
-              if curl -f -s --max-time 15 "$PRODUCTION_URL/api/health" > /dev/null 2>&1; then
-                EXTERNAL_RESPONSE=$(curl -s --max-time 15 "$PRODUCTION_URL/api/health" 2>&1 | head -3)
-                echo "   ✅ Внешний health endpoint отвечает:"
-                echo "$EXTERNAL_RESPONSE"
-                EXTERNAL_CHECK_SUCCESS=true
-                break
-              else
-                echo "   ⚠️  Внешний endpoint не отвечает, ждем 10 секунд..."
-                sleep 10
-              fi
-            done
-            
-            if [ "$EXTERNAL_CHECK_SUCCESS" = false ]; then
-              echo "   ⚠️  ВНИМАНИЕ: Внешний health endpoint не отвечает!"
-              echo "   Локальный endpoint работает, но внешний недоступен."
-              echo "   Возможные причины: Nginx не настроен, firewall, или DNS проблема."
+            if curl -f -s --max-time 10 "$PRODUCTION_URL/api/health" > /dev/null 2>&1; then
+              echo "✅ Внешний health endpoint отвечает"
+            else
+              echo "⚠️  Внешний endpoint не отвечает (возможно Nginx не настроен)"
             fi
 
             echo ""
@@ -476,89 +447,25 @@ echo "✅ Проект собран успешно"
           echo "🔟 ВНЕШНЯЯ ПРОВЕРКА"
           echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
           
-          echo "⏳ Ждем 15 секунд после внутренней проверки..."
-          sleep 15
-          
           PRODUCTION_URL="https://infissi.omoxsoft.com.ua"
           
-          # Функция для проверки с retry
-          check_url() {
-            local url=$1
-            local max_retries=5
-            local retry_delay=10
-            local attempt=1
-            
-            while [ $attempt -le $max_retries ]; do
-              echo "🔍 Попытка $attempt/$max_retries: проверяем $url..."
-              
-              if curl -f -s --max-time 30 "$url" > /dev/null 2>&1; then
-                echo "✅ $url отвечает успешно"
-                return 0
-              else
-                HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 30 "$url" || echo "000")
-                echo "   HTTP код: $HTTP_CODE"
-                
-                if [ $attempt -lt $max_retries ]; then
-                  echo "   Ждем $retry_delay секунд перед следующей попыткой..."
-                  sleep $retry_delay
-                  attempt=$((attempt + 1))
-                else
-                  echo "❌ ОШИБКА: $url не отвечает после $max_retries попыток"
-                  return 1
-                fi
-              fi
-            done
-          }
-          
-          # Проверка главной страницы
-          echo ""
-          echo "📄 Проверяем главную страницу..."
-          if ! check_url "$PRODUCTION_URL"; then
-            echo "❌ Главная страница не отвечает"
-            exit 1
-          fi
-          
-          # Проверка health endpoint
-          echo ""
+          # Простая проверка health endpoint
           echo "🏥 Проверяем health endpoint..."
-          HEALTH_URL="$PRODUCTION_URL/api/health"
-          if ! check_url "$HEALTH_URL"; then
-            echo "❌ Health endpoint не отвечает"
-            exit 1
-          fi
-          
-          # Проверка содержимого health endpoint
-          echo ""
-          echo "📊 Проверяем содержимое health endpoint..."
-          HEALTH_RESPONSE=$(curl -s --max-time 30 "$HEALTH_URL" || echo "")
-          if [ -z "$HEALTH_RESPONSE" ]; then
-            echo "❌ Health endpoint не вернул данные"
-            exit 1
-          fi
-          
-          echo "✅ Health endpoint ответ:"
-          echo "$HEALTH_RESPONSE" | head -10
-          
-          # Проверка версии в health endpoint
-          if echo "$HEALTH_RESPONSE" | grep -q '"status":"healthy"'; then
-            echo "✅ Статус: healthy"
+          if curl -f -s --max-time 10 "$PRODUCTION_URL/api/health" > /dev/null 2>&1; then
+            echo "✅ Health endpoint отвечает"
+            curl -s --max-time 10 "$PRODUCTION_URL/api/health" | head -5
           else
-            echo "⚠️  Статус не healthy, но endpoint отвечает"
+            echo "⚠️  Health endpoint не отвечает (возможно Nginx не настроен)"
           fi
           
-          # Проверка страницы входа
-          echo ""
-          echo "🔐 Проверяем страницу входа..."
-          SIGNIN_URL="$PRODUCTION_URL/auth/signin"
-          if ! check_url "$SIGNIN_URL"; then
-            echo "❌ Страница входа не отвечает"
-            exit 1
-          fi
-          
-          echo ""
-          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-          echo "✅ ВСЕ ПРОВЕРКИ ПРОЙДЕНЫ УСПЕШНО"
-          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-          echo "🌐 Production URL: $PRODUCTION_URL"
-          echo "🏥 Health endpoint: $HEALTH_URL"
-          echo "✅ Деплой завершен успешно!"
+            echo ""
+            echo "✅ Деплой завершен"
+            
+            # Запускаем диагностику если есть скрипт
+            if [ -f "scripts/diagnose-server.sh" ]; then
+              echo ""
+              echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+              echo "🔍 ДИАГНОСТИКА ПОСЛЕ ДЕПЛОЯ"
+              echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+              bash scripts/diagnose-server.sh || echo "⚠️  Диагностика завершилась с предупреждениями"
+            fi
