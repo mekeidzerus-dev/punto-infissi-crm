@@ -79,8 +79,8 @@ export default function SignUpPage() {
 				)
 				router.push('/auth/signin')
 			} else {
-				router.push('/clients')
-				router.refresh()
+				// Используем window.location для полного редиректа и избежания проблем с chunks
+				window.location.href = '/clients'
 			}
 		} catch (error) {
 			toast.error(
