@@ -52,8 +52,13 @@ export const POST = withApiHandler(async (request: NextRequest) => {
 			},
 		})
 
-		// Создаем стандартные налоговые ставки для организации
-		await createStandardVATRatesForOrganization(organization.id, tx)
+			// Создаем стандартные налоговые ставки для организации
+		try {
+			await createStandardVATRatesForOrganization(organization.id, tx)
+		} catch (vatError) {
+			logger.error('Error creating VAT rates:', vatError)
+			throw vatError
+		}
 
 		// Создаем пользователя с ролью admin
 		const user = await tx.user.create({
