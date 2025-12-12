@@ -76,46 +76,10 @@ export default function SignInPage() {
 				toast.success(
 					locale === 'ru' ? 'Успешный вход в систему' : 'Accesso riuscito'
 				)
-				// #region agent log
-				console.log('[DEBUG] SignIn successful, redirecting to /clients')
-				fetch(
-					'http://127.0.0.1:7242/ingest/218ca7f0-e3d7-4389-a1b6-4602048211d4',
-					{
-						method: 'POST',
-						headers: { 'Content-Type': 'application/json' },
-						body: JSON.stringify({
-							location: 'signin/page.tsx:42',
-							message: 'Before redirect to /clients',
-							data: { method: 'window.location.href' },
-							timestamp: Date.now(),
-							sessionId: 'debug-session',
-							runId: 'run1',
-							hypothesisId: 'A',
-						}),
-					}
-				).catch(() => {})
-				// #endregion
-				// Используем window.location для полного редиректа и избежания проблем с chunks и сессией
-				window.location.href = '/clients'
-				// #region agent log
-				console.log('[DEBUG] window.location.href set to /clients')
-				fetch(
-					'http://127.0.0.1:7242/ingest/218ca7f0-e3d7-4389-a1b6-4602048211d4',
-					{
-						method: 'POST',
-						headers: { 'Content-Type': 'application/json' },
-						body: JSON.stringify({
-							location: 'signin/page.tsx:44',
-							message: 'After window.location.href redirect',
-							data: {},
-							timestamp: Date.now(),
-							sessionId: 'debug-session',
-							runId: 'run1',
-							hypothesisId: 'A',
-						}),
-					}
-				).catch(() => {})
-				// #endregion
+				// Ждем немного чтобы сессия установилась, затем делаем полный редирект
+				setTimeout(() => {
+					window.location.href = '/clients'
+				}, 100)
 			}
 		} catch (error) {
 			// #region agent log
