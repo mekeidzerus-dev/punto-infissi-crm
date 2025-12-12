@@ -21,7 +21,43 @@ export function AuthGuard({ children }: AuthGuardProps) {
 	const router = useRouter()
 	const pathname = usePathname()
 
+	// #region agent log
 	useEffect(() => {
+		console.log('[DEBUG AuthGuard] Status:', status, 'Pathname:', pathname, 'Has session:', !!session)
+		fetch('http://127.0.0.1:7242/ingest/218ca7f0-e3d7-4389-a1b6-4602048211d4', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({
+				location: 'auth-guard.tsx:20',
+				message: 'AuthGuard render',
+				data: { status, pathname, hasSession: !!session },
+				timestamp: Date.now(),
+				sessionId: 'debug-session',
+				runId: 'run2',
+				hypothesisId: 'B',
+			}),
+		}).catch(() => {})
+	}, [status, pathname, session])
+	// #endregion
+
+	useEffect(() => {
+		// #region agent log
+		console.log('[DEBUG AuthGuard useEffect] Checking auth:', { pathname, status, isPublic: publicPaths.includes(pathname || '') })
+		fetch('http://127.0.0.1:7242/ingest/218ca7f0-e3d7-4389-a1b6-4602048211d4', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({
+				location: 'auth-guard.tsx:24',
+				message: 'AuthGuard useEffect triggered',
+				data: { pathname, status, isPublic: publicPaths.includes(pathname || '') },
+				timestamp: Date.now(),
+				sessionId: 'debug-session',
+				runId: 'run2',
+				hypothesisId: 'B',
+			}),
+		}).catch(() => {})
+		// #endregion
+
 		// Разрешаем доступ к публичным путям
 		if (
 			pathname &&
@@ -32,9 +68,30 @@ export function AuthGuard({ children }: AuthGuardProps) {
 			return
 		}
 
-		if (status === 'loading') return // Still loading
+		if (status === 'loading') {
+			// #region agent log
+			console.log('[DEBUG AuthGuard] Still loading session')
+			// #endregion
+			return // Still loading
+		}
 
 		if (status === 'unauthenticated') {
+			// #region agent log
+			console.log('[DEBUG AuthGuard] Unauthenticated, redirecting to signin')
+			fetch('http://127.0.0.1:7242/ingest/218ca7f0-e3d7-4389-a1b6-4602048211d4', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					location: 'auth-guard.tsx:37',
+					message: 'AuthGuard redirecting to signin',
+					data: { pathname, status },
+					timestamp: Date.now(),
+					sessionId: 'debug-session',
+					runId: 'run2',
+					hypothesisId: 'B',
+				}),
+			}).catch(() => {})
+			// #endregion
 			router.push('/auth/signin')
 		}
 	}, [status, router, pathname])

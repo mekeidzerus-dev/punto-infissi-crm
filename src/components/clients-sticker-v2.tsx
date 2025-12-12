@@ -54,6 +54,7 @@ export default function ClientsStickerV2() {
 
 	// #region agent log
 	useEffect(() => {
+		console.log('[DEBUG ClientsStickerV2] Component mounted')
 		fetch('http://127.0.0.1:7242/ingest/218ca7f0-e3d7-4389-a1b6-4602048211d4', {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
@@ -63,7 +64,7 @@ export default function ClientsStickerV2() {
 				data: {},
 				timestamp: Date.now(),
 				sessionId: 'debug-session',
-				runId: 'run1',
+				runId: 'run2',
 				hypothesisId: 'C',
 			}),
 		}).catch(() => {})
