@@ -29,26 +29,29 @@ export default function RootLayout({
 				<script
 					dangerouslySetInnerHTML={{
 						__html: `
-							// Обработка ошибок загрузки chunks - предотвращает белый экран
-							window.addEventListener('error', function(e) {
-								if (e.message && e.message.includes('chunk') && e.message.includes('failed')) {
+							// Обработка ошибок загрузки chunks - автоматическая перезагрузка при ошибке
+							(function() {
+								var chunkErrorHandled = false;
+								function handleChunkError() {
+									if (chunkErrorHandled) return;
+									chunkErrorHandled = true;
 									console.error('Chunk loading error detected, reloading page...');
-									// При ошибке загрузки chunk - перезагружаем страницу
-									setTimeout(() => {
+									setTimeout(function() {
 										window.location.reload();
-									}, 1000);
+									}, 500);
 								}
-							}, true);
-							// Обработка ChunkLoadError
-							window.addEventListener('unhandledrejection', function(e) {
-								if (e.reason && e.reason.name === 'ChunkLoadError') {
-									console.error('ChunkLoadError detected, reloading page...');
-									e.preventDefault();
-									setTimeout(() => {
-										window.location.reload();
-									}, 1000);
-								}
-							});
+								window.addEventListener('error', function(e) {
+									if (e.message && (e.message.includes('chunk') || e.message.includes('ChunkLoadError'))) {
+										handleChunkError();
+									}
+								}, true);
+								window.addEventListener('unhandledrejection', function(e) {
+									if (e.reason && (e.reason.name === 'ChunkLoadError' || e.reason.message?.includes('chunk'))) {
+										e.preventDefault();
+										handleChunkError();
+									}
+								});
+							})();
 						`,
 					}}
 				/>
@@ -61,9 +64,7 @@ export default function RootLayout({
 					<LanguageProvider>
 						<FaviconUpdater />
 						<LogoUpdater />
-						<AuthGuard>
-							{children}
-						</AuthGuard>
+						<AuthGuard>{children}</AuthGuard>
 						<Footer />
 						<Toaster position='top-center' richColors />
 					</LanguageProvider>
