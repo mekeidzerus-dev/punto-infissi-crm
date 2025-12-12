@@ -43,29 +43,6 @@ export default function SignInPage() {
 				redirect: false,
 			})
 
-			// #region agent log
-			fetch(
-				'http://127.0.0.1:7242/ingest/218ca7f0-e3d7-4389-a1b6-4602048211d4',
-				{
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({
-						location: 'signin/page.tsx:28',
-						message: 'SignIn result received',
-						data: {
-							hasError: !!result?.error,
-							error: result?.error,
-							ok: result?.ok,
-						},
-						timestamp: Date.now(),
-						sessionId: 'debug-session',
-						runId: 'run1',
-						hypothesisId: 'B',
-					}),
-				}
-			).catch(() => {})
-			// #endregion
-
 			if (result?.error) {
 				toast.error(
 					locale === 'ru'
@@ -76,10 +53,31 @@ export default function SignInPage() {
 				toast.success(
 					locale === 'ru' ? 'Успешный вход в систему' : 'Accesso riuscito'
 				)
-				// Ждем немного чтобы сессия установилась, затем делаем полный редирект
-				setTimeout(() => {
-					window.location.href = '/clients'
-				}, 100)
+				// Ждем установки сессии через API, затем редиректим
+				// Это предотвращает попытку загрузить chunk 138 при ошибке
+				const checkSession = async () => {
+					try {
+						const sessionRes = await fetch('/api/auth/session')
+						if (sessionRes.ok) {
+							const session = await sessionRes.json()
+							if (session?.user) {
+								// Сессия установлена - безопасный редирект
+								window.location.href = '/clients'
+								return
+							}
+						}
+					} catch (e) {
+						// Игнорируем ошибки проверки сессии
+					}
+					// Если сессия не установилась за 2 секунды - все равно редиректим
+					setTimeout(() => {
+						window.location.href = '/clients'
+					}, 2000)
+				}
+				// Проверяем сессию несколько раз с интервалом
+				checkSession()
+				setTimeout(checkSession, 500)
+				setTimeout(checkSession, 1000)
 			}
 		} catch (error) {
 			// #region agent log

@@ -135,15 +135,23 @@ export function AuthGuard({ children }: AuthGuardProps) {
 		)
 	}
 
-	if (status === 'unauthenticated') {
-		// Показываем Loading вместо null чтобы избежать белого экрана
-		// useEffect уже обработает редирект на /auth/signin
-		return (
-			<div className='min-h-screen flex items-center justify-center'>
-				<p className='text-gray-600'>Loading...</p>
-			</div>
-		)
-	}
+		if (status === 'unauthenticated') {
+			// Не показываем ничего - useEffect обработает редирект
+			// Возвращаем null только если это не публичная страница
+			if (
+				pathname &&
+				!publicPaths.includes(pathname) &&
+				!pathname.startsWith('/auth/invite/') &&
+				!pathname.startsWith('/auth/reset-password/')
+			) {
+				// Редирект уже обрабатывается в useEffect, просто показываем Loading
+				return (
+					<div className='min-h-screen flex items-center justify-center'>
+						<p className='text-gray-600'>Loading...</p>
+					</div>
+				)
+			}
+		}
 
 	// #region agent log
 	console.log('[DEBUG AuthGuard] Rendering children (authenticated)')
