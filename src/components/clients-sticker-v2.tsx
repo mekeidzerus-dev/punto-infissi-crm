@@ -52,19 +52,147 @@ export default function ClientsStickerV2() {
 		isDeleting: false,
 	})
 
+	// #region agent log
+	useEffect(() => {
+		fetch('http://127.0.0.1:7242/ingest/218ca7f0-e3d7-4389-a1b6-4602048211d4', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({
+				location: 'clients-sticker-v2.tsx:36',
+				message: 'ClientsStickerV2 component mounted',
+				data: {},
+				timestamp: Date.now(),
+				sessionId: 'debug-session',
+				runId: 'run1',
+				hypothesisId: 'C',
+			}),
+		}).catch(() => {})
+	}, [])
+	// #endregion
+
 	// Загрузка клиентов из API
 	useEffect(() => {
+		// #region agent log
+		fetch('http://127.0.0.1:7242/ingest/218ca7f0-e3d7-4389-a1b6-4602048211d4', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({
+				location: 'clients-sticker-v2.tsx:58',
+				message: 'useEffect triggered, calling fetchClients',
+				data: {},
+				timestamp: Date.now(),
+				sessionId: 'debug-session',
+				runId: 'run1',
+				hypothesisId: 'C',
+			}),
+		}).catch(() => {})
+		// #endregion
 		fetchClients()
 	}, [])
 
 	const fetchClients = async () => {
+		// #region agent log
+		fetch('http://127.0.0.1:7242/ingest/218ca7f0-e3d7-4389-a1b6-4602048211d4', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({
+				location: 'clients-sticker-v2.tsx:60',
+				message: 'fetchClients called',
+				data: {},
+				timestamp: Date.now(),
+				sessionId: 'debug-session',
+				runId: 'run1',
+				hypothesisId: 'D',
+			}),
+		}).catch(() => {})
+		// #endregion
 		try {
 			setIsLoading(true)
+			// #region agent log
+			fetch(
+				'http://127.0.0.1:7242/ingest/218ca7f0-e3d7-4389-a1b6-4602048211d4',
+				{
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({
+						location: 'clients-sticker-v2.tsx:63',
+						message: 'Before fetch /api/clients',
+						data: {},
+						timestamp: Date.now(),
+						sessionId: 'debug-session',
+						runId: 'run1',
+						hypothesisId: 'D',
+					}),
+				}
+			).catch(() => {})
+			// #endregion
 			const response = await fetch('/api/clients')
+			// #region agent log
+			fetch(
+				'http://127.0.0.1:7242/ingest/218ca7f0-e3d7-4389-a1b6-4602048211d4',
+				{
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({
+						location: 'clients-sticker-v2.tsx:64',
+						message: 'After fetch /api/clients',
+						data: {
+							status: response.status,
+							ok: response.ok,
+							statusText: response.statusText,
+						},
+						timestamp: Date.now(),
+						sessionId: 'debug-session',
+						runId: 'run1',
+						hypothesisId: 'D',
+					}),
+				}
+			).catch(() => {})
+			// #endregion
 			if (response.ok) {
 				const data = await response.json()
+				// #region agent log
+				fetch(
+					'http://127.0.0.1:7242/ingest/218ca7f0-e3d7-4389-a1b6-4602048211d4',
+					{
+						method: 'POST',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify({
+							location: 'clients-sticker-v2.tsx:66',
+							message: 'Response data received',
+							data: {
+								isArray: Array.isArray(data),
+								dataType: typeof data,
+								length: Array.isArray(data) ? data.length : 0,
+							},
+							timestamp: Date.now(),
+							sessionId: 'debug-session',
+							runId: 'run1',
+							hypothesisId: 'D',
+						}),
+					}
+				).catch(() => {})
+				// #endregion
 				// Проверяем, что data - массив
 				if (!Array.isArray(data)) {
+					// #region agent log
+					fetch(
+						'http://127.0.0.1:7242/ingest/218ca7f0-e3d7-4389-a1b6-4602048211d4',
+						{
+							method: 'POST',
+							headers: { 'Content-Type': 'application/json' },
+							body: JSON.stringify({
+								location: 'clients-sticker-v2.tsx:68',
+								message: 'Invalid response format - not array',
+								data: { dataType: typeof data },
+								timestamp: Date.now(),
+								sessionId: 'debug-session',
+								runId: 'run1',
+								hypothesisId: 'D',
+							}),
+						}
+					).catch(() => {})
+					// #endregion
 					logger.error('Invalid response format from API:', data)
 					setClients([])
 					return
@@ -79,9 +207,48 @@ export default function ClientsStickerV2() {
 					company: client.type === 'company' ? client.companyName : undefined,
 				}))
 				setClients(transformedData)
+				// #region agent log
+				fetch(
+					'http://127.0.0.1:7242/ingest/218ca7f0-e3d7-4389-a1b6-4602048211d4',
+					{
+						method: 'POST',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify({
+							location: 'clients-sticker-v2.tsx:82',
+							message: 'Clients set successfully',
+							data: { count: transformedData.length },
+							timestamp: Date.now(),
+							sessionId: 'debug-session',
+							runId: 'run1',
+							hypothesisId: 'D',
+						}),
+					}
+				).catch(() => {})
+				// #endregion
 				logger.info(`✅ Loaded ${transformedData.length} clients`)
 			} else {
 				const errorData = await response.json().catch(() => ({}))
+				// #region agent log
+				fetch(
+					'http://127.0.0.1:7242/ingest/218ca7f0-e3d7-4389-a1b6-4602048211d4',
+					{
+						method: 'POST',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify({
+							location: 'clients-sticker-v2.tsx:84',
+							message: 'API error response',
+							data: {
+								status: response.status,
+								error: errorData.error || errorData.message || 'Unknown',
+							},
+							timestamp: Date.now(),
+							sessionId: 'debug-session',
+							runId: 'run1',
+							hypothesisId: 'D',
+						}),
+					}
+				).catch(() => {})
+				// #endregion
 				logger.error('Error fetching clients:', {
 					status: response.status,
 					error: errorData.error || errorData.message || 'Unknown error',
@@ -94,6 +261,26 @@ export default function ClientsStickerV2() {
 				)
 			}
 		} catch (error) {
+			// #region agent log
+			fetch(
+				'http://127.0.0.1:7242/ingest/218ca7f0-e3d7-4389-a1b6-4602048211d4',
+				{
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({
+						location: 'clients-sticker-v2.tsx:96',
+						message: 'fetchClients exception',
+						data: {
+							error: error instanceof Error ? error.message : String(error),
+						},
+						timestamp: Date.now(),
+						sessionId: 'debug-session',
+						runId: 'run1',
+						hypothesisId: 'C',
+					}),
+				}
+			).catch(() => {})
+			// #endregion
 			logger.error('Error fetching clients:', error)
 			toast.error(
 				locale === 'ru'
@@ -103,6 +290,24 @@ export default function ClientsStickerV2() {
 			)
 		} finally {
 			setIsLoading(false)
+			// #region agent log
+			fetch(
+				'http://127.0.0.1:7242/ingest/218ca7f0-e3d7-4389-a1b6-4602048211d4',
+				{
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({
+						location: 'clients-sticker-v2.tsx:104',
+						message: 'fetchClients completed',
+						data: { isLoading: false },
+						timestamp: Date.now(),
+						sessionId: 'debug-session',
+						runId: 'run1',
+						hypothesisId: 'D',
+					}),
+				}
+			).catch(() => {})
+			// #endregion
 		}
 	}
 
@@ -121,14 +326,18 @@ export default function ClientsStickerV2() {
 					setEditingClient(null)
 					setIsFormOpen(false)
 					toast.success(
-						locale === 'ru' ? 'Клиент успешно обновлен' : 'Cliente aggiornato con successo',
+						locale === 'ru'
+							? 'Клиент успешно обновлен'
+							: 'Cliente aggiornato con successo',
 						{ duration: 2000 }
 					)
 				} else {
 					const errorData = await response.json().catch(() => ({}))
 					toast.error(
 						errorData.error ||
-							(locale === 'ru' ? 'Ошибка обновления клиента' : 'Errore aggiornamento cliente'),
+							(locale === 'ru'
+								? 'Ошибка обновления клиента'
+								: 'Errore aggiornamento cliente'),
 						{ duration: 4000 }
 					)
 				}
@@ -147,7 +356,9 @@ export default function ClientsStickerV2() {
 					setEditingClient(null)
 					setIsFormOpen(false)
 					toast.success(
-						locale === 'ru' ? 'Клиент успешно создан' : 'Cliente creato con successo',
+						locale === 'ru'
+							? 'Клиент успешно создан'
+							: 'Cliente creato con successo',
 						{ duration: 2000 }
 					)
 				} else {
@@ -155,7 +366,9 @@ export default function ClientsStickerV2() {
 					logger.error('Error creating client:', errorData)
 					toast.error(
 						errorData.error ||
-							(locale === 'ru' ? 'Ошибка создания клиента' : 'Errore creazione cliente'),
+							(locale === 'ru'
+								? 'Ошибка создания клиента'
+								: 'Errore creazione cliente'),
 						{ duration: 4000 }
 					)
 				}
@@ -191,7 +404,9 @@ export default function ClientsStickerV2() {
 
 			if (response.ok) {
 				toast.success(
-					locale === 'ru' ? 'Клиент успешно удален' : 'Cliente eliminato con successo',
+					locale === 'ru'
+						? 'Клиент успешно удален'
+						: 'Cliente eliminato con successo',
 					{ duration: 2000 }
 				)
 				await fetchClients()
@@ -200,9 +415,7 @@ export default function ClientsStickerV2() {
 				// Обработка ошибок от API
 				const errorData = await response.json().catch(() => ({}))
 				const errorMessage =
-					errorData.error ||
-					errorData.message ||
-					'Не удалось удалить клиента'
+					errorData.error || errorData.message || 'Не удалось удалить клиента'
 				toast.error(errorMessage, { duration: 4000 })
 			}
 		} catch (error) {
@@ -358,9 +571,7 @@ export default function ClientsStickerV2() {
 										colSpan={7}
 										className='text-center py-8 text-gray-500'
 									>
-										{searchTerm
-											? t('nothingFound')
-											: t('noItems')}
+										{searchTerm ? t('nothingFound') : t('noItems')}
 									</TableCell>
 								</TableRow>
 							) : (

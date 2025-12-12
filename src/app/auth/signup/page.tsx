@@ -22,7 +22,10 @@ export default function SignUpPage() {
 	const validatePassword = (pwd: string): string | null => {
 		const result = validatePasswordUtil(pwd, locale)
 		if (!result.valid) {
-			return result.errors[0] || (locale === 'ru' ? 'Неверный пароль' : 'Password non valida')
+			return (
+				result.errors[0] ||
+				(locale === 'ru' ? 'Неверный пароль' : 'Password non valida')
+			)
 		}
 		return null
 	}
@@ -50,7 +53,8 @@ export default function SignUpPage() {
 
 			if (!response.ok) {
 				toast.error(
-					data.error || (locale === 'ru' ? 'Ошибка регистрации' : 'Errore di registrazione')
+					data.error ||
+						(locale === 'ru' ? 'Ошибка регистрации' : 'Errore di registrazione')
 				)
 				if (data.details) {
 					setErrors(data.details)
@@ -104,9 +108,10 @@ export default function SignUpPage() {
 		creating: locale === 'ru' ? 'Создание аккаунта...' : 'Creazione account...',
 		alreadyHave: locale === 'ru' ? 'Уже есть аккаунт?' : 'Hai già un account?',
 		signIn: locale === 'ru' ? 'Войти' : 'Accedi',
-		passwordHint: locale === 'ru'
-			? 'Минимум 8 символов, должны быть буквы и цифры'
-			: 'Minimo 8 caratteri, devono contenere lettere e numeri',
+		passwordHint:
+			locale === 'ru'
+				? 'Минимум 8 символов, должны быть буквы и цифры'
+				: 'Minimo 8 caratteri, devono contenere lettere e numeri',
 		namePlaceholder: locale === 'ru' ? 'Ваше имя' : 'Il tuo nome',
 		emailPlaceholder: locale === 'ru' ? 'your@email.com' : 'your@email.com',
 		passwordPlaceholder: locale === 'ru' ? '••••••••' : '••••••••',
@@ -128,7 +133,7 @@ export default function SignUpPage() {
 								id='name'
 								type='text'
 								value={name}
-								onChange={(e) => setName(e.target.value)}
+								onChange={e => setName(e.target.value)}
 								disabled={isLoading}
 								placeholder={t.namePlaceholder}
 							/>
@@ -140,13 +145,15 @@ export default function SignUpPage() {
 								id='email'
 								type='email'
 								value={email}
-								onChange={(e) => setEmail(e.target.value)}
+								onChange={e => setEmail(e.target.value)}
 								required
 								disabled={isLoading}
 								placeholder={t.emailPlaceholder}
 								aria-invalid={errors.email ? 'true' : 'false'}
 							/>
-							{errors.email && <p className='text-sm text-red-600 mt-1'>{errors.email}</p>}
+							{errors.email && (
+								<p className='text-sm text-red-600 mt-1'>{errors.email}</p>
+							)}
 						</div>
 
 						<div>
@@ -155,7 +162,7 @@ export default function SignUpPage() {
 								id='password'
 								type='password'
 								value={password}
-								onChange={(e) => {
+								onChange={e => {
 									setPassword(e.target.value)
 									if (errors.password) {
 										setErrors({ ...errors, password: '' })
@@ -166,7 +173,9 @@ export default function SignUpPage() {
 								placeholder={t.passwordPlaceholder}
 								aria-invalid={errors.password ? 'true' : 'false'}
 							/>
-							{errors.password && <p className='text-sm text-red-600 mt-1'>{errors.password}</p>}
+							{errors.password && (
+								<p className='text-sm text-red-600 mt-1'>{errors.password}</p>
+							)}
 							<p className='text-xs text-gray-500 mt-1'>{t.passwordHint}</p>
 						</div>
 
@@ -178,7 +187,10 @@ export default function SignUpPage() {
 					<div className='mt-6 text-center'>
 						<p className='text-sm text-gray-600'>
 							{t.alreadyHave}{' '}
-							<a href='/auth/signin' className='text-red-600 hover:underline font-medium'>
+							<a
+								href='/auth/signin'
+								className='text-red-600 hover:underline font-medium'
+							>
 								{t.signIn}
 							</a>
 						</p>
@@ -188,4 +200,3 @@ export default function SignUpPage() {
 		</div>
 	)
 }
-

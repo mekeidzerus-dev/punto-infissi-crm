@@ -20,12 +20,51 @@ export default function SignInPage() {
 		e.preventDefault()
 		setIsLoading(true)
 
+		// #region agent log
+		fetch('http://127.0.0.1:7242/ingest/218ca7f0-e3d7-4389-a1b6-4602048211d4', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({
+				location: 'signin/page.tsx:19',
+				message: 'SignIn form submitted',
+				data: { email },
+				timestamp: Date.now(),
+				sessionId: 'debug-session',
+				runId: 'run1',
+				hypothesisId: 'A',
+			}),
+		}).catch(() => {})
+		// #endregion
+
 		try {
 			const result = await signIn('credentials', {
 				email,
 				password,
 				redirect: false,
 			})
+
+			// #region agent log
+			fetch(
+				'http://127.0.0.1:7242/ingest/218ca7f0-e3d7-4389-a1b6-4602048211d4',
+				{
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({
+						location: 'signin/page.tsx:28',
+						message: 'SignIn result received',
+						data: {
+							hasError: !!result?.error,
+							error: result?.error,
+							ok: result?.ok,
+						},
+						timestamp: Date.now(),
+						sessionId: 'debug-session',
+						runId: 'run1',
+						hypothesisId: 'B',
+					}),
+				}
+			).catch(() => {})
+			// #endregion
 
 			if (result?.error) {
 				toast.error(
@@ -35,14 +74,70 @@ export default function SignInPage() {
 				)
 			} else {
 				toast.success(
-					locale === 'ru'
-						? 'Успешный вход в систему'
-						: 'Accesso riuscito'
+					locale === 'ru' ? 'Успешный вход в систему' : 'Accesso riuscito'
 				)
-				router.push('/clients')
-				router.refresh()
+				// #region agent log
+				console.log('[DEBUG] SignIn successful, redirecting to /clients')
+				fetch(
+					'http://127.0.0.1:7242/ingest/218ca7f0-e3d7-4389-a1b6-4602048211d4',
+					{
+						method: 'POST',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify({
+							location: 'signin/page.tsx:42',
+							message: 'Before redirect to /clients',
+							data: { method: 'window.location.href' },
+							timestamp: Date.now(),
+							sessionId: 'debug-session',
+							runId: 'run1',
+							hypothesisId: 'A',
+						}),
+					}
+				).catch(() => {})
+				// #endregion
+				// Используем window.location для полного редиректа и избежания проблем с chunks и сессией
+				window.location.href = '/clients'
+				// #region agent log
+				console.log('[DEBUG] window.location.href set to /clients')
+				fetch(
+					'http://127.0.0.1:7242/ingest/218ca7f0-e3d7-4389-a1b6-4602048211d4',
+					{
+						method: 'POST',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify({
+							location: 'signin/page.tsx:44',
+							message: 'After window.location.href redirect',
+							data: {},
+							timestamp: Date.now(),
+							sessionId: 'debug-session',
+							runId: 'run1',
+							hypothesisId: 'A',
+						}),
+					}
+				).catch(() => {})
+				// #endregion
 			}
 		} catch (error) {
+			// #region agent log
+			fetch(
+				'http://127.0.0.1:7242/ingest/218ca7f0-e3d7-4389-a1b6-4602048211d4',
+				{
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({
+						location: 'signin/page.tsx:45',
+						message: 'SignIn error caught',
+						data: {
+							error: error instanceof Error ? error.message : String(error),
+						},
+						timestamp: Date.now(),
+						sessionId: 'debug-session',
+						runId: 'run1',
+						hypothesisId: 'A',
+					}),
+				}
+			).catch(() => {})
+			// #endregion
 			toast.error(
 				locale === 'ru'
 					? 'Произошла ошибка. Попробуйте снова.'
@@ -60,7 +155,8 @@ export default function SignInPage() {
 		password: locale === 'ru' ? 'Пароль' : 'Password',
 		signIn: locale === 'ru' ? 'Войти' : 'Accedi',
 		signingIn: locale === 'ru' ? 'Вход...' : 'Accesso in corso...',
-		forgotPassword: locale === 'ru' ? 'Забыли пароль?' : 'Password dimenticata?',
+		forgotPassword:
+			locale === 'ru' ? 'Забыли пароль?' : 'Password dimenticata?',
 		noAccount: locale === 'ru' ? 'Нет аккаунта?' : 'Non hai un account?',
 		signUp: locale === 'ru' ? 'Зарегистрироваться' : 'Registrati',
 		emailPlaceholder: locale === 'ru' ? 'your@email.com' : 'your@email.com',
@@ -83,7 +179,7 @@ export default function SignInPage() {
 								id='email'
 								type='email'
 								value={email}
-								onChange={(e) => setEmail(e.target.value)}
+								onChange={e => setEmail(e.target.value)}
 								required
 								disabled={isLoading}
 								placeholder={t.emailPlaceholder}
@@ -96,7 +192,7 @@ export default function SignInPage() {
 								id='password'
 								type='password'
 								value={password}
-								onChange={(e) => setPassword(e.target.value)}
+								onChange={e => setPassword(e.target.value)}
 								required
 								disabled={isLoading}
 								placeholder={t.passwordPlaceholder}
@@ -110,13 +206,19 @@ export default function SignInPage() {
 
 					<div className='mt-6 space-y-2 text-center'>
 						<p className='text-sm'>
-							<a href='/auth/forgot-password' className='text-red-600 hover:underline font-medium'>
+							<a
+								href='/auth/forgot-password'
+								className='text-red-600 hover:underline font-medium'
+							>
 								{t.forgotPassword}
 							</a>
 						</p>
 						<p className='text-sm text-gray-600'>
 							{t.noAccount}{' '}
-							<a href='/auth/signup' className='text-red-600 hover:underline font-medium'>
+							<a
+								href='/auth/signup'
+								className='text-red-600 hover:underline font-medium'
+							>
 								{t.signUp}
 							</a>
 						</p>
@@ -126,4 +228,3 @@ export default function SignInPage() {
 		</div>
 	)
 }
-

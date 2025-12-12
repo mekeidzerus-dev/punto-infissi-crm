@@ -13,8 +13,44 @@ import { requireAuth } from '@/lib/auth-helpers'
 import { updateUserActivity } from '@/lib/activity-tracker'
 
 export const GET = withApiHandler(async () => {
+	// #region agent log
+	const fs = require('fs')
+	const logPath =
+		'/Users/ruslanmekeidze/Desktop/mini-website/MODOCRM/src/app/api/user/profile/.cursor/debug.log'
+	const logEntry1 =
+		JSON.stringify({
+			location: 'api/clients/route.ts:15',
+			message: 'GET /api/clients called',
+			data: {},
+			timestamp: Date.now(),
+			sessionId: 'debug-session',
+			runId: 'run1',
+			hypothesisId: 'D',
+		}) + '\n'
+	try {
+		fs.appendFileSync(logPath, logEntry1)
+	} catch {}
+	// #endregion
+
 	const user = await requireAuth()
 	await updateUserActivity(user.id)
+
+	// #region agent log
+	const logEntry2 =
+		JSON.stringify({
+			location: 'api/clients/route.ts:17',
+			message: 'User authenticated',
+			data: { userId: user.id, organizationId: user.organizationId },
+			timestamp: Date.now(),
+			sessionId: 'debug-session',
+			runId: 'run1',
+			hypothesisId: 'D',
+		}) + '\n'
+	try {
+		fs.appendFileSync(logPath, logEntry2)
+	} catch {}
+	// #endregion
+
 	logger.info('🔍 Fetching clients from database...', {
 		userId: user.id,
 		userOrganizationId: user.organizationId,
@@ -26,8 +62,26 @@ export const GET = withApiHandler(async () => {
 	const finalOrganizationId = organizationId || user.organizationId
 	logger.info('Final organization ID for query:', { finalOrganizationId })
 
+	// #region agent log
+	const logEntry3 =
+		JSON.stringify({
+			location: 'api/clients/route.ts:27',
+			message: 'Before database query',
+			data: { finalOrganizationId },
+			timestamp: Date.now(),
+			sessionId: 'debug-session',
+			runId: 'run1',
+			hypothesisId: 'D',
+		}) + '\n'
+	try {
+		fs.appendFileSync(logPath, logEntry3)
+	} catch {}
+	// #endregion
+
 	const clients = await prisma.client.findMany({
-		where: finalOrganizationId ? { organizationId: finalOrganizationId } : undefined,
+		where: finalOrganizationId
+			? { organizationId: finalOrganizationId }
+			: undefined,
 		include: {
 			_count: {
 				select: {
@@ -38,7 +92,25 @@ export const GET = withApiHandler(async () => {
 		orderBy: { createdAt: 'desc' },
 	})
 
-	logger.info(`✅ Found ${clients.length} clients for organization ${finalOrganizationId}`)
+	// #region agent log
+	const logEntry4 =
+		JSON.stringify({
+			location: 'api/clients/route.ts:40',
+			message: 'Database query completed',
+			data: { clientsCount: clients.length, finalOrganizationId },
+			timestamp: Date.now(),
+			sessionId: 'debug-session',
+			runId: 'run1',
+			hypothesisId: 'D',
+		}) + '\n'
+	try {
+		fs.appendFileSync(logPath, logEntry4)
+	} catch {}
+	// #endregion
+
+	logger.info(
+		`✅ Found ${clients.length} clients for organization ${finalOrganizationId}`
+	)
 	return success(clients)
 })
 
@@ -60,7 +132,10 @@ export const POST = withApiHandler(async (request: NextRequest) => {
 		data: createData,
 	})
 
-	logger.info('✅ Client created:', { id: client.id, organizationId: client.organizationId })
+	logger.info('✅ Client created:', {
+		id: client.id,
+		organizationId: client.organizationId,
+	})
 	return success(client, 201)
 })
 
