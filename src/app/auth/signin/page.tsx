@@ -37,47 +37,21 @@ export default function SignInPage() {
 		// #endregion
 
 		try {
+			// Используем встроенный редирект NextAuth - он правильно обрабатывает сессию
 			const result = await signIn('credentials', {
 				email,
 				password,
-				redirect: false,
+				redirect: true,
+				callbackUrl: '/clients',
 			})
 
+			// Если redirect: true, этот код не выполнится, но оставляем для совместимости
 			if (result?.error) {
 				toast.error(
 					locale === 'ru'
 						? 'Неверный email или пароль'
 						: 'Email o password non validi'
 				)
-			} else {
-				toast.success(
-					locale === 'ru' ? 'Успешный вход в систему' : 'Accesso riuscito'
-				)
-				// Ждем установки сессии через API, затем редиректим
-				// Это предотвращает попытку загрузить chunk 138 при ошибке
-				const checkSession = async () => {
-					try {
-						const sessionRes = await fetch('/api/auth/session')
-						if (sessionRes.ok) {
-							const session = await sessionRes.json()
-							if (session?.user) {
-								// Сессия установлена - безопасный редирект
-								window.location.href = '/clients'
-								return
-							}
-						}
-					} catch (e) {
-						// Игнорируем ошибки проверки сессии
-					}
-					// Если сессия не установилась за 2 секунды - все равно редиректим
-					setTimeout(() => {
-						window.location.href = '/clients'
-					}, 2000)
-				}
-				// Проверяем сессию несколько раз с интервалом
-				checkSession()
-				setTimeout(checkSession, 500)
-				setTimeout(checkSession, 1000)
 			}
 		} catch (error) {
 			// #region agent log
