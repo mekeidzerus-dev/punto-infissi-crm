@@ -136,23 +136,13 @@ export function AuthGuard({ children }: AuthGuardProps) {
 	}
 
 	if (status === 'unauthenticated') {
-		// #region agent log
-		console.log('[DEBUG AuthGuard] Rendering null (unauthenticated)')
-		fetch('http://127.0.0.1:7242/ingest/218ca7f0-e3d7-4389-a1b6-4602048211d4', {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({
-				location: 'auth-guard.tsx:60',
-				message: 'AuthGuard returning null (unauthenticated)',
-				data: { pathname, status },
-				timestamp: Date.now(),
-				sessionId: 'debug-session',
-				runId: 'run2',
-				hypothesisId: 'B',
-			}),
-		}).catch(() => {})
-		// #endregion
-		return null
+		// Показываем Loading вместо null чтобы избежать белого экрана
+		// useEffect уже обработает редирект на /auth/signin
+		return (
+			<div className='min-h-screen flex items-center justify-center'>
+				<p className='text-gray-600'>Loading...</p>
+			</div>
+		)
 	}
 
 	// #region agent log
