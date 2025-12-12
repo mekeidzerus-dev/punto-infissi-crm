@@ -26,6 +26,32 @@ export default function RootLayout({
 					content='Система управления продажами окон и дверей'
 				/>
 				{/* Фавикон будет управляться динамически через FaviconUpdater */}
+				<script
+					dangerouslySetInnerHTML={{
+						__html: `
+							// Обработка ошибок загрузки chunks - предотвращает белый экран
+							window.addEventListener('error', function(e) {
+								if (e.message && e.message.includes('chunk') && e.message.includes('failed')) {
+									console.error('Chunk loading error detected, reloading page...');
+									// При ошибке загрузки chunk - перезагружаем страницу
+									setTimeout(() => {
+										window.location.reload();
+									}, 1000);
+								}
+							}, true);
+							// Обработка ChunkLoadError
+							window.addEventListener('unhandledrejection', function(e) {
+								if (e.reason && e.reason.name === 'ChunkLoadError') {
+									console.error('ChunkLoadError detected, reloading page...');
+									e.preventDefault();
+									setTimeout(() => {
+										window.location.reload();
+									}, 1000);
+								}
+							});
+						`,
+					}}
+				/>
 			</head>
 			<body
 				className={`${inter.className} flex flex-col min-h-screen`}

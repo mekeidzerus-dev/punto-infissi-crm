@@ -36,7 +36,10 @@ export const authOptions: NextAuthOptions = {
 					return null
 				}
 
-				const isValidPassword = await compare(credentials.password, user.password)
+				const isValidPassword = await compare(
+					credentials.password,
+					user.password
+				)
 
 				if (!isValidPassword) {
 					return null
@@ -65,4 +68,3 @@ export const authOptions: NextAuthOptions = {
 	],
 	debug: process.env.NODE_ENV === 'development',
 }
-

@@ -4,8 +4,8 @@ const nextConfig = {
 		// Улучшенная обработка webpack chunks
 		optimizePackageImports: ['@radix-ui/react-icons', 'lucide-react'],
 	},
-	// Обеспечиваем стабильность имен chunks и правильную генерацию всех chunks
-	webpack: (config, { isServer, dev }) => {
+	// Обеспечиваем стабильность имен chunks
+	webpack: (config, { isServer }) => {
 		if (!isServer) {
 			config.optimization = {
 				...config.optimization,
@@ -15,10 +15,19 @@ const nextConfig = {
 		}
 		return config
 	},
-	// Отключаем оптимизацию которая может удалять неиспользуемые chunks
-	onDemandEntries: {
-		maxInactiveAge: 25 * 1000,
-		pagesBufferLength: 2,
+	// При ошибке загрузки chunk - перезагружаем страницу вместо показа 404
+	async headers() {
+		return [
+			{
+				source: '/_next/static/chunks/:path*',
+				headers: [
+					{
+						key: 'Cache-Control',
+						value: 'public, max-age=31536000, immutable',
+					},
+				],
+			},
+		]
 	},
 }
 
