@@ -1,7 +1,9 @@
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
+
 import { ApiError, parseJson, success, withApiHandler } from '@/lib/api-handler'
 import {
+
 	buildDocumentStatusCreateData,
 	buildDocumentStatusUpdateData,
 	documentStatusCreateBodySchema,
@@ -12,6 +14,8 @@ import {
 	buildStatusTypeUpserts,
 } from './helpers'
 
+
+export const dynamic = 'force-dynamic'
 async function fetchStatusesByType(documentType: string) {
 	const type = await prisma.documentType.findUnique({
 		where: { name: documentType },

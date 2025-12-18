@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { logger } from '@/lib/logger'
+import { apiClient, ApiError } from '@/lib/api-client'
 import {
 	Select,
 	SelectContent,
@@ -58,11 +59,13 @@ export function VATRateSelectWithCreate({
 
 	const fetchVatRates = async () => {
 		try {
-			const response = await fetch('/api/vat-rates')
-			const data = await response.json()
+			const data = await apiClient.get<VATRate[]>('/api/vat-rates')
 			setVatRates(data)
 		} catch (error) {
 			logger.error('Error fetching VAT rates:', error)
+			if (error instanceof ApiError && error.status === 401) {
+				return
+			}
 		}
 	}
 
@@ -71,26 +74,22 @@ export function VATRateSelectWithCreate({
 		setIsLoading(true)
 
 		try {
-			const response = await fetch('/api/vat-rates', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					name: formData.name,
-					percentage: parseFloat(formData.percentage),
-					description: formData.description || null,
-					isDefault: false,
-					isActive: true,
-				}),
+			const newRate = await apiClient.post<VATRate>('/api/vat-rates', {
+				name: formData.name,
+				percentage: parseFloat(formData.percentage),
+				description: formData.description || null,
+				isDefault: false,
+				isActive: true,
 			})
 
-			if (response.ok) {
-				const newRate = await response.json()
-				await fetchVatRates()
-				onValueChange(String(newRate.percentage))
-				handleClose()
-			}
+			await fetchVatRates()
+			onValueChange(String(newRate.percentage))
+			handleClose()
 		} catch (error) {
 			logger.error('Error creating VAT rate:', error)
+			if (error instanceof ApiError && error.status === 401) {
+				return
+			}
 		} finally {
 			setIsLoading(false)
 		}

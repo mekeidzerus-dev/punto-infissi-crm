@@ -5,6 +5,7 @@ import { Plus, Edit, Trash2, Check, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useLanguage } from '@/contexts/LanguageContext'
 import { logger } from '@/lib/logger'
+import { apiClient, ApiError } from '@/lib/api-client'
 
 interface ParameterValue {
 	id: string
@@ -62,18 +63,15 @@ export default function SupplierParameterOverrides({
 		setLoading(true)
 		try {
 			// Получаем переопределения поставщика
-			const overridesRes = await fetch(
+			const overridesData = await apiClient.get<Override[]>(
 				`/api/suppliers/${supplierId}/parameter-overrides`
 			)
-			const overridesData = await overridesRes.json()
 			setOverrides(overridesData)
 
 			// Получаем все параметры для категорий поставщика
 			if (categoryIds.length > 0) {
 				const paramsPromises = categoryIds.map(catId =>
-					fetch(`/api/category-parameters?categoryId=${catId}`).then(res =>
-						res.json()
-					)
+					apiClient.get<any[]>(`/api/category-parameters?categoryId=${catId}`)
 				)
 				const paramsResults = await Promise.all(paramsPromises)
 
@@ -89,6 +87,9 @@ export default function SupplierParameterOverrides({
 			}
 		} catch (error) {
 			logger.error('Error fetching data:', error)
+			if (error instanceof ApiError && error.status === 401) {
+				return
+			}
 		} finally {
 			setLoading(false)
 		}
@@ -96,29 +97,26 @@ export default function SupplierParameterOverrides({
 
 	const handleCreateOverride = async (parameterId: string) => {
 		try {
-			const response = await fetch(
+			await apiClient.post(
 				`/api/suppliers/${supplierId}/parameter-overrides`,
 				{
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({
-						parameterId,
-						isAvailable: true,
-					}),
+					parameterId,
+					isAvailable: true,
 				}
 			)
 
-			if (response.ok) {
-				await fetchData()
-				setShowAddModal(false)
-				setSelectedParameter(null)
-			} else {
-				const error = await response.json()
-				alert(error.error || 'Ошибка при создании переопределения')
-			}
+			await fetchData()
+			setShowAddModal(false)
+			setSelectedParameter(null)
 		} catch (error) {
 			logger.error('Error creating override:', error)
-			alert('Ошибка при создании переопределения')
+			if (error instanceof ApiError && error.status === 401) {
+				return
+			}
+			const errorMessage = error instanceof ApiError 
+				? error.message 
+				: 'Ошибка при создании переопределения'
+			alert(errorMessage)
 		}
 	}
 
@@ -127,25 +125,19 @@ export default function SupplierParameterOverrides({
 		data: Partial<Override>
 	) => {
 		try {
-			const response = await fetch(
-				`/api/supplier-parameter-overrides/${overrideId}`,
-				{
-					method: 'PUT',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify(data),
-				}
-			)
+			await apiClient.put(`/api/supplier-parameter-overrides/${overrideId}`, data)
 
-			if (response.ok) {
-				await fetchData()
-				setEditingOverride(null)
-			} else {
-				const error = await response.json()
-				alert(error.error || 'Ошибка при обновлении переопределения')
-			}
+			await fetchData()
+			setEditingOverride(null)
 		} catch (error) {
 			logger.error('Error updating override:', error)
-			alert('Ошибка при обновлении переопределения')
+			if (error instanceof ApiError && error.status === 401) {
+				return
+			}
+			const errorMessage = error instanceof ApiError 
+				? error.message 
+				: 'Ошибка при обновлении переопределения'
+			alert(errorMessage)
 		}
 	}
 
@@ -153,22 +145,17 @@ export default function SupplierParameterOverrides({
 		if (!confirm('Удалить переопределение параметра?')) return
 
 		try {
-			const response = await fetch(
-				`/api/supplier-parameter-overrides/${overrideId}`,
-				{
-					method: 'DELETE',
-				}
-			)
-
-			if (response.ok) {
-				await fetchData()
-			} else {
-				const error = await response.json()
-				alert(error.error || 'Ошибка при удалении переопределения')
-			}
+			await apiClient.delete(`/api/supplier-parameter-overrides/${overrideId}`)
+			await fetchData()
 		} catch (error) {
 			logger.error('Error deleting override:', error)
-			alert('Ошибка при удалении переопределения')
+			if (error instanceof ApiError && error.status === 401) {
+				return
+			}
+			const errorMessage = error instanceof ApiError 
+				? error.message 
+				: 'Ошибка при удалении переопределения'
+			alert(errorMessage)
 		}
 	}
 

@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Handshake } from 'lucide-react'
 import { logger } from '@/lib/logger'
+import { apiClient, ApiError } from '@/lib/api-client'
 import {
 	Card,
 	CardContent,
@@ -29,6 +30,7 @@ import { useSorting } from '@/hooks/use-sorting'
 import { multiSearch } from '@/lib/multi-search'
 import { PartnerFormModal } from '@/components/partner-form-modal'
 import { useLanguage } from '@/contexts/LanguageContext'
+import { toast } from 'sonner'
 
 // Типы партнеров для отображения
 const getPartnerTypes = (t: any) => ({
@@ -58,10 +60,8 @@ export default function PartnersPage() {
 	const fetchPartners = async () => {
 		try {
 			setIsLoading(true)
-			const response = await fetch('/api/partners')
-			if (response.ok) {
-				setPartners(await response.json())
-			}
+			const data = await apiClient.get<any[]>('/api/partners')
+			setPartners(data)
 		} catch (error) {
 			logger.error('Error fetching partners:', error)
 		} finally {
@@ -110,29 +110,19 @@ export default function PartnersPage() {
 				notes: formData.notes || null,
 			}
 
-			const response = editingPartner
-				? await fetch('/api/partners', {
-						method: 'PUT',
-						headers: { 'Content-Type': 'application/json' },
-						body: JSON.stringify({ id: editingPartner.id, ...apiData }),
-				  })
-				: await fetch('/api/partners', {
-						method: 'POST',
-						headers: { 'Content-Type': 'application/json' },
-						body: JSON.stringify(apiData),
-				  })
-
-			if (!response.ok) {
-				const error = await response.json()
-				throw new Error(error.error || 'Failed to save partner')
+			if (editingPartner) {
+				await apiClient.put('/api/partners', { id: editingPartner.id, ...apiData })
+			} else {
+				await apiClient.post('/api/partners', apiData)
 			}
 
 			await fetchPartners()
 			setEditingPartner(null)
 			setIsFormOpen(false)
-		} catch (error: any) {
+		} catch (error) {
 			logger.error('Error saving partner:', error)
-			alert(error.message || t('errorSaving'))
+			const errorMessage = error instanceof ApiError ? error.message : t('errorSaving')
+			toast.error(errorMessage, { duration: 4000 })
 		}
 	}
 
@@ -145,11 +135,12 @@ export default function PartnersPage() {
 		if (!confirm(t('confirmDeletePartner'))) return
 
 		try {
-			await fetch(`/api/partners?id=${id}`, { method: 'DELETE' })
+			await apiClient.delete(`/api/partners?id=${id}`)
 			await fetchPartners()
 		} catch (error) {
 			logger.error('Error deleting partner:', error)
-			alert(t('errorDeleting'))
+			const errorMessage = error instanceof ApiError ? error.message : t('errorDeleting')
+			toast.error(errorMessage, { duration: 4000 })
 		}
 	}
 

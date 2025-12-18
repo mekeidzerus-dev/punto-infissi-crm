@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
+
 import { ApiError, parseJson, success, withApiHandler } from '@/lib/api-handler'
 import {
 	buildProposalUpdateData,
@@ -7,8 +8,11 @@ import {
 	proposalUpdateBodySchema,
 	ensureProposalId,
 } from '../helpers'
+
 import { getCurrentOrganizationId } from '@/lib/organization-context'
 
+
+export const dynamic = 'force-dynamic'
 function serializeProposal(
 	proposal: Awaited<ReturnType<typeof prisma.proposalDocument.findUniqueOrThrow>>
 ) {

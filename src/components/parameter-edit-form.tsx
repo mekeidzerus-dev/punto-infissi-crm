@@ -20,6 +20,7 @@ import {
 import { Card } from '@/components/ui/card'
 import { X, Plus, Trash2, GripVertical, Save } from 'lucide-react'
 import { useLanguage } from '@/contexts/LanguageContext'
+import { apiClient, ApiError } from '@/lib/api-client'
 
 interface ParameterValue {
 	id?: string
@@ -217,24 +218,23 @@ export default function ParameterEditForm({
 
 			// Если это быстрое создание из конфигуратора, используем API quick-create
 			if (isQuickCreate) {
-				const response = await fetch('/api/parameters/quick-create', {
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({
+				try {
+					const created = await apiClient.post('/api/parameters/quick-create', {
 						...data,
 						// isGlobal и categoryId не передаются - параметр создается без привязки
 						// Привязка произойдет при создании товара
-					}),
-				})
-
-				if (!response.ok) {
-					const error = await response.json()
-					throw new Error(error.error || 'Failed to create parameter')
+					})
+					// Передаем созданный параметр с ID для последующей привязки
+					await onSave(created)
+				} catch (error) {
+					if (error instanceof ApiError && error.status === 401) {
+						return
+					}
+					const errorMessage = error instanceof ApiError 
+						? error.message 
+						: 'Failed to create parameter'
+					throw new Error(errorMessage)
 				}
-
-				const created = await response.json()
-				// Передаем созданный параметр с ID для последующей привязки
-				await onSave(created)
 			} else {
 				await onSave(data)
 			}

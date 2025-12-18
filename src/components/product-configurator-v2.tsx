@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { logger } from '@/lib/logger'
+import { apiClient, ApiError } from '@/lib/api-client'
 import { toast } from 'sonner'
 import {
 	X,
@@ -146,19 +147,7 @@ export function ProductConfiguratorV2({
 	const loadCategories = async () => {
 		setCategoriesLoading(true)
 		try {
-			const response = await fetch('/api/categories/with-counts')
-			
-			if (!response.ok) {
-				const errorData = await response.json().catch(() => ({}))
-				logger.error('Failed to load categories:', {
-					status: response.status,
-					error: errorData.error || errorData.details || 'Unknown error',
-				})
-				setCategories([])
-				return
-			}
-			
-			const data = await response.json()
+			const data = await apiClient.get<CategoryWithCounts[]>('/api/categories/with-counts')
 			
 			// Убеждаемся, что data - массив
 			if (!Array.isArray(data)) {
@@ -170,6 +159,9 @@ export function ProductConfiguratorV2({
 			setCategories(data)
 		} catch (error) {
 			logger.error('Error loading categories:', error)
+			if (error instanceof ApiError && error.status === 401) {
+				return
+			}
 			setCategories([])
 		} finally {
 			setCategoriesLoading(false)
@@ -182,21 +174,9 @@ export function ProductConfiguratorV2({
 
 		try {
 			setSuppliersLoading(true)
-			const response = await fetch(
+			const data = await apiClient.get<any[]>(
 				`/api/supplier-categories?categoryId=${selectedCategory.id}`
 			)
-
-			if (!response.ok) {
-				const errorData = await response.json().catch(() => ({}))
-				logger.error('Error loading category suppliers:', {
-					status: response.status,
-					error: errorData.error || errorData.details || 'Unknown error',
-				})
-				setCategorySuppliers([])
-				return
-			}
-
-			const data = await response.json()
 
 			// Убеждаемся, что data - массив
 			if (!Array.isArray(data)) {
@@ -231,6 +211,9 @@ export function ProductConfiguratorV2({
 			})))
 		} catch (error) {
 			logger.error('Error loading category suppliers:', error)
+			if (error instanceof ApiError && error.status === 401) {
+				return
+			}
 			setCategorySuppliers([])
 		} finally {
 			setSuppliersLoading(false)
@@ -292,22 +275,18 @@ export function ProductConfiguratorV2({
 
 		if (window.confirm(t('confirmDeleteCategory'))) {
 			try {
-				const response = await fetch(`/api/product-categories/${categoryId}`, {
-					method: 'DELETE',
-				})
-
-				if (response.ok) {
-					await loadCategories()
-					// Если удаленная категория была выбрана, сбрасываем выбор
-					if (selectedCategory?.id === categoryId) {
-						setSelectedCategory(null)
-						setSelectedSupplier(null) // Также сбрасываем поставщика
-					}
-				} else {
-					logger.error('Failed to delete category')
+				await apiClient.delete(`/api/product-categories/${categoryId}`)
+				await loadCategories()
+				// Если удаленная категория была выбрана, сбрасываем выбор
+				if (selectedCategory?.id === categoryId) {
+					setSelectedCategory(null)
+					setSelectedSupplier(null) // Также сбрасываем поставщика
 				}
 			} catch (error) {
 				logger.error('Error deleting category:', error)
+				if (error instanceof ApiError && error.status === 401) {
+					return
+				}
 			}
 		}
 	}
@@ -420,6 +399,9 @@ export function ProductConfiguratorV2({
 						}
 					} catch (error) {
 						logger.error(`❌ Error linking parameter ${parameterId}:`, error)
+						if (error instanceof ApiError && error.status === 401) {
+							return
+						}
 					}
 				}
 			}

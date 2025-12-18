@@ -8,6 +8,8 @@ import {
 	parameterUpdateBodySchema,
 } from '../helpers'
 
+export const dynamic = 'force-dynamic'
+
 const parameterUpdateBodyWithoutId = parameterUpdateBodySchema.omit({ id: true })
 
 export const GET = withApiHandler(async (_request, { params }) => {

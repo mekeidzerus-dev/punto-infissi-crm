@@ -8,6 +8,7 @@ import {
 	ensureCategoryId,
 } from './helpers'
 
+export const dynamic = 'force-dynamic'
 async function fetchCategoryParameters(categoryId: string) {
 	const allParameters = await prisma.parameterTemplate.findMany({
 		where: {

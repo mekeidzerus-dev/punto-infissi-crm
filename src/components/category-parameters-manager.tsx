@@ -5,6 +5,7 @@ import { Check, X, Settings } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useLanguage } from '@/contexts/LanguageContext'
 import { logger } from '@/lib/logger'
+import { apiClient, ApiError } from '@/lib/api-client'
 
 interface CategoryParameter {
 	id: string
@@ -49,13 +50,15 @@ export default function CategoryParametersManager({
 	const fetchData = async () => {
 		setLoading(true)
 		try {
-			const response = await fetch(
+			const data = await apiClient.get<CategoryParameter[]>(
 				`/api/category-parameters?categoryId=${categoryId}`
 			)
-			const data = await response.json()
 			setParameters(data)
 		} catch (error) {
 			logger.error('Error fetching data:', error)
+			if (error instanceof ApiError && error.status === 401) {
+				return
+			}
 		} finally {
 			setLoading(false)
 		}
@@ -95,47 +98,33 @@ export default function CategoryParametersManager({
 
 	const handleAddParameter = async (parameterId: string) => {
 		try {
-			const response = await fetch(`/api/categories/${categoryId}/parameters`, {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					parameterId,
-					isRequired: false,
-					isVisible: true,
-					order: parameters.length,
-				}),
+			await apiClient.post(`/api/categories/${categoryId}/parameters`, {
+				parameterId,
+				isRequired: false,
+				isVisible: true,
+				order: parameters.length,
 			})
 
-			if (response.ok) {
-				await fetchData()
-			} else {
-				const error = await response.json()
-				logger.error('Error adding parameter:', error)
-				// Можно добавить toast для показа ошибки пользователю
-			}
+			await fetchData()
 		} catch (error) {
 			logger.error('Error adding parameter:', error)
+			if (error instanceof ApiError && error.status === 401) {
+				return
+			}
 		}
 	}
 
 	const handleRemoveParameter = async (parameterId: string) => {
 		try {
-			const response = await fetch(
-				`/api/categories/${categoryId}/parameters?parameterId=${parameterId}`,
-				{
-					method: 'DELETE',
-				}
+			await apiClient.delete(
+				`/api/categories/${categoryId}/parameters?parameterId=${parameterId}`
 			)
-
-			if (response.ok) {
-				await fetchData()
-			} else {
-				const error = await response.json()
-				logger.error('Error removing parameter:', error)
-				// Можно добавить toast для показа ошибки пользователю
-			}
+			await fetchData()
 		} catch (error) {
 			logger.error('Error removing parameter:', error)
+			if (error instanceof ApiError && error.status === 401) {
+				return
+			}
 		}
 	}
 

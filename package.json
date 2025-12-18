@@ -34,7 +34,8 @@
 		"test:e2e": "playwright test tests/e2e-full-test.spec.ts",
 		"db:status": "npx tsx scripts/check-database-status.ts",
 		"setup:punto-infissi": "npx tsx scripts/setup-punto-infissi-passwords.ts",
-		"verify:deploy": "npx tsx scripts/verify-deployment.ts"
+		"verify:deploy": "npx tsx scripts/verify-deployment.ts",
+		"seed:default": "npx tsx prisma/seed-default-data.ts"
 	},
 	"dependencies": {
 		"@dnd-kit/core": "6.3.1",

@@ -7,6 +7,8 @@ import {
 	parameterValueUpdateBodyWithoutId,
 } from '../helpers'
 
+export const dynamic = 'force-dynamic'
+
 export const PUT = withApiHandler(async (request: NextRequest, { params }) => {
 	const id = ensureParameterValueIdFromParams(params)
 	const payload = await parseJson(request, parameterValueUpdateBodyWithoutId)

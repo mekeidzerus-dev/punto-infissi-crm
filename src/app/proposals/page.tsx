@@ -7,6 +7,7 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { logger } from '@/lib/logger'
+import { apiClient, ApiError } from '@/lib/api-client'
 import {
 	Dialog,
 	DialogContent,
@@ -98,27 +99,7 @@ export default function ProposalsPage() {
 	const fetchProposals = async () => {
 		try {
 			setIsLoading(true)
-			const response = await fetch('/api/proposals')
-			
-			if (!response.ok) {
-				const errorData = await response.json().catch(() => ({}))
-				const errorText = errorData.error || errorData.details || 'Unknown error'
-				logger.error(
-					'Error fetching proposals:',
-					undefined,
-					{
-						status: response.status,
-						error:
-							typeof errorText === 'string'
-								? errorText
-								: JSON.stringify(errorText),
-					}
-				)
-				setProposals([]) // Устанавливаем пустой массив при ошибке
-				return
-			}
-			
-			const data = await response.json()
+			const data = await apiClient.get<ProposalDocumentView[]>('/api/proposals')
 			
 			// Убеждаемся, что data - массив
 			if (Array.isArray(data)) {
@@ -147,64 +128,34 @@ export default function ProposalsPage() {
 
 	const handleSaveProposal = async (proposalData: any) => {
 		try {
-			const url = editingProposal
-				? `/api/proposals/${editingProposal.id}`
-				: '/api/proposals'
-			const method = editingProposal ? 'PUT' : 'POST'
-
-			const response = await fetch(url, {
-				method,
-				headers: {
-					'Content-Type': 'application/json',
-				},
-				body: JSON.stringify(proposalData),
-			})
-
-			if (response.ok) {
-				toast.success(
-					editingProposal
-						? (locale === 'ru' ? 'Предложение успешно обновлено' : 'Preventivo aggiornato con successo')
-						: (locale === 'ru' ? 'Предложение успешно создано' : 'Preventivo creato con successo'),
-					{ duration: 2000 }
-				)
-				await fetchProposals()
-				setShowForm(false)
-				setEditingProposal(undefined)
+			if (editingProposal) {
+				await apiClient.put(`/api/proposals/${editingProposal.id}`, proposalData)
 			} else {
-				const error = await response.json().catch(() => ({}))
-				logger.error('Error saving proposal:', error || undefined)
-				
-				// Правильно сериализуем сообщение об ошибке
-				let errorMessage = 'Unknown error'
-				if (error.details) {
-					errorMessage = typeof error.details === 'string' 
-						? error.details 
-						: JSON.stringify(error.details)
-				} else if (error.error) {
-					errorMessage = typeof error.error === 'string'
-						? error.error
-						: JSON.stringify(error.error)
-				} else if (error.message) {
-					errorMessage = typeof error.message === 'string'
-						? error.message
-						: JSON.stringify(error.message)
-				}
-				
-				const message =
-					locale === 'ru'
-						? `Ошибка: ${errorMessage}`
-						: errorMessage.includes('Unknown')
-						? 'Si è verificato un errore imprevisto. Riprova più tardi.'
-						: `Si è verificato un errore: ${errorMessage}`
-				toast.error(message, { duration: 4000 })
+				await apiClient.post('/api/proposals', proposalData)
 			}
-		} catch (error: any) {
+			
+			toast.success(
+				editingProposal
+					? (locale === 'ru' ? 'Предложение успешно обновлено' : 'Preventivo aggiornato con successo')
+					: (locale === 'ru' ? 'Предложение успешно создано' : 'Preventivo creato con successo'),
+				{ duration: 2000 }
+			)
+			await fetchProposals()
+			setShowForm(false)
+			setEditingProposal(undefined)
+		} catch (error) {
 			logger.error('Error saving proposal:', error || undefined)
-			const errorMessage = error?.message || error?.error || (typeof error === 'string' ? error : 'Unknown error')
+			const errorMessage = error instanceof ApiError 
+				? error.message 
+				: error instanceof Error 
+				? error.message 
+				: 'Unknown error'
 			const message =
 				locale === 'ru'
 					? `Ошибка: ${errorMessage}`
-					: 'Si è verificato un errore imprevisto. Riprova più tardi.'
+					: errorMessage.includes('Unknown')
+					? 'Si è verificato un errore imprevisto. Riprova più tardi.'
+					: `Si è verificato un errore: ${errorMessage}`
 			toast.error(message, { duration: 4000 })
 		}
 	}
@@ -214,14 +165,12 @@ export default function ProposalsPage() {
 			logger.info(`📝 Loading proposal for edit: ${proposal.id}`)
 
 			// Загружаем полные данные предложения с API
-			const response = await fetch(`/api/proposals/${proposal.id}`)
-			if (response.ok) {
-				const apiData = await response.json()
-				logger.info('✅ Loaded proposal data')
+			const apiData = await apiClient.get<any>(`/api/proposals/${proposal.id}`)
+			logger.info('✅ Loaded proposal data')
 
-				// Нормализуем данные: преобразуем Decimal (строки) в numbers
-				const normalizedProposal = {
-					...apiData,
+			// Нормализуем данные: преобразуем Decimal (строки) в numbers
+			const normalizedProposal = {
+				...apiData,
 					clientId: Number(apiData.clientId),
 					subtotal: Number(apiData.subtotal || 0),
 					discount: Number(apiData.discount || 0),
@@ -276,17 +225,9 @@ export default function ProposalsPage() {
 						})) || [],
 				}
 
-				logger.info('✅ Normalized proposal')
-				setEditingProposal(normalizedProposal)
-				setShowForm(true)
-			} else {
-				logger.error('❌ Error loading proposal for edit')
-				const message =
-					locale === 'ru'
-						? t('errorOccurred') || 'Произошла ошибка'
-						: 'Impossibile caricare il preventivo. Riprova più tardi.'
-				toast.error(message, { duration: 4000 })
-			}
+			logger.info('✅ Normalized proposal')
+			setEditingProposal(normalizedProposal)
+			setShowForm(true)
 		} catch (error) {
 			logger.error('❌ Error loading proposal:', error || undefined)
 			const message =
@@ -316,31 +257,20 @@ export default function ProposalsPage() {
 		setDeleteDialog(prev => ({ ...prev, isDeleting: true }))
 
 		try {
-			const response = await fetch(`/api/proposals/${deleteDialog.proposal.id}`, {
-				method: 'DELETE',
-			})
-
-			if (response.ok) {
-				toast.success(
-					locale === 'ru' ? 'Предложение успешно удалено' : 'Preventivo eliminato con successo',
-					{ duration: 2000 }
-				)
-				await fetchProposals()
-				setDeleteDialog({ isOpen: false, proposal: null, isDeleting: false })
-			} else {
-				const error = await response.json()
-				logger.error('Error deleting proposal:', error || undefined)
-				const errorMessage =
-					error.error || error.message || t('errorOccurred') || 'Unknown error'
-				toast.error(errorMessage, { duration: 4000 })
-			}
+			await apiClient.delete(`/api/proposals/${deleteDialog.proposal.id}`)
+			
+			toast.success(
+				locale === 'ru' ? 'Предложение успешно удалено' : 'Preventivo eliminato con successo',
+				{ duration: 2000 }
+			)
+			await fetchProposals()
+			setDeleteDialog({ isOpen: false, proposal: null, isDeleting: false })
 		} catch (error) {
 			logger.error('Error deleting proposal:', error || undefined)
-			const message =
-				locale === 'ru'
-					? t('errorOccurred') || 'Произошла ошибка'
-					: 'Si è verificato un errore durante l\'eliminazione. Riprova più tardi.'
-			toast.error(message, { duration: 4000 })
+			const errorMessage = error instanceof ApiError 
+				? error.message 
+				: t('errorOccurred') || 'Unknown error'
+			toast.error(errorMessage, { duration: 4000 })
 		} finally {
 			setDeleteDialog(prev => ({ ...prev, isDeleting: false }))
 		}

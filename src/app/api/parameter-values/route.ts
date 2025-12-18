@@ -1,13 +1,17 @@
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
+
 import { ApiError, parseJson, success, withApiHandler } from '@/lib/api-handler'
 import {
+
 	buildParameterValueCreateData,
 	ensureParameterValueId,
 	parseParameterValueQuery,
 	parameterValueCreateBodySchema,
 } from './helpers'
 
+
+export const dynamic = 'force-dynamic'
 export const GET = withApiHandler(async (request: NextRequest) => {
 	const query = parseParameterValueQuery(request.nextUrl.searchParams)
 

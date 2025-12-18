@@ -7,6 +7,8 @@ import {
 	ensureCategoryId,
 } from '../helpers'
 
+export const dynamic = 'force-dynamic'
+
 type Params = Record<string, string | string[]>
 
 function getId(params?: Params): string {

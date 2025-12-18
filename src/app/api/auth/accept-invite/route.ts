@@ -1,9 +1,12 @@
 import { NextRequest } from 'next/server'
 import { hash } from 'bcryptjs'
+
 import { prisma } from '@/lib/prisma'
 import { ApiError, parseJson, success, withApiHandler } from '@/lib/api-handler'
 import { acceptInviteSchema } from '@/lib/validation/auth'
 
+
+export const dynamic = 'force-dynamic'
 export const POST = withApiHandler(async (request: NextRequest) => {
 	const payload = await parseJson(request, acceptInviteSchema)
 

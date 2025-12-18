@@ -13,6 +13,7 @@ import { User, Mail, Building2, Save, ArrowLeft, Clock, Calendar, Shield, CheckC
 import { useLanguage } from '@/contexts/LanguageContext'
 import { toast } from 'sonner'
 import { logger } from '@/lib/logger'
+import { apiClient, ApiError } from '@/lib/api-client'
 
 export default function ProfilePage() {
 	const { data: session, update } = useSession()
@@ -40,30 +41,35 @@ export default function ProfilePage() {
 
 	const fetchProfileData = async () => {
 		try {
-			const response = await fetch('/api/user/profile')
-			if (response.ok) {
-				const data = await response.json()
-				setProfileData({
-					createdAt: data.createdAt,
-					lastLoginAt: data.lastLoginAt,
-					lastActivityAt: data.lastActivityAt,
-					emailVerified: data.emailVerified,
-				})
-			}
+			const data = await apiClient.get<{
+				createdAt?: string
+				lastLoginAt?: string
+				lastActivityAt?: string
+				emailVerified?: string | null
+			}>('/api/user/profile')
+			setProfileData({
+				createdAt: data.createdAt,
+				lastLoginAt: data.lastLoginAt,
+				lastActivityAt: data.lastActivityAt,
+				emailVerified: data.emailVerified,
+			})
 		} catch (error) {
 			logger.error('Error fetching profile data:', error)
+			if (error instanceof ApiError && error.status === 401) {
+				return
+			}
 		}
 	}
 
 	const fetchOrganization = async () => {
 		try {
-			const response = await fetch(`/api/organization`)
-			if (response.ok) {
-				const data = await response.json()
-				setOrganization({ id: data.id, name: data.name })
-			}
+			const data = await apiClient.get<{ id: string; name: string }>('/api/organization')
+			setOrganization({ id: data.id, name: data.name })
 		} catch (error) {
 			logger.error('Error fetching organization:', error)
+			if (error instanceof ApiError && error.status === 401) {
+				return
+			}
 		}
 	}
 
@@ -72,25 +78,21 @@ export default function ProfilePage() {
 		setIsLoading(true)
 
 		try {
-			const response = await fetch('/api/user/profile', {
-				method: 'PUT',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ name }),
-			})
-
-			if (response.ok) {
-				await update() // Обновляем сессию
-				toast.success(
-					locale === 'ru' ? 'Профиль успешно обновлен' : 'Profilo aggiornato con successo',
-					{ duration: 2000 }
-				)
-			} else {
-				const error = await response.json()
-				toast.error(error.error || (locale === 'ru' ? 'Ошибка обновления' : 'Errore aggiornamento'))
-			}
+			await apiClient.put('/api/user/profile', { name })
+			await update() // Обновляем сессию
+			toast.success(
+				locale === 'ru' ? 'Профиль успешно обновлен' : 'Profilo aggiornato con successo',
+				{ duration: 2000 }
+			)
 		} catch (error) {
 			logger.error('Error updating profile:', error)
-			toast.error(locale === 'ru' ? 'Ошибка при сохранении' : 'Errore durante il salvataggio')
+			if (error instanceof ApiError && error.status === 401) {
+				return
+			}
+			const errorMessage = error instanceof ApiError
+				? error.message
+				: (locale === 'ru' ? 'Ошибка при сохранении' : 'Errore durante il salvataggio')
+			toast.error(errorMessage, { duration: 4000 })
 		} finally {
 			setIsLoading(false)
 		}

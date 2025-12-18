@@ -1,6 +1,7 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth-options'
 import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 
 /**
  * Получает ID текущей организации из сессии пользователя.
@@ -15,7 +16,7 @@ export async function getCurrentOrganizationId(): Promise<string | null> {
 		}
 		return session.user.organizationId
 	} catch (error) {
-		console.error('Error getting current organization:', error)
+		logger.error('Error getting current organization', { error })
 		return null
 	}
 }

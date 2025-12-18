@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
+
 import { logger } from '@/lib/logger'
 import { ApiError, parseJson, success, withApiHandler } from '@/lib/api-handler'
 import { clientCreateSchema, clientUpdateSchema } from '@/lib/validation/client'
@@ -8,9 +9,12 @@ import {
 	buildClientUpdateData,
 	ensureClientId,
 } from './helpers'
+
 import { getCurrentOrganizationId } from '@/lib/organization-context'
 import { requireAuth } from '@/lib/auth-helpers'
 import { updateUserActivity } from '@/lib/activity-tracker'
+
+export const dynamic = 'force-dynamic'
 
 export const GET = withApiHandler(async () => {
 	// #region agent log

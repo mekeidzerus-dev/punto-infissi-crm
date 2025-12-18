@@ -8,6 +8,7 @@ import { useLanguage } from '@/contexts/LanguageContext'
 import ParameterEditForm from './parameter-edit-form'
 import { ConfirmDeleteDialog } from './confirm-delete-dialog'
 import { logger } from '@/lib/logger'
+import { apiClient, ApiError } from '@/lib/api-client'
 
 interface ParameterValue {
 	id?: string
@@ -59,11 +60,13 @@ export function ParametersManager() {
 
 	const fetchParameters = async () => {
 		try {
-			const response = await fetch('/api/parameters')
-			const data = await response.json()
+			const data = await apiClient.get<Parameter[]>('/api/parameters')
 			setParameters(data)
 		} catch (error) {
 			logger.error('Error fetching parameters:', error)
+			if (error instanceof ApiError && error.status === 401) {
+				return
+			}
 		} finally {
 			setLoading(false)
 		}
@@ -74,21 +77,17 @@ export function ParametersManager() {
 
 		setIsDeleting(true)
 		try {
-			const response = await fetch(`/api/parameters/${parameterToDelete.id}`, {
-				method: 'DELETE',
-			})
-
-			if (response.ok) {
-				await fetchParameters()
-				setShowDeleteModal(false)
-				setParameterToDelete(null)
-			} else {
-				const error = await response.json()
-				alert(error.error || t('errorDeleting'))
-			}
+			await apiClient.delete(`/api/parameters/${parameterToDelete.id}`)
+			await fetchParameters()
+			setShowDeleteModal(false)
+			setParameterToDelete(null)
 		} catch (error) {
 			logger.error('Error deleting parameter:', error)
-			alert(t('errorDeleting'))
+			if (error instanceof ApiError && error.status === 401) {
+				return
+			}
+			const errorMessage = error instanceof ApiError ? error.message : t('errorDeleting')
+			alert(errorMessage)
 		} finally {
 			setIsDeleting(false)
 		}
@@ -96,22 +95,10 @@ export function ParametersManager() {
 
 	const handleSave = async (data: Record<string, unknown>) => {
 		try {
-			const url = selectedParameter
-				? `/api/parameters/${selectedParameter.id}`
-				: '/api/parameters'
-			const method = selectedParameter ? 'PUT' : 'POST'
-
-			const response = await fetch(url, {
-				method,
-				headers: {
-					'Content-Type': 'application/json',
-				},
-				body: JSON.stringify(data),
-			})
-
-			if (!response.ok) {
-				const error = await response.json()
-				throw new Error(error.error || 'Ошибка при сохранении параметра')
+			if (selectedParameter) {
+				await apiClient.put(`/api/parameters/${selectedParameter.id}`, data)
+			} else {
+				await apiClient.post('/api/parameters', data)
 			}
 
 			await fetchParameters()

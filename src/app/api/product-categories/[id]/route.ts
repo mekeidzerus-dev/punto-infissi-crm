@@ -7,6 +7,8 @@ import {
 	ensureProductCategoryId,
 } from '../helpers'
 
+export const dynamic = 'force-dynamic'
+
 const updateBodyWithoutId = productCategoryUpdateBodySchema.omit({ id: true })
 
 export const GET = withApiHandler(async (_request, { params }) => {

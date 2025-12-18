@@ -1,6 +1,7 @@
 import type { PrismaClient } from '@prisma/client'
 import { Prisma } from '@prisma/client'
 import { prisma } from './prisma'
+import { logger } from './logger'
 
 /**
  * Стандартные итальянские налоговые ставки согласно законодательству
@@ -108,7 +109,7 @@ export async function createStandardVATRatesForOrganization(
 						},
 					})
 				} catch (createError) {
-					console.error('Error creating VAT rate:', rate.name, createError)
+					logger.error('Error creating VAT rate', { rateName: rate.name, error: createError })
 					throw createError
 				}
 			}
@@ -126,7 +127,7 @@ export async function createStandardVATRatesForOrganization(
 
 		return allRates
 	} catch (error) {
-		console.error('Error in createStandardVATRatesForOrganization:', error)
+		logger.error('Error in createStandardVATRatesForOrganization', { error })
 		throw error
 	}
 }

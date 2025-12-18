@@ -1,0 +1,38 @@
+# Реальные доступы (НЕ коммитить в git!)
+
+**Скопируйте этот файл в `.access.local.md` и заполните реальными данными**
+
+## База данных (Production)
+DATABASE_URL=postgresql://user:password@host:5432/modocrm
+
+## FastPanel
+URL: https://ваш-домен:8888
+Логин: ваш-логин
+Пароль: ваш-пароль
+
+## SSH доступ к серверу
+Хост: IP или домен
+Порт: 22
+Пользователь: ваш-пользователь
+Пароль: ваш-пароль
+# или путь к SSH ключу: ~/.ssh/key_name
+
+## Путь к приложению на сервере
+Production: /var/www/fastuser/data/www/infissi.omoxsoft.com.ua
+Backups: /var/www/fastuser/data/backups/punto-infissi-crm
+
+## GitHub Secrets (для справки)
+# Настроены в: https://github.com/mekeidzerus-dev/punto-infissi-crm/settings/secrets/actions
+DATABASE_URL=postgresql://...
+NEXTAUTH_SECRET=...
+NEXTAUTH_URL=https://infissi.omoxsoft.com.ua
+CRON_SECRET=...
+FASTPANEL_HOST=...
+FASTPANEL_USER=fastuser
+FASTPANEL_PORT=22
+FASTPANEL_SSH_KEY=-----BEGIN OPENSSH PRIVATE KEY-----...
+
+## Админ доступ к приложению
+Email: admin@example.com
+Пароль: ваш-пароль
+

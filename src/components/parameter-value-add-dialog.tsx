@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useLanguage } from '@/contexts/LanguageContext'
 import { logger } from '@/lib/logger'
+import { apiClient, ApiError } from '@/lib/api-client'
 
 interface ParameterValueAddDialogProps {
 	open: boolean
@@ -100,23 +101,14 @@ export function ParameterValueAddDialog({
 				}
 			}
 
-			const response = await fetch('/api/parameter-values', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify(requestBody),
-			})
-
-			if (!response.ok) {
-				const errorData = await response.json()
-				throw new Error(
-					errorData.error ||
-						(locale === 'ru'
-							? 'Ошибка при добавлении значения'
-							: "Errore durante l'aggiunta del valore")
-				)
-			}
-
-			const newValue = await response.json()
+			const newValue = await apiClient.post<{
+				id: string
+				value: string
+				valueIt?: string
+				displayName?: string
+				hexColor?: string
+				ralCode?: string
+			}>('/api/parameter-values', requestBody)
 
 			logger.info(
 				`✅ Added value "${newValue.value}" to parameter ${parameterName}`
@@ -129,11 +121,16 @@ export function ParameterValueAddDialog({
 			handleOpenChange(false)
 		} catch (err: any) {
 			logger.error('❌ Error adding parameter value:', err)
+			if (err instanceof ApiError && err.status === 401) {
+				return
+			}
 			setError(
-				err.message ||
-					(locale === 'ru'
-						? 'Ошибка при добавлении значения'
-						: "Errore durante l'aggiunta del valore")
+				err instanceof ApiError
+					? err.message
+					: err.message ||
+						(locale === 'ru'
+							? 'Ошибка при добавлении значения'
+							: "Errore durante l'aggiunta del valore")
 			)
 		} finally {
 			setIsSaving(false)

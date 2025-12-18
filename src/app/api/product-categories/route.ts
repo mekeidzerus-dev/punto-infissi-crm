@@ -6,6 +6,8 @@ import {
 	productCategoryCreateBodySchema,
 } from './helpers'
 
+export const dynamic = 'force-dynamic'
+
 export const GET = withApiHandler(async () => {
 	const categories = await prisma.productCategory.findMany({
 		where: { isActive: true },

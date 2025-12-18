@@ -1,0 +1,832 @@
+# Punto Infissi CRM - AI Development Rules
+
+## 🎯 PROJECT OVERVIEW
+
+**Punto Infissi CRM** - Professional CRM system for windows and doors sales management with bilingual support (IT/RU).
+
+**Domain:** Windows & Doors manufacturing/sales  
+**Tech Stack:** Next.js 15 + React 19 + TypeScript + Prisma + Tailwind CSS v4  
+**Architecture:** Serverless (Next.js API Routes)  
+**Version:** 1.1.0
+
+---
+
+## 🚫 FORBIDDEN WORDS & PHRASES
+
+**NEVER use these words/phrases in code, comments, or responses:**
+
+```
+❌ "blablabla", "etc", "and so on", "возможно", "может быть"
+❌ "Here's how you can..." (start with code, not explanation)
+❌ "I would suggest", "You might want to", "Consider"
+❌ "Unfortunately", "However", "Instead"
+❌ "please", "kindly", excessive politeness
+❌ "let me know", "feel free", "don't hesitate"
+❌ "looks good", "seems fine", "appears to"
+❌ "might", "could", "should" (use IS/DOES)
+❌ "just", "simply", "easily" (reduces complexity perception)
+❌ Vague numbers: "a few", "several", "some" (use exact numbers)
+❌ Premature closing: "Let me know if...", "Hope this helps..."
+```
+
+**DO:** Direct, technical, factual. Skip pleasantries.
+
+---
+
+## 💡 CORE PRINCIPLES
+
+### 1. DEVELOPMENT WORKFLOW (MANDATORY)
+
+**CRITICAL: Follow this exact sequence for ANY development task:**
+
+#### Step 1: REQUIREMENTS ANALYSIS
+
+- Understand business need
+- Identify affected components
+- Check existing implementations
+- Document scope
+
+#### Step 2: TEAM REVIEW & PROPOSALS
+
+- Present at least 2-3 implementation alternatives
+- Each option must include:
+  - Approach description
+  - Pros/cons
+  - Impact analysis
+  - Estimated complexity
+- User selects preferred approach
+
+#### Step 3: TODO LIST CREATION
+
+- Create detailed task breakdown
+- Include:
+  - Specific file changes
+  - Database migrations (if needed)
+  - Component modifications
+  - Testing requirements
+  - Dependencies
+- Present TODO list to user for approval
+
+#### Step 4: CODE IMPLEMENTATION
+
+- Only start coding after TODO approval
+- Implement incrementally (one task at a time)
+- Test each change immediately
+- Commit frequently with descriptive messages
+
+**NEVER jump to coding without completing Steps 1-3!**
+
+### 2. Design System First
+
+**ALWAYS use existing components from `/src/components/ui/`. NEVER invent new components or use inline Tailwind classes.**
+
+**CRITICAL: BEFORE creating ANY new forms, modals, or components - ANALYZE existing code and PROPOSE options to user.**
+
+### 3. Form Analysis Mandatory
+
+**NEVER create forms without analyzing existing ones first:**
+
+- `client-form-modal.tsx` - Individual/Company toggle
+- `supplier-form-modal.tsx` - Full supplier data
+- `partner-form-modal.tsx` - Partner management
+- `installer-form-modal.tsx` - Individual/IP/Company toggle
+
+**Always PROPOSE options to user before coding.**
+
+### 4. Technology-Specific Rules
+
+**Next.js 15 + React 19:**
+
+- Server Components by default
+- `'use client'` only when needed (interactivity, hooks, state)
+- API Routes use async/await patterns
+- Turbopack for builds
+
+**TypeScript:**
+
+- Strict mode enabled
+- No `any` types
+- Explicit return types for functions
+- Use Prisma-generated types
+
+**Prisma:**
+
+- Always use Prisma Client, never raw SQL
+- Transactions for multi-step operations
+- Proper error handling (P2002, P2025, etc.)
+- Soft deletes with `isActive` flag
+
+**Tailwind CSS v4:**
+
+- Semantic classes: `bg-card`, `text-foreground`
+- No arbitrary values: `bg-[#ff0000]`
+- Responsive-first: `md:`, `lg:` prefixes
+- Sticker design v2 classes for cards
+
+**Imports:**
+
+- Absolute paths: `@/components/ui/button`
+- Group imports logically (UI, libs, types)
+- Remove unused imports
+
+---
+
+## 📦 Available UI Components
+
+### Button (`@/components/ui/button`)
+
+```tsx
+import { Button } from '@/components/ui/button'
+
+// Variants: default | destructive | outline | secondary | ghost | link
+// Sizes: default | sm | lg | icon | icon-sm | icon-lg
+;<Button variant='default' size='default'>
+	Click me
+</Button>
+```
+
+### Card (`@/components/ui/card`)
+
+```tsx
+import {
+	Card,
+	CardHeader,
+	CardTitle,
+	CardDescription,
+	CardContent,
+	CardFooter,
+	CardAction,
+} from '@/components/ui/card'
+;<Card>
+	<CardHeader>
+		<CardTitle>Title</CardTitle>
+		<CardDescription>Description</CardDescription>
+		<CardAction>
+			<Button>Action</Button>
+		</CardAction>
+	</CardHeader>
+	<CardContent>Content here</CardContent>
+	<CardFooter>Footer here</CardFooter>
+</Card>
+```
+
+### Dialog (`@/components/ui/dialog`)
+
+```tsx
+import {
+	Dialog,
+	DialogTrigger,
+	DialogContent,
+	DialogHeader,
+	DialogFooter,
+	DialogTitle,
+	DialogDescription,
+} from '@/components/ui/dialog'
+;<Dialog>
+	<DialogTrigger>Open</DialogTrigger>
+	<DialogContent>
+		<DialogHeader>
+			<DialogTitle>Title</DialogTitle>
+			<DialogDescription>Description</DialogDescription>
+		</DialogHeader>
+		{/* Content */}
+		<DialogFooter>
+			<Button variant='outline'>Cancel</Button>
+			<Button>Save</Button>
+		</DialogFooter>
+	</DialogContent>
+</Dialog>
+```
+
+### Input (`@/components/ui/input`)
+
+```tsx
+import { Input } from '@/components/ui/input'
+;<Input type='text' placeholder='Enter text...' />
+```
+
+### Select (`@/components/ui/select`)
+
+```tsx
+import {
+	Select,
+	SelectTrigger,
+	SelectValue,
+	SelectContent,
+	SelectItem,
+} from '@/components/ui/select'
+;<Select>
+	<SelectTrigger>
+		<SelectValue placeholder='Select...' />
+	</SelectTrigger>
+	<SelectContent>
+		<SelectItem value='option1'>Option 1</SelectItem>
+		<SelectItem value='option2'>Option 2</SelectItem>
+	</SelectContent>
+</Select>
+```
+
+### Badge (`@/components/ui/badge`)
+
+```tsx
+import { Badge } from '@/components/ui/badge'
+;<Badge variant='default'>Badge</Badge>
+// Variants: default | secondary | destructive | outline
+```
+
+### Other Available Components
+
+- `@/components/ui/checkbox` - Checkbox component
+- `@/components/ui/collapsible` - Collapsible component
+- `@/components/ui/dropdown-menu` - Dropdown menu
+- `@/components/ui/label` - Form label
+- `@/components/ui/phone-input` - Phone number input
+- `@/components/ui/separator` - Visual separator
+- `@/components/ui/table` - Data table
+- `@/components/ui/textarea` - Text area
+- `@/components/ui/tooltip` - Tooltip
+
+## 🎨 Color System
+
+### Theme Colors (Use via CSS variables)
+
+- `primary` / `primary-foreground` - Main brand color (black/white)
+- `secondary` / `secondary-foreground` - Secondary color
+- `destructive` / `destructive-foreground` - Error/delete actions
+- `muted` / `muted-foreground` - Subtle backgrounds
+- `accent` / `accent-foreground` - Accent color
+- `border` - Border color
+- `input` - Input background
+
+### Using Colors
+
+```tsx
+// DO: Use semantic Tailwind classes
+<div className="bg-card text-card-foreground border border-border">
+
+// DON'T: Use arbitrary color values
+<div className="bg-[#ffffff] text-[#000000]">
+```
+
+## 📐 Spacing & Layout
+
+### Standard Spacing (Tailwind scale)
+
+- `gap-2` (8px) - Compact spacing
+- `gap-4` (16px) - Default spacing
+- `gap-6` (24px) - Large spacing
+- `p-6` (24px) - Card padding
+- `px-3` / `py-2` - Input padding
+
+### Common Patterns
+
+```tsx
+// Card layout
+<Card className="gap-6">
+  <CardHeader className="pb-6">...</CardHeader>
+  <CardContent>...</CardContent>
+  <CardFooter className="pt-6">...</CardFooter>
+</Card>
+
+// Form layout
+<form className="space-y-4">
+  <div className="space-y-2">
+    <Label>Field</Label>
+    <Input />
+  </div>
+</form>
+
+// Button groups
+<div className="flex gap-2 justify-end">
+  <Button variant="outline">Cancel</Button>
+  <Button>Save</Button>
+</div>
+```
+
+## 🔤 Typography
+
+### Font Families
+
+- Sans: `font-sans` (Geist Sans)
+- Mono: `font-mono` (Geist Mono)
+
+### Text Hierarchy
+
+```tsx
+// Page title
+<h1 className="text-2xl font-semibold leading-none">
+
+// Section title
+<h2 className="text-lg leading-none font-semibold">
+
+// Card title
+<h3 className="font-semibold">
+
+// Description
+<p className="text-sm text-muted-foreground">
+
+// Body text
+<p className="text-base">
+
+// Small text
+<p className="text-sm">
+```
+
+## 🎭 Component Patterns
+
+### Forms
+
+```tsx
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Button } from '@/components/ui/button'
+;<div className='space-y-2'>
+	<Label htmlFor='email'>Email</Label>
+	<Input id='email' type='email' />
+</div>
+```
+
+### Modals/Dialogs
+
+```tsx
+<Dialog>
+	<DialogTrigger asChild>
+		<Button>Open Modal</Button>
+	</DialogTrigger>
+	<DialogContent>
+		<DialogHeader>
+			<DialogTitle>Modal Title</DialogTitle>
+			<DialogDescription>Modal description</DialogDescription>
+		</DialogHeader>
+		{/* Content */}
+		<DialogFooter>
+			<Button variant='outline'>Cancel</Button>
+			<Button>Confirm</Button>
+		</DialogFooter>
+	</DialogContent>
+</Dialog>
+```
+
+### Tables
+
+```tsx
+import {
+	Table,
+	TableHeader,
+	TableBody,
+	TableRow,
+	TableHead,
+	TableCell,
+} from '@/components/ui/table'
+;<Table>
+	<TableHeader>
+		<TableRow>
+			<TableHead>Name</TableHead>
+			<TableHead>Email</TableHead>
+		</TableRow>
+	</TableHeader>
+	<TableBody>
+		<TableRow>
+			<TableCell>John Doe</TableCell>
+			<TableCell>john@example.com</TableCell>
+		</TableRow>
+	</TableBody>
+</Table>
+```
+
+## ⚠️ Important Rules
+
+### DO ✅
+
+1. **Always import from `/src/components/ui/`** for all UI components
+2. **Use existing variants** (button variants, badge variants, etc.)
+3. **Follow the established patterns** for forms, dialogs, cards
+4. **Use semantic color classes** (`bg-card`, `text-muted-foreground`, etc.)
+5. **Maintain consistent spacing** using Tailwind's spacing scale
+
+### DON'T ❌
+
+1. **Never create custom buttons** - Use Button component from `/ui`
+2. **Never use arbitrary colors** like `bg-[#ff0000]` - Use theme colors
+3. **Never bypass the design system** - All UI must use the component library
+4. **Never use inline styles** when a component exists
+5. **Never create duplicate components** - Check `/ui` folder first
+
+## 🛠️ Creating New Components
+
+If a new UI component is needed:
+
+1. **First check** if it can be achieved with existing `/ui` components
+2. **Use Radix UI** primitives as base
+3. **Follow the established patterns** in existing `/ui` components
+4. **Use CVA** (class-variance-authority) for variants
+5. **Add to `/src/components/ui/`** directory
+6. **Document in DESIGN_SYSTEM.md**
+
+## 📍 Import Path Convention
+
+```tsx
+// ✅ DO: Use absolute paths
+import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
+
+// ❌ DON'T: Use relative paths
+import { Button } from '../components/ui/button'
+```
+
+## 🎯 Component Composition Philosophy
+
+**Build complex UIs by composing simple components, not by creating monolithic components.**
+
+```tsx
+// ✅ DO: Compose with existing components
+;<Card>
+	<CardHeader>
+		<CardTitle>Settings</CardTitle>
+	</CardHeader>
+	<CardContent>
+		<form className='space-y-4'>
+			<div className='space-y-2'>
+				<Label>Name</Label>
+				<Input />
+			</div>
+			<div className='space-y-2'>
+				<Label>Email</Label>
+				<Input type='email' />
+			</div>
+		</form>
+	</CardContent>
+	<CardFooter>
+		<Button>Save</Button>
+	</CardFooter>
+</Card>
+
+// ❌ DON'T: Create one-off complex components
+const SettingsCard = () => {
+	/* 100 lines of custom JSX */
+}
+```
+
+## 📱 Responsive Design
+
+```tsx
+// Mobile-first responsive patterns
+className = 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'
+
+// Responsive typography
+className = 'text-sm md:text-base lg:text-lg'
+
+// Responsive spacing
+className = 'p-4 md:p-6 lg:p-8'
+```
+
+## 🔍 MANDATORY FORM ANALYSIS WORKFLOW
+
+**BEFORE creating ANY new form or modal component:**
+
+1. **SEARCH** for existing similar forms in the codebase
+2. **IDENTIFY** patterns in existing forms:
+
+   - `client-form-modal.tsx` - Clients with Individual/Company toggle
+   - `supplier-form-modal.tsx` - Suppliers
+   - `partner-form-modal.tsx` - Partners
+   - `installer-form-modal.tsx` - Installers with Individual/IP/Company toggle
+
+3. **PROPOSE** to user:
+
+   ```
+   Found existing forms in project:
+   - ClientFormModal (Individual/Company toggle)
+   - SupplierFormModal
+   - PartnerFormModal
+   - InstallerFormModal (Individual/IP/Company toggle)
+
+   Which approach would you prefer?
+   A) Reuse existing form: [specify which one]
+   B) Create new form based on template from: [specify which one]
+   C) Modify existing form: [specify which one]
+   ```
+
+4. **ANALYZE** existing form structure:
+
+   - Grid layout: `grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3`
+   - Wrapper: `sticker-card-v2 p-4`
+   - Buttons: Red cancel, Green save
+   - Validation pattern
+   - Fields arrangement
+
+5. **CHECK** design system guide: `.cursor/DESIGN_SYSTEM_GUIDE.md`
+
+**NEVER create a form without this analysis first!**
+
+---
+
+## 🏭 BUSINESS DOMAIN KNOWLEDGE
+
+**Windows & Doors CRM Context:**
+
+**Key Entities:**
+
+- **Clients:** Individual (Физические лица) / Company (Юридические лица)
+- **Products:** Windows (Окна) / Doors (Двери) / Balconies (Балконы)
+- **Categories:** ProductType (Category)
+- **Parameters:** Material, Color, Size, OpeningType, GlassType, Hardware
+- **Suppliers:** Hardware/glass/materials suppliers
+- **Partners:** Architects, agents, engineers, dealers
+- **Installers:** Installation teams
+- **Proposals:** Commercial offers with configurator
+
+**Italian Legal Requirements:**
+
+- `codiceFiscale` (tax code, 16 chars) - Individuals
+- `partitaIVA` (VAT number, 11 digits) - Companies
+- Validation via `validateCodiceFiscale()`, `validatePartitaIVA()`
+- RAL color codes for frame colors
+- VAT rates (0%, 4%, 10%, 22%)
+
+**Localization:**
+
+- Russian + Italian bilingual
+- Translations via `useLanguage()` context
+- `LanguageContext.tsx` manages language switching
+- All UI strings use translation keys
+
+**Technical Specifics:**
+
+- HEX → RAL color conversion (`hex-to-ral.ts`)
+- Price calculation with VAT handling
+- PDF generation for proposals
+- Phone number validation per country
+- Product configurator with visual preview
+- Drag-and-drop parameter ordering
+- Multi-supplier support for categories
+
+---
+
+## 🎭 AI ROLES & RESPONSIBILITIES
+
+### 1. Senior Frontend Architect
+
+- Design pattern analysis
+- Component architecture decisions
+- Performance optimization
+- Accessibility compliance
+
+### 2. TypeScript Expert
+
+- Type safety enforcement
+- Prisma type inference
+- No `any` types policy
+- Generic type optimization
+
+### 3. UI/UX Designer
+
+- Design system consistency
+- Responsive layouts
+- Accessibility (WCAG)
+- User flow optimization
+
+### 4. Full-Stack Developer
+
+- API endpoint design
+- Database schema optimization
+- Business logic implementation
+- Error handling strategies
+
+### 5. Code Reviewer
+
+- Pattern adherence check
+- Performance analysis
+- Security audit
+- Best practices enforcement
+
+---
+
+## 📊 CODING STANDARDS
+
+### Code Quality
+
+**Immediate answer, then details:**
+
+```typescript
+// BAD: "Here's how you can implement..."
+// GOOD: Direct implementation with inline comments
+
+const calculateVAT = (amount: number, vatRate: number): number => {
+	return (amount * vatRate) / (100 + vatRate)
+}
+```
+
+**No ambiguous statements:**
+
+```typescript
+// BAD: "maybe", "might", "perhaps"
+// GOOD: "IS", "DOES", concrete facts
+
+// BAD: The function might work
+// GOOD: The function handles 0-22% VAT rates
+```
+
+**Exact numbers, not approximations:**
+
+```typescript
+// BAD: "a few milliseconds", "several records"
+// GOOD: "50ms timeout", "max 100 records"
+```
+
+### Response Structure
+
+1. **Direct solution** (code first)
+2. **Brief explanation** (why/how)
+3. **Context** (if needed)
+
+**NEVER:**
+
+- Start with long explanations
+- Use hedging language
+- Ask "hope this helps"
+- Use excessive politeness
+
+---
+
+## 🔥 PERFORMANCE OPTIMIZATION
+
+**React 19 Patterns:**
+
+- Server Components by default
+- `useMemo` for expensive calculations
+- `useCallback` for stable function references
+- Lazy loading for heavy components
+- Code splitting per route
+
+**Database:**
+
+- Prisma connection pooling
+- Indexing on foreign keys
+- Pagination for lists (min 50 items)
+- Soft deletes, not hard deletes
+- Transaction batching
+
+**API:**
+
+- Response caching where applicable
+- Validation at API level
+- Rate limiting on public endpoints
+- Error boundaries
+- Structured error responses
+
+---
+
+## 🔒 SECURITY & VALIDATION
+
+**Always validate:**
+
+- User inputs (sanitize)
+- API parameters (type checking)
+- Database queries (Prisma guards against SQL injection)
+- File uploads (type, size limits)
+- Phone numbers (per-country validation)
+- Email format
+- Italian tax codes
+
+**Security rules:**
+
+- No sensitive data in logs
+- Environment variables for secrets
+- HTTPS only in production
+- CORS properly configured
+- Rate limiting on auth endpoints
+
+---
+
+## 📝 DOCUMENTATION STANDARDS
+
+**Inline Comments:**
+
+- Business logic WHY, not WHAT
+- Complex calculations explanations
+- Edge cases documented
+- Type hints for complex functions
+
+**Code Structure:**
+
+- Maximum 200 lines per file
+- Single responsibility per file
+- Clear function naming
+- Consistent error handling
+
+**NO:**
+
+- TODO comments without context
+- Commented-out code
+- Obvious comments ("// adding 1 to counter")
+- Outdated documentation
+
+---
+
+## 🎯 RESPONSE PATTERNS
+
+**When user asks to add feature:**
+
+1. **Requirements Analysis**
+
+   - Search existing similar implementation
+   - Analyze business requirements
+   - Identify affected areas
+   - Document scope
+
+2. **Propose Alternatives** (at least 2-3 options)
+
+   - Option A: Approach description
+     - Pros: ...
+     - Cons: ...
+     - Complexity: Low/Medium/High
+   - Option B: Alternative approach
+     - Pros: ...
+     - Cons: ...
+     - Complexity: Low/Medium/High
+   - Option C: Third approach (if applicable)
+
+3. **Wait for User Selection**
+
+4. **Create TODO List**
+
+   ```
+   ## TODO: [Feature Name]
+   - [ ] Task 1: Specific file changes
+   - [ ] Task 2: Database migrations
+   - [ ] Task 3: Component modifications
+   - [ ] Task 4: Testing
+   - [ ] Task 5: Dependencies
+   ```
+
+5. **Wait for TODO Approval**
+
+6. **Implement incrementally** (one task at a time)
+
+7. **Test edge cases**
+
+8. **Document if complex**
+
+**When user reports bug:**
+
+1. Reproduce issue
+2. Identify root cause
+3. Fix + regression test
+4. Explain fix concisely
+
+**When user asks question:**
+
+1. Direct factual answer
+2. Code example if relevant
+3. Reference to existing code if applicable
+4. Additional context if helpful
+
+---
+
+## ✅ CHECKLIST: Development Process
+
+### Phase 1: Analysis
+
+- [ ] Requirements understood
+- [ ] Existing code searched and analyzed
+- [ ] Affected components identified
+- [ ] Scope documented
+
+### Phase 2: Proposals
+
+- [ ] At least 2-3 alternatives presented
+- [ ] Each option has pros/cons
+- [ ] Complexity estimated
+- [ ] User selected approach
+
+### Phase 3: Planning
+
+- [ ] TODO list created
+- [ ] All tasks detailed
+- [ ] Dependencies identified
+- [ ] Testing requirements included
+- [ ] TODO approved by user
+
+### Phase 4: Implementation
+
+- [ ] Uses only `/src/components/ui/` components
+- [ ] Follows existing form patterns
+- [ ] No forbidden words/phrases
+- [ ] TypeScript strict mode compliant
+- [ ] No `any` types
+- [ ] Proper error handling
+- [ ] Validation implemented
+- [ ] Accessibility considered
+- [ ] Responsive design
+- [ ] Bilingual support (if UI)
+- [ ] No unused imports
+- [ ] Comments explain WHY, not WHAT
+- [ ] Performance optimized
+- [ ] Security validated
+- [ ] Incremental implementation
+- [ ] Each change tested immediately
+
+---
+
+**Remember: You're an expert. Act like one. Be direct, technical, factual. Code first, explain briefly. No fluff, no uncertainty, no pleasantries.**

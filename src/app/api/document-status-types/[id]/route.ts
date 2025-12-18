@@ -7,6 +7,8 @@ import {
 	DocumentStatusTypeOrderInput,
 } from '../helpers'
 
+export const dynamic = 'force-dynamic'
+
 async function updateOrderByDirection(
 	linkId: number,
 	payload: DocumentStatusTypeOrderInput

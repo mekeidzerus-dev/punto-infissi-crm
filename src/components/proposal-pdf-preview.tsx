@@ -6,6 +6,7 @@ import { Download, Printer, X } from 'lucide-react'
 import { useLanguage } from '@/contexts/LanguageContext'
 import { ProductVisualizer } from '@/components/product-visualizer'
 import { logger } from '@/lib/logger'
+import { apiClient, ApiError } from '@/lib/api-client'
 
 interface Client {
 	firstName?: string
@@ -74,28 +75,34 @@ export function ProposalPDFPreview({
 	useEffect(() => {
 		const fetchCompanyData = async () => {
 			try {
-				const response = await fetch('/api/organization')
-				if (response.ok) {
-					const org = await response.json()
-					if (org) {
-						// Загружаем логотип компании
-						if (org.logoUrl) {
-							setCompanyLogo(org.logoUrl)
-						}
-						// Загружаем данные компании из БД
-						setCompanyData({
-							name: org.name || '',
-							phone: org.phone || '',
-							email: org.email || '',
-							address: org.address || '',
-						})
+				const org = await apiClient.get<{
+					name?: string
+					phone?: string
+					email?: string
+					address?: string
+					logoUrl?: string
+				}>('/api/organization')
+				
+				if (org) {
+					// Загружаем логотип компании
+					if (org.logoUrl) {
+						setCompanyLogo(org.logoUrl)
 					}
-				} else {
-					// Если API вернул ошибку, используем localStorage
-					logger.warn('API organization returned error, using localStorage fallback')
+					// Загружаем данные компании из БД
+					setCompanyData({
+						name: org.name || '',
+						phone: org.phone || '',
+						email: org.email || '',
+						address: org.address || '',
+					})
 				}
 			} catch (error) {
-				logger.error('Error fetching company data:', error || undefined)
+				logger.error('Error fetching company data:', error)
+				if (error instanceof ApiError && error.status === 401) {
+					return
+				}
+				// Если API вернул ошибку, используем localStorage
+				logger.warn('API organization returned error, using localStorage fallback')
 				// Fallback на localStorage если API не работает
 				const logoPath = localStorage.getItem('modocrm-logo-path')
 				if (logoPath) setCompanyLogo(logoPath)

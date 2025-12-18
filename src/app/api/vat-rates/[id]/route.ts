@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
+
 import { ApiError, parseJson, success, withApiHandler } from '@/lib/api-handler'
 import {
 	buildVatRateUpdateData,
@@ -7,8 +8,11 @@ import {
 	ensureNonDuplicateDefault,
 	vatRateUpdateBodySchema,
 } from '../helpers'
+
 import { getCurrentOrganizationId } from '@/lib/organization-context'
 
+
+export const dynamic = 'force-dynamic'
 export const PUT = withApiHandler(async (request: NextRequest, { params }) => {
 	const id = ensureVatRateId(params?.id as string)
 	const payload = await parseJson(request, vatRateUpdateBodySchema)

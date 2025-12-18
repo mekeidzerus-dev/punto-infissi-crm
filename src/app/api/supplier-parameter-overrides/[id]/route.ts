@@ -7,6 +7,8 @@ import {
 	ensureOverrideIdFromParams,
 } from '../helpers'
 
+export const dynamic = 'force-dynamic'
+
 const updateBodyWithoutId = supplierParameterOverrideUpdateBodySchema
 
 export const GET = withApiHandler(async (_request, { params }) => {

@@ -228,3 +228,6 @@ main().catch(error => {
 	console.error('❌ Ошибка при проверке:', error)
 	process.exit(1)
 })
+
+
+

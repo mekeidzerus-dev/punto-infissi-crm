@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { logger } from '@/lib/logger'
+import { apiClient, ApiError } from '@/lib/api-client'
 import {
 	Dialog,
 	DialogContent,
@@ -308,18 +309,7 @@ export function DocumentStatusesManager() {
 
 	const loadStatuses = async () => {
 		try {
-			const response = await fetch('/api/document-statuses')
-			if (!response.ok) {
-				const errorData = await response.json().catch(() => ({}))
-				logger.error('Error loading statuses:', {
-					status: response.status,
-					error: errorData.error || errorData.details || 'Unknown error',
-				})
-				setStatuses([])
-				return
-			}
-			
-				const data = await response.json()
+			const data = await apiClient.get<any[]>('/api/document-statuses')
 			
 			// Убеждаемся, что data - массив
 			if (!Array.isArray(data)) {
@@ -357,24 +347,16 @@ export function DocumentStatusesManager() {
 			setStatuses(sortedStatuses)
 		} catch (error) {
 			logger.error('Error loading statuses:', error)
+			if (error instanceof ApiError && error.status === 401) {
+				return
+			}
 			setStatuses([])
 		}
 	}
 
 	const loadDocumentTypes = async () => {
 		try {
-			const response = await fetch('/api/document-types')
-			if (!response.ok) {
-				const errorData = await response.json().catch(() => ({}))
-				logger.error('Error loading document types:', {
-					status: response.status,
-					error: errorData.error || errorData.details || 'Unknown error',
-				})
-				setDocumentTypes([])
-				return
-			}
-			
-				const data = await response.json()
+			const data = await apiClient.get<any[]>('/api/document-types')
 			
 			// Убеждаемся, что data - массив
 			if (!Array.isArray(data)) {
@@ -386,6 +368,9 @@ export function DocumentStatusesManager() {
 				setDocumentTypes(data)
 		} catch (error) {
 			logger.error('Error loading document types:', error)
+			if (error instanceof ApiError && error.status === 401) {
+				return
+			}
 			setDocumentTypes([])
 		}
 	}
@@ -416,46 +401,43 @@ export function DocumentStatusesManager() {
 
 	const handleSave = async () => {
 		try {
-			const method = editingStatus ? 'PUT' : 'POST'
-
-			const response = await fetch('/api/document-statuses', {
-				method,
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					...(editingStatus && { id: editingStatus.id }),
-					...formData,
-				}),
-			})
-
-			if (response.ok) {
-				if (documentTypes.length > 0) {
-					await loadStatuses()
-				}
-				setShowModal(false)
-				setEditingStatus(null)
-				toast.success(
-					locale === 'ru'
-						? editingStatus
-							? 'Статус обновлен!'
-							: 'Статус создан!'
-						: editingStatus
-						? 'Stato aggiornato!'
-						: 'Stato creato!',
-					{ duration: 2000 }
-				)
-			} else {
-				const error = await response.json()
-				const errorMessage = error.error || error.details || 'Unknown error'
-				toast.error(
-					locale === 'ru' ? `Ошибка: ${errorMessage}` : `Errore: ${errorMessage}`,
-					{ duration: 4000 }
-				)
+			const payload = {
+				...(editingStatus && { id: editingStatus.id }),
+				...formData,
 			}
+
+			if (editingStatus) {
+				await apiClient.put('/api/document-statuses', payload)
+			} else {
+				await apiClient.post('/api/document-statuses', payload)
+			}
+
+			if (documentTypes.length > 0) {
+				await loadStatuses()
+			}
+			setShowModal(false)
+			setEditingStatus(null)
+			toast.success(
+				locale === 'ru'
+					? editingStatus
+						? 'Статус обновлен!'
+						: 'Статус создан!'
+					: editingStatus
+					? 'Stato aggiornato!'
+					: 'Stato creato!',
+				{ duration: 2000 }
+			)
 		} catch (error) {
 			logger.error('Error saving status:', error)
+			if (error instanceof ApiError && error.status === 401) {
+				return
+			}
+			const errorMessage = error instanceof ApiError 
+				? error.message 
+				: (locale === 'ru' ? 'Ошибка сохранения' : 'Errore nel salvataggio')
 			toast.error(
-				locale === 'ru' ? 'Ошибка сохранения' : 'Errore nel salvataggio',
-				{ duration: 3000 }
+				locale === 'ru' ? `Ошибка: ${errorMessage}` : `Errore: ${errorMessage}`,
+				{ duration: 4000 }
 			)
 		}
 	}
@@ -475,34 +457,28 @@ export function DocumentStatusesManager() {
 		if (!deleteDialog.statusId) return
 
 		try {
-			const response = await fetch(`/api/document-statuses?id=${deleteDialog.statusId}`, {
-				method: 'DELETE',
-			})
+			await apiClient.delete(`/api/document-statuses?id=${deleteDialog.statusId}`)
 
-			if (response.ok) {
-				if (documentTypes.length > 0) {
-					await loadStatuses()
-				}
-				setDeleteDialog({ isOpen: false, statusId: null, statusName: '' })
-				toast.success(
-					locale === 'ru' ? 'Статус удален!' : 'Stato eliminato!',
-					{ duration: 2000 }
-				)
-			} else {
-				const error = await response.json()
-				const errorMessage = error.error || error.details || 'Unknown error'
-				setDeleteDialog({ isOpen: false, statusId: null, statusName: '' })
-				toast.error(
-					locale === 'ru' ? `Ошибка: ${errorMessage}` : `Errore: ${errorMessage}`,
-					{ duration: 4000 }
-				)
+			if (documentTypes.length > 0) {
+				await loadStatuses()
 			}
+			setDeleteDialog({ isOpen: false, statusId: null, statusName: '' })
+			toast.success(
+				locale === 'ru' ? 'Статус удален!' : 'Stato eliminato!',
+				{ duration: 2000 }
+			)
 		} catch (error) {
 			logger.error('Error deleting status:', error)
+			if (error instanceof ApiError && error.status === 401) {
+				return
+			}
+			const errorMessage = error instanceof ApiError 
+				? error.message 
+				: (locale === 'ru' ? 'Ошибка удаления' : 'Errore nell\'eliminazione')
 			setDeleteDialog({ isOpen: false, statusId: null, statusName: '' })
 			toast.error(
-				locale === 'ru' ? 'Ошибка удаления' : 'Errore nell\'eliminazione',
-				{ duration: 3000 }
+				locale === 'ru' ? `Ошибка: ${errorMessage}` : `Errore: ${errorMessage}`,
+				{ duration: 4000 }
 			)
 		}
 	}
@@ -513,49 +489,36 @@ export function DocumentStatusesManager() {
 		isDefault: boolean
 	) => {
 		try {
-			const response = await fetch(
-				`/api/document-statuses/${statusId}/set-default`,
+			await apiClient.post(`/api/document-statuses/${statusId}/set-default`, {
+				documentTypeId, // Используется только для валидации, API установит для всех типов
+				isDefault,
+			})
+
+			if (documentTypes.length > 0) {
+				await loadStatuses()
+			}
+			toast.success(
+				locale === 'ru'
+					? isDefault
+						? 'Статус установлен как основной для всех типов документов'
+						: 'Пометка "Основной" снята'
+					: isDefault
+					? 'Stato impostato come principale per tutti i tipi di documenti'
+					: 'Etichetta "Principale" rimossa',
 				{
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({
-						documentTypeId, // Используется только для валидации, API установит для всех типов
-						isDefault,
-					}),
+					duration: 2000,
 				}
 			)
-
-			if (response.ok) {
-				if (documentTypes.length > 0) {
-					await loadStatuses()
-				}
-				toast.success(
-					locale === 'ru'
-						? isDefault
-							? 'Статус установлен как основной для всех типов документов'
-							: 'Пометка "Основной" снята'
-						: isDefault
-						? 'Stato impostato come principale per tutti i tipi di documenti'
-						: 'Etichetta "Principale" rimossa',
-					{
-						duration: 2000,
-					}
-				)
-			} else {
-				const error = await response.json()
-				toast.error(
-					locale === 'ru'
-						? `Ошибка: ${error.error || error.details}`
-						: `Errore: ${error.error || error.details}`,
-					{
-						duration: 3000,
-					}
-				)
-			}
 		} catch (error) {
 			logger.error('Error setting default status:', error)
+			if (error instanceof ApiError && error.status === 401) {
+				return
+			}
+			const errorMessage = error instanceof ApiError 
+				? error.message 
+				: (locale === 'ru' ? 'Ошибка установки статуса' : 'Errore impostazione stato')
 			toast.error(
-				locale === 'ru' ? 'Ошибка установки статуса' : 'Errore impostazione stato',
+				locale === 'ru' ? `Ошибка: ${errorMessage}` : `Errore: ${errorMessage}`,
 				{
 					duration: 3000,
 				}
@@ -635,16 +598,7 @@ export function DocumentStatusesManager() {
 									globalOrder: index,
 								}))
 
-								const response = await fetch('/api/document-statuses/reorder', {
-									method: 'POST',
-									headers: { 'Content-Type': 'application/json' },
-									body: JSON.stringify({ items }),
-								})
-
-								if (!response.ok) {
-									const errorData = await response.json().catch(() => ({}))
-									throw new Error(errorData.error || 'Failed to reorder')
-								}
+								await apiClient.post('/api/document-statuses/reorder', { items })
 
 								// Перезагружаем статусы после успешного обновления
 								await loadStatuses()
@@ -657,10 +611,16 @@ export function DocumentStatusesManager() {
 								logger.error('Error reordering statuses:', error)
 								// Откатываем при ошибке
 								setStatuses(previousState)
+								if (error instanceof ApiError && error.status === 401) {
+									return
+								}
+								const errorMessage = error instanceof ApiError 
+									? error.message 
+									: (error instanceof Error ? error.message : 'Unknown error')
 								toast.error(
 									locale === 'ru' 
-										? `Ошибка изменения порядка: ${error instanceof Error ? error.message : 'Unknown error'}`
-										: `Errore nel riordinare: ${error instanceof Error ? error.message : 'Errore sconosciuto'}`,
+										? `Ошибка изменения порядка: ${errorMessage}`
+										: `Errore nel riordinare: ${errorMessage}`,
 									{ duration: 4000 }
 								)
 							} finally {

@@ -1,13 +1,17 @@
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
+
 import { parseJson, success, withApiHandler } from '@/lib/api-handler'
 import {
+
 	buildSupplierCategoryCreateData,
 	parseSupplierCategoryQuery,
 	supplierCategoryCreateBodySchema,
 	supplierCategoryDeleteBodySchema,
 } from './helpers'
 
+
+export const dynamic = 'force-dynamic'
 export const GET = withApiHandler(async (request: NextRequest) => {
 	const query = parseSupplierCategoryQuery(request.nextUrl.searchParams)
 

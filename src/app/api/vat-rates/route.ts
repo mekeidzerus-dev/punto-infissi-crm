@@ -1,13 +1,17 @@
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
+
 import { parseJson, success, withApiHandler } from '@/lib/api-handler'
 import {
 	buildVatRateCreateData,
 	ensureNonDuplicateDefault,
 	vatRateCreateBodySchema,
 } from './helpers'
+
 import { getCurrentOrganizationId } from '@/lib/organization-context'
 
+
+export const dynamic = 'force-dynamic'
 export const GET = withApiHandler(async () => {
 	const { requireAuth } = await import('@/lib/auth-helpers')
 	const { createStandardVATRatesForOrganization } = await import('@/lib/vat-rates')

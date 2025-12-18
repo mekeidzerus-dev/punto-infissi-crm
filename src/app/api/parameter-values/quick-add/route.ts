@@ -6,6 +6,8 @@ import {
 	parameterValueQuickAddBodySchema,
 } from '../helpers'
 
+export const dynamic = 'force-dynamic'
+
 export const POST = withApiHandler(async (request: NextRequest) => {
 	const payload = await parseJson(request, parameterValueQuickAddBodySchema)
 

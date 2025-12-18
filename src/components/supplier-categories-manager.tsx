@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Plus, Edit, Trash2, Tag } from 'lucide-react'
 import { useLanguage } from '@/contexts/LanguageContext'
 import { logger } from '@/lib/logger'
+import { apiClient, ApiError } from '@/lib/api-client'
 
 interface ProductCategory {
 	id: string
@@ -51,26 +52,27 @@ export function SupplierCategoriesManager({
 			setLoading(true)
 
 			// Загружаем все категории
-			const categoriesResponse = await fetch('/api/product-categories')
-			const categoriesData = await categoriesResponse.json()
+			const categoriesData = await apiClient.get<ProductCategory[]>('/api/product-categories')
 			setCategories(categoriesData)
 
 			// Загружаем связи поставщика с категориями
-			const supplierCategoriesResponse = await fetch(
+			const supplierCategoriesData = await apiClient.get<SupplierCategory[]>(
 				`/api/supplier-categories?supplierId=${supplierId}`
 			)
-			const supplierCategoriesData = await supplierCategoriesResponse.json()
 			setSupplierCategories(supplierCategoriesData)
 
 			// Уведомляем родительский компонент об изменении категорий
 			if (onCategoriesChange) {
 				const categoryIds = supplierCategoriesData.map(
-					(sc: SupplierCategory) => sc.categoryId
+					(sc) => sc.categoryId
 				)
 				onCategoriesChange(categoryIds)
 			}
 		} catch (error) {
 			logger.error('Error fetching data:', error)
+			if (error instanceof ApiError && error.status === 401) {
+				return
+			}
 		} finally {
 			setLoading(false)
 		}
@@ -97,38 +99,31 @@ export function SupplierCategoriesManager({
 					sc => sc.categoryId === categoryId
 				)
 				if (supplierCategory) {
-					const response = await fetch(
-						`/api/supplier-categories/${supplierCategory.id}`,
-						{
-							method: 'DELETE',
-						}
-					)
-
-					if (response.ok) {
+					try {
+						await apiClient.delete(`/api/supplier-categories/${supplierCategory.id}`)
 						// Оптимистичное обновление - удаляем из локального состояния
 						setSupplierCategories(prev =>
 							prev.filter(sc => sc.categoryId !== categoryId)
 						)
-					} else {
-						const errorData = await response.json()
-						alert(errorData.error || 'Ошибка при удалении категории')
+					} catch (error) {
+						if (error instanceof ApiError && error.status === 401) {
+							return
+						}
+						const errorMessage = error instanceof ApiError 
+							? error.message 
+							: 'Ошибка при удалении категории'
+						alert(errorMessage)
 						return
 					}
 				}
 			} else {
 				// Создаем связь
-				const response = await fetch('/api/supplier-categories', {
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({
+				try {
+					const newSupplierCategory = await apiClient.post<SupplierCategory>('/api/supplier-categories', {
 						supplierId,
 						categoryId,
 						parameters: {}, // Пока пустые параметры
-					}),
-				})
-
-				if (response.ok) {
-					const newSupplierCategory = await response.json()
+					})
 					// Оптимистичное обновление - добавляем в локальное состояние
 					const category = categories.find(c => c.id === categoryId)
 					if (category) {
@@ -142,6 +137,11 @@ export function SupplierCategoriesManager({
 							},
 						])
 					}
+				} catch (error) {
+					if (error instanceof ApiError && error.status === 401) {
+						return
+					}
+					logger.error('Error creating supplier category:', error)
 				}
 			}
 

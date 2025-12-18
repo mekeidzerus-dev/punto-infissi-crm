@@ -1,7 +1,9 @@
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
+
 import { parseJson, success, withApiHandler } from '@/lib/api-handler'
 import {
+
 	buildSupplierParameterOverrideCreateData,
 	ensureNoDuplicateOverride,
 	ensureParameterExists,
@@ -10,6 +12,8 @@ import {
 	supplierParameterOverrideCreateBodySchema,
 } from '@/app/api/supplier-parameter-overrides/helpers'
 
+
+export const dynamic = 'force-dynamic'
 const overrideInclude = {
 	parameter: {
 		include: {

@@ -1,11 +1,15 @@
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
+
 import { ApiError, parseJson, success, withApiHandler } from '@/lib/api-handler'
 import {
 	categoryParameterUnlinkBodySchema,
 	ensureCategoryId,
 	ensureParameterId,
 } from '../helpers'
+
+
+export const dynamic = 'force-dynamic'
 
 export const POST = withApiHandler(async (request: NextRequest) => {
 	const payload = await parseJson(request, categoryParameterUnlinkBodySchema)

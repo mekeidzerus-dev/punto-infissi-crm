@@ -7,6 +7,8 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Hammer } from 'lucide-react'
 import { logger } from '@/lib/logger'
+import { apiClient, ApiError } from '@/lib/api-client'
+import { toast } from 'sonner'
 import {
 	Card,
 	CardContent,
@@ -60,10 +62,8 @@ export default function InstallersPage() {
 	const fetchInstallers = async () => {
 		try {
 			setIsLoading(true)
-			const response = await fetch('/api/installers')
-			if (response.ok) {
-				setInstallers(await response.json())
-			}
+			const data = await apiClient.get<any[]>('/api/installers')
+			setInstallers(data)
 		} catch (error) {
 			logger.error('Error fetching installers:', error)
 		} finally {
@@ -116,29 +116,19 @@ export default function InstallersPage() {
 				notes: formData.notes || null,
 			}
 
-			const response = editingInstaller
-				? await fetch('/api/installers', {
-						method: 'PUT',
-						headers: { 'Content-Type': 'application/json' },
-						body: JSON.stringify({ id: editingInstaller.id, ...apiData }),
-				  })
-				: await fetch('/api/installers', {
-						method: 'POST',
-						headers: { 'Content-Type': 'application/json' },
-						body: JSON.stringify(apiData),
-				  })
-
-			if (!response.ok) {
-				const error = await response.json()
-				throw new Error(error.error || 'Failed to save installer')
+			if (editingInstaller) {
+				await apiClient.put('/api/installers', { id: editingInstaller.id, ...apiData })
+			} else {
+				await apiClient.post('/api/installers', apiData)
 			}
 
 			await fetchInstallers()
 			setEditingInstaller(null)
 			setIsFormOpen(false)
-		} catch (error: any) {
+		} catch (error) {
 			logger.error('Error saving installer:', error)
-			alert(error.message || t('errorSaving'))
+			const errorMessage = error instanceof ApiError ? error.message : t('errorSaving')
+			toast.error(errorMessage, { duration: 4000 })
 		}
 	}
 
@@ -151,11 +141,12 @@ export default function InstallersPage() {
 		if (!confirm(t('confirmDeleteInstaller'))) return
 
 		try {
-			await fetch(`/api/installers?id=${id}`, { method: 'DELETE' })
+			await apiClient.delete(`/api/installers?id=${id}`)
 			await fetchInstallers()
 		} catch (error) {
 			logger.error('Error deleting installer:', error)
-			alert(t('errorDeleting'))
+			const errorMessage = error instanceof ApiError ? error.message : t('errorDeleting')
+			toast.error(errorMessage, { duration: 4000 })
 		}
 	}
 

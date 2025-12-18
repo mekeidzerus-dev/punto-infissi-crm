@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server'
 import type { z } from 'zod'
+
 import { prisma } from '@/lib/prisma'
 import { ApiError, parseJson, success, withApiHandler } from '@/lib/api-handler'
 import {
@@ -7,8 +8,11 @@ import {
 	documentTemplateUpdateBodySchema,
 	ensureDocumentTemplateId,
 } from '../helpers'
+
 import { getCurrentOrganizationId } from '@/lib/organization-context'
 
+
+export const dynamic = 'force-dynamic'
 const updateBodyWithoutId = documentTemplateUpdateBodySchema.omit({ id: true })
 
 type DocumentTemplateUpdatePayload = z.infer<typeof updateBodyWithoutId>

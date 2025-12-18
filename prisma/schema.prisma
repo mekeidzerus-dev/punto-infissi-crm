@@ -99,13 +99,13 @@ model Invitation {
 }
 
 model PasswordResetToken {
-  id        String   @id @default(cuid())
+  id        String    @id @default(cuid())
   userId    String
-  user      User     @relation("PasswordResetTokens", fields: [userId], references: [id], onDelete: Cascade)
-  token     String   @unique
+  user      User      @relation("PasswordResetTokens", fields: [userId], references: [id], onDelete: Cascade)
+  token     String    @unique
   expiresAt DateTime
   usedAt    DateTime?
-  createdAt DateTime @default(now())
+  createdAt DateTime  @default(now())
 
   @@index([token])
   @@index([userId])
@@ -167,9 +167,10 @@ model Supplier {
   minOrderAmount Decimal? @db.Decimal(10, 2)
 
   // Метаданные
-  rating Int            @default(5)
-  status SupplierStatus @default(active)
-  notes  String?        @db.Text
+  rating   Int            @default(5)
+  status   SupplierStatus @default(active)
+  isSystem Boolean        @default(false)
+  notes    String?        @db.Text
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -184,6 +185,7 @@ model Supplier {
 
   @@unique([name])
   @@index([status])
+  @@index([isSystem])
   @@index([organizationId])
 }
 
@@ -358,6 +360,7 @@ model ProductCategory {
   icon           String
   description    String?
   isActive       Boolean       @default(true)
+  isSystem       Boolean       @default(false)
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
   organizationId String?
@@ -371,6 +374,7 @@ model ProductCategory {
 
   @@unique([name])
   @@index([isActive])
+  @@index([isSystem])
   @@index([organizationId])
 }
 

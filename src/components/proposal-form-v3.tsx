@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useLanguage } from '@/contexts/LanguageContext'
 import { logger } from '@/lib/logger'
+import { apiClient, ApiError } from '@/lib/api-client'
 import {
 	Select,
 	SelectContent,
@@ -237,20 +238,7 @@ export function ProposalFormV3({
 
 	const fetchClients = async () => {
 		try {
-			const response = await fetch('/api/clients')
-			
-			if (!response.ok) {
-				const errorData = await response.json().catch(() => ({}))
-				logger.error('Error fetching clients:', {
-					status: response.status,
-					error: errorData.error || errorData.details || 'Unknown error',
-				})
-				setClients([])
-				setFilteredClients([])
-				return
-			}
-			
-			const data = await response.json()
+			const data = await apiClient.get<any[]>('/api/clients')
 			
 			// Убеждаемся, что data - массив
 			if (!Array.isArray(data)) {
@@ -271,19 +259,7 @@ export function ProposalFormV3({
 
 	const fetchVATRates = async () => {
 		try {
-			const response = await fetch('/api/vat-rates')
-			
-			if (!response.ok) {
-				const errorData = await response.json().catch(() => ({}))
-				logger.error('Error fetching VAT rates:', {
-					status: response.status,
-					error: errorData.error || errorData.details || 'Unknown error',
-				})
-				setVatRates([])
-				return
-			}
-			
-			const data = await response.json()
+			const data = await apiClient.get<any[]>('/api/vat-rates')
 			
 			// Убеждаемся, что data - массив
 			if (!Array.isArray(data)) {
@@ -313,21 +289,7 @@ export function ProposalFormV3({
 
 	const fetchDocumentStatuses = async () => {
 		try {
-			const response = await fetch(
-				'/api/document-statuses?documentType=proposal'
-			)
-			
-			if (!response.ok) {
-				const errorData = await response.json().catch(() => ({}))
-				logger.error('Error fetching document statuses:', {
-					status: response.status,
-					error: errorData.error || errorData.details || 'Unknown error',
-				})
-				setDocumentStatuses([])
-				return
-			}
-			
-			const data = await response.json()
+			const data = await apiClient.get<any[]>('/api/document-statuses?documentType=proposal')
 			
 			// Убеждаемся, что data - массив
 			if (!Array.isArray(data)) {
@@ -396,42 +358,26 @@ export function ProposalFormV3({
 	const handleClientCreated = async (clientData: any) => {
 		try {
 			// Создаём клиента в БД
-			const response = await fetch('/api/clients', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify(clientData),
-			})
+			const createdClient = await apiClient.post<any>('/api/clients', clientData)
+			
+			// Клиент создан успешно
+			// Обновляем список клиентов
+			await fetchClients()
 
-			if (response.ok) {
-				const createdClient = await response.json()
-				// Клиент создан успешно
-
-				// Обновляем список клиентов
-				await fetchClients()
-
-				// Автоматически выбираем нового клиента
-				setFormData(prev => ({ ...prev, clientId: createdClient.id }))
-				setShowNewClientModal(false)
-				setClientSearchTerm('')
-				setShowClientSearch(false)
-			} else {
-				const error = await response.json()
-				logger.error('❌ Ошибка создания клиента:', error)
-				const errorMessage = error.error || 'Unknown error'
-				const message =
-					locale === 'ru'
-						? `${t('errorSaving')}: ${errorMessage}`
-						: typeof errorMessage === 'string' && errorMessage.includes('Unknown')
-						? 'Impossibile creare il cliente. Controlla i dati inseriti e riprova.'
-						: `Impossibile creare il cliente: ${errorMessage}`
-				toast.error(message, { duration: 4000 })
-			}
+			// Автоматически выбираем нового клиента
+			setFormData(prev => ({ ...prev, clientId: createdClient.id }))
+			setShowNewClientModal(false)
+			setClientSearchTerm('')
+			setShowClientSearch(false)
 		} catch (error) {
-			logger.error('❌ Ошибка:', error)
+			logger.error('❌ Ошибка создания клиента:', error)
+			const errorMessage = error instanceof ApiError ? error.message : 'Unknown error'
 			const message =
 				locale === 'ru'
-					? t('errorSaving') || 'Ошибка сохранения'
-					: 'Si è verificato un errore durante la creazione del cliente. Riprova più tardi.'
+					? `${t('errorSaving')}: ${errorMessage}`
+					: typeof errorMessage === 'string' && errorMessage.includes('Unknown')
+					? 'Impossibile creare il cliente. Controlla i dati inseriti e riprova.'
+					: `Impossibile creare il cliente: ${errorMessage}`
 			toast.error(message, { duration: 4000 })
 		}
 	}
@@ -441,39 +387,23 @@ export function ProposalFormV3({
 			if (!selectedClient) return
 
 			// Обновляем клиента в БД
-			const response = await fetch(`/api/clients/${selectedClient.id}`, {
-				method: 'PUT',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify(clientData),
-			})
+			const updatedClient = await apiClient.put(`/api/clients/${selectedClient.id}`, clientData)
+			
+			// Клиент обновлён успешно
+			// Обновляем список клиентов
+			await fetchClients()
 
-			if (response.ok) {
-				const updatedClient = await response.json()
-				// Клиент обновлён успешно
-
-				// Обновляем список клиентов
-				await fetchClients()
-
-				// Закрываем модальное окно
-				setShowEditClientModal(false)
-			} else {
-				const error = await response.json()
-				logger.error('❌ Ошибка обновления клиента:', error)
-				const errorMessage = error.error || 'Unknown error'
-				const message =
-					locale === 'ru'
-						? `${t('errorSaving')}: ${errorMessage}`
-						: typeof errorMessage === 'string' && errorMessage.includes('Unknown')
-						? 'Impossibile aggiornare il cliente. Controlla i dati inseriti e riprova.'
-						: `Impossibile aggiornare il cliente: ${errorMessage}`
-				toast.error(message, { duration: 4000 })
-			}
+			// Закрываем модальное окно
+			setShowEditClientModal(false)
 		} catch (error) {
 			logger.error('❌ Ошибка обновления клиента:', error)
+			const errorMessage = error instanceof ApiError ? error.message : 'Unknown error'
 			const message =
 				locale === 'ru'
-					? t('errorSaving') || 'Ошибка сохранения'
-					: 'Si è verificato un errore durante l\'aggiornamento del cliente. Riprova più tardi.'
+					? `${t('errorSaving')}: ${errorMessage}`
+					: typeof errorMessage === 'string' && errorMessage.includes('Unknown')
+					? 'Impossibile aggiornare il cliente. Controlla i dati inseriti e riprova.'
+					: `Impossibile aggiornare il cliente: ${errorMessage}`
 			toast.error(message, { duration: 4000 })
 		}
 	}
@@ -564,67 +494,60 @@ export function ProposalFormV3({
 					supplierIdType: typeof product.supplier.id,
 				})
 
-				const response = await fetch(apiUrl)
-				if (response.ok) {
-					const supplierCategories = await response.json()
-					logger.info('📦 Received supplier categories:', {
-						count: supplierCategories.length,
-						categories: supplierCategories.map((sc: any) => ({
-							id: sc.id,
-							supplierId: sc.supplier?.id,
-							supplierIdType: typeof sc.supplier?.id,
-							supplierName: sc.supplier?.name,
-							categoryId: sc.categoryId,
-						})),
-					})
+				const supplierCategories = await apiClient.get<any[]>(apiUrl)
+				logger.info('📦 Received supplier categories:', {
+					count: supplierCategories.length,
+					categories: supplierCategories.map((sc: any) => ({
+						id: sc.id,
+						supplierId: sc.supplier?.id,
+						supplierIdType: typeof sc.supplier?.id,
+						supplierName: sc.supplier?.name,
+						categoryId: sc.categoryId,
+					})),
+				})
 
-					// Сравниваем с учетом типов (может быть number или string)
-					const supplierCategory = supplierCategories.find((sc: any) => {
-						const scSupplierId = Number(sc.supplier?.id)
-						const productSupplierId = Number(product.supplier.id)
-						const match = scSupplierId === productSupplierId
-						
-						if (!match) {
-							logger.debug('🔍 Comparing:', {
-								scSupplierId,
-								scSupplierIdType: typeof sc.supplier?.id,
-								productSupplierId,
-								productSupplierIdType: typeof product.supplier.id,
-								match,
-							})
-						}
-						
-						return match
-					})
-
-					if (supplierCategory) {
-						supplierCategoryId = supplierCategory.id
-						logger.info('✅ Found supplier category:', {
-							supplierCategoryId,
-							supplierName: supplierCategory.supplier?.name,
-						})
-					} else {
-						logger.warn('⚠️ Supplier category not found:', {
-							categoryId: product.category.id,
-							categoryName: product.category.name,
-							supplierId: product.supplier.id,
-							supplierName: product.supplier.name,
-							availableSuppliers: supplierCategories.map((sc: any) => ({
-								id: sc.supplier?.id,
-								name: sc.supplier?.name,
-							})),
+				// Сравниваем с учетом типов (может быть number или string)
+				const supplierCategory = supplierCategories.find((sc: any) => {
+					const scSupplierId = Number(sc.supplier?.id)
+					const productSupplierId = Number(product.supplier.id)
+					const match = scSupplierId === productSupplierId
+					
+					if (!match) {
+						logger.debug('🔍 Comparing:', {
+							scSupplierId,
+							scSupplierIdType: typeof sc.supplier?.id,
+							productSupplierId,
+							productSupplierIdType: typeof product.supplier.id,
+							match,
 						})
 					}
+					
+					return match
+				})
+
+				if (supplierCategory) {
+					supplierCategoryId = supplierCategory.id
+					logger.info('✅ Found supplier category:', {
+						supplierCategoryId,
+						supplierName: supplierCategory.supplier?.name,
+					})
 				} else {
-					const errorText = await response.text()
-					logger.error('❌ API error:', {
-						status: response.status,
-						statusText: response.statusText,
-						errorText,
+					logger.warn('⚠️ Supplier category not found:', {
+						categoryId: product.category.id,
+						categoryName: product.category.name,
+						supplierId: product.supplier.id,
+						supplierName: product.supplier.name,
+						availableSuppliers: supplierCategories.map((sc: any) => ({
+							id: sc.supplier?.id,
+							name: sc.supplier?.name,
+						})),
 					})
 				}
 			} catch (error) {
 				logger.error('❌ Error fetching supplier category:', error)
+				if (error instanceof ApiError && error.status === 401) {
+					return
+				}
 			}
 
 			// Проверяем что supplierCategoryId был найден

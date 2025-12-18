@@ -1,7 +1,10 @@
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
+
 import { ApiError, success, withApiHandler } from '@/lib/api-handler'
 
+
+export const dynamic = 'force-dynamic'
 /**
  * Cron job для очистки неактивных аккаунтов
  * Должен вызываться ежедневно через внешний сервис (cron-job.org, GitHub Actions, Vercel Cron)

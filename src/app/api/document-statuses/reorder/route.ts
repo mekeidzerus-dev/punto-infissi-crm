@@ -1,8 +1,11 @@
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
+
 import { ApiError, parseJson, success, withApiHandler } from '@/lib/api-handler'
 import { z } from 'zod'
 
+
+export const dynamic = 'force-dynamic'
 const reorderBodySchema = z.object({
 	items: z.array(
 		z.object({

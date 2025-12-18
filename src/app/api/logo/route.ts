@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
+
 import { ApiError, json, withApiHandler } from '@/lib/api-handler'
 import { ensureOrganization } from '@/app/api/organization/helpers'
 import { validateLogoBuffer } from '@/lib/logo-validation'
@@ -8,9 +9,12 @@ import {
 	cleanupOldLogos,
 	optimizeLogoStorage,
 } from '@/lib/logo-storage'
+
 import { createRateLimitMiddleware, RATE_LIMITS } from '@/lib/rate-limiter'
 import { logger } from '@/lib/logger'
 
+
+export const dynamic = 'force-dynamic'
 const uploadLimiter = createRateLimitMiddleware(RATE_LIMITS.LOGO_UPLOAD)
 const deleteLimiter = createRateLimitMiddleware(RATE_LIMITS.LOGO_DELETE)
 

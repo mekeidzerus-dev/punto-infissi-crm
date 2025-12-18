@@ -1,4 +1,3 @@
-
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { ApiError, parseJson, success, withApiHandler } from '@/lib/api-handler'
@@ -8,6 +7,8 @@ import {
 	ensureCategoryId,
 	ensureParameterId,
 } from '@/app/api/category-parameters/helpers'
+
+export const dynamic = 'force-dynamic'
 
 type CategoryRouteParams = { id: string }
 

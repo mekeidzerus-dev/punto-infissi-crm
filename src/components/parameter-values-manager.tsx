@@ -7,6 +7,7 @@ import { Plus, Edit, Trash2, Check, X, Save } from 'lucide-react'
 import { useLanguage } from '@/contexts/LanguageContext'
 import { hexToRAL } from '@/lib/hex-to-ral'
 import { logger } from '@/lib/logger'
+import { apiClient, ApiError } from '@/lib/api-client'
 import {
 	Dialog,
 	DialogContent,
@@ -69,18 +70,16 @@ export function ParameterValuesManager({
 	const fetchValues = async () => {
 		setLoading(true)
 		try {
-			const response = await fetch(`/api/parameters/${parameterId}/values`)
-			if (response.ok) {
-				const data = await response.json()
-				setValues(data)
-				logger.info(
-					`✅ Loaded ${data.length} values for parameter ${parameterId}`
-				)
-			} else {
-				setValues([])
-			}
+			const data = await apiClient.get<ParameterValue[]>(`/api/parameters/${parameterId}/values`)
+			setValues(data)
+			logger.info(
+				`✅ Loaded ${data.length} values for parameter ${parameterId}`
+			)
 		} catch (error) {
 			logger.error('Error fetching values:', error)
+			if (error instanceof ApiError && error.status === 401) {
+				return
+			}
 			setValues([])
 		} finally {
 			setLoading(false)
@@ -103,29 +102,26 @@ export function ParameterValuesManager({
 		}
 
 		try {
-			const response = await fetch('/api/parameter-values/quick-add', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					parameterId,
-					value: ruValue,
-					valueIt: itValue,
-					hexColor: parameterType === 'COLOR' ? editHexColor : null,
-					ralCode: ralCode,
-					createdBy: 'admin',
-				}),
+			await apiClient.post('/api/parameter-values/quick-add', {
+				parameterId,
+				value: ruValue,
+				valueIt: itValue,
+				hexColor: parameterType === 'COLOR' ? editHexColor : null,
+				ralCode: ralCode,
+				createdBy: 'admin',
 			})
 
-			if (response.ok) {
-				setEditValue('')
-				setEditValueIt('')
-				setEditHexColor('#FFFFFF')
-				setIsAdding(false)
-				await fetchValues()
-				onValuesChanged()
-			}
+			setEditValue('')
+			setEditValueIt('')
+			setEditHexColor('#FFFFFF')
+			setIsAdding(false)
+			await fetchValues()
+			onValuesChanged()
 		} catch (error) {
 			logger.error('Error adding value:', error)
+			if (error instanceof ApiError && error.status === 401) {
+				return
+			}
 		}
 	}
 
@@ -139,26 +135,23 @@ export function ParameterValuesManager({
 		const itValue = editValueIt.trim() || editValue.trim()
 
 		try {
-			const response = await fetch(`/api/parameter-values/${valueId}`, {
-				method: 'PUT',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					value: ruValue,
-					valueIt: itValue,
-					hexColor: parameterType === 'COLOR' ? editHexColor : null,
-				}),
+			await apiClient.put(`/api/parameter-values/${valueId}`, {
+				value: ruValue,
+				valueIt: itValue,
+				hexColor: parameterType === 'COLOR' ? editHexColor : null,
 			})
 
-			if (response.ok) {
-				setEditingId(null)
-				setEditValue('')
-				setEditValueIt('')
-				setEditHexColor('#FFFFFF')
-				await fetchValues()
-				onValuesChanged()
-			}
+			setEditingId(null)
+			setEditValue('')
+			setEditValueIt('')
+			setEditHexColor('#FFFFFF')
+			await fetchValues()
+			onValuesChanged()
 		} catch (error) {
 			logger.error('Error editing value:', error)
+			if (error instanceof ApiError && error.status === 401) {
+				return
+			}
 		}
 	}
 
@@ -166,16 +159,14 @@ export function ParameterValuesManager({
 		if (!confirm('Удалить это значение?')) return
 
 		try {
-			const response = await fetch(`/api/parameter-values/${valueId}`, {
-				method: 'DELETE',
-			})
-
-			if (response.ok) {
-				await fetchValues()
-				onValuesChanged()
-			}
+			await apiClient.delete(`/api/parameter-values/${valueId}`)
+			await fetchValues()
+			onValuesChanged()
 		} catch (error) {
 			logger.error('Error deleting value:', error)
+			if (error instanceof ApiError && error.status === 401) {
+				return
+			}
 		}
 	}
 

@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { logger } from '@/lib/logger'
+import { apiClient, ApiError } from '@/lib/api-client'
 import {
 	Table,
 	TableBody,
@@ -119,37 +120,36 @@ export function DictionariesManager({
 
 	const fetchItems = async () => {
 		try {
-			const response = await fetch(`/api/dictionaries?type=${type}`)
-			if (response.ok) {
-				const data = await response.json()
-				if (data.length === 0 && type === 'sources') {
-					// Инициализация источников по умолчанию
-					await initializeDefaultSources()
-				} else {
-					setItems(data)
-				}
+			const data = await apiClient.get<DictionaryItem[]>(`/api/dictionaries?type=${type}`)
+			if (data.length === 0 && type === 'sources') {
+				// Инициализация источников по умолчанию
+				await initializeDefaultSources()
+			} else {
+				setItems(data)
 			}
 		} catch (error) {
 			logger.error('Error fetching dictionaries:', error)
+			if (error instanceof ApiError && error.status === 401) {
+				return
+			}
 		}
 	}
 
 	const initializeDefaultSources = async () => {
 		try {
 			for (const source of DEFAULT_SOURCES) {
-				await fetch('/api/dictionaries', {
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({
-						type: 'sources',
-						name: source.name,
-						isActive: true,
-					}),
+				await apiClient.post('/api/dictionaries', {
+					type: 'sources',
+					name: source.name,
+					isActive: true,
 				})
 			}
 			await fetchItems()
 		} catch (error) {
 			logger.error('Error initializing sources:', error)
+			if (error instanceof ApiError && error.status === 401) {
+				return
+			}
 		}
 	}
 
@@ -170,23 +170,20 @@ export function DictionariesManager({
 		if (!formData.name.trim()) return
 
 		try {
-			const response = await fetch('/api/dictionaries', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					type,
-					name: formData.name.trim(),
-					isActive: formData.isActive,
-				}),
+			await apiClient.post('/api/dictionaries', {
+				type,
+				name: formData.name.trim(),
+				isActive: formData.isActive,
 			})
 
-			if (response.ok) {
-				await fetchItems()
-				setFormData({ name: '', isActive: true })
-				setIsDialogOpen(false)
-			}
+			await fetchItems()
+			setFormData({ name: '', isActive: true })
+			setIsDialogOpen(false)
 		} catch (error) {
 			logger.error('Error adding dictionary:', error)
+			if (error instanceof ApiError && error.status === 401) {
+				return
+			}
 			alert(t('errorAdding'))
 		}
 	}
@@ -195,24 +192,21 @@ export function DictionariesManager({
 		if (!editingItem || !formData.name.trim()) return
 
 		try {
-			const response = await fetch('/api/dictionaries', {
-				method: 'PUT',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					id: editingItem.id,
-					name: formData.name.trim(),
-					isActive: formData.isActive,
-				}),
+			await apiClient.put('/api/dictionaries', {
+				id: editingItem.id,
+				name: formData.name.trim(),
+				isActive: formData.isActive,
 			})
 
-			if (response.ok) {
-				await fetchItems()
-				setEditingItem(null)
-				setFormData({ name: '', isActive: true })
-				setIsDialogOpen(false)
-			}
+			await fetchItems()
+			setEditingItem(null)
+			setFormData({ name: '', isActive: true })
+			setIsDialogOpen(false)
 		} catch (error) {
 			logger.error('Error editing dictionary:', error)
+			if (error instanceof ApiError && error.status === 401) {
+				return
+			}
 			alert(t('errorEditing'))
 		}
 	}
@@ -221,15 +215,13 @@ export function DictionariesManager({
 		if (!confirm(t('confirmDeleteItem'))) return
 
 		try {
-			const response = await fetch(`/api/dictionaries?id=${id}`, {
-				method: 'DELETE',
-			})
-
-			if (response.ok) {
-				await fetchItems()
-			}
+			await apiClient.delete(`/api/dictionaries?id=${id}`)
+			await fetchItems()
 		} catch (error) {
 			logger.error('Error deleting dictionary:', error)
+			if (error instanceof ApiError && error.status === 401) {
+				return
+			}
 			alert(t('errorDeleting'))
 		}
 	}

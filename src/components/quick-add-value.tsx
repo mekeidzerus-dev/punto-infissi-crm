@@ -2,9 +2,11 @@
 
 import { useState } from 'react'
 import { Plus, Check, X, Clock } from 'lucide-react'
+import { useSession } from 'next-auth/react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { logger } from '@/lib/logger'
+import { apiClient, ApiError } from '@/lib/api-client'
 
 interface QuickAddValueProps {
 	parameterId: string
@@ -19,6 +21,7 @@ export function QuickAddValue({
 	parameterType,
 	onValueAdded,
 }: QuickAddValueProps) {
+	const { data: session } = useSession()
 	const [isAdding, setIsAdding] = useState(false)
 	const [newValue, setNewValue] = useState('')
 	const [hexColor, setHexColor] = useState('#FFFFFF')
@@ -30,30 +33,23 @@ export function QuickAddValue({
 		setIsSubmitting(true)
 
 		try {
-			const response = await fetch('/api/parameter-values/quick-add', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					parameterId,
-					value: newValue.trim(),
-					valueIt: newValue.trim(),
-					hexColor: parameterType === 'COLOR' ? hexColor : null,
-					createdBy: 'admin', // TODO: получать из сессии пользователя
-				}),
+			const createdValue = await apiClient.post('/api/parameter-values/quick-add', {
+				parameterId,
+				value: newValue.trim(),
+				valueIt: newValue.trim(),
+				hexColor: parameterType === 'COLOR' ? hexColor : null,
+				createdBy: session?.user?.email || session?.user?.name || 'system',
 			})
 
-			if (response.ok) {
-				const createdValue = await response.json()
-				onValueAdded(createdValue)
-				setNewValue('')
-				setHexColor('#FFFFFF')
-				setIsAdding(false)
-			} else {
-				const error = await response.json()
-				alert(error.error || 'Ошибка при добавлении значения')
-			}
+			onValueAdded(createdValue)
+			setNewValue('')
+			setHexColor('#FFFFFF')
+			setIsAdding(false)
 		} catch (error) {
 			logger.error('Error adding value:', error)
+			if (error instanceof ApiError && error.status === 401) {
+				return
+			}
 			alert('Ошибка при добавлении значения')
 		} finally {
 			setIsSubmitting(false)

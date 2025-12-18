@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { logger } from '@/lib/logger'
+import { apiClient, ApiError } from '@/lib/api-client'
 import {
 	Dialog,
 	DialogContent,
@@ -234,11 +235,8 @@ export default function CategoriesPage() {
 	const fetchCategories = async () => {
 		try {
 			setIsLoading(true)
-			const response = await fetch('/api/categories')
-			if (response.ok) {
-				const data = await response.json()
-				setCategories(data)
-			}
+			const data = await apiClient.get<any[]>('/api/categories')
+			setCategories(data)
 		} catch (error) {
 			logger.error('Error fetching categories:', error)
 		} finally {
@@ -252,45 +250,30 @@ export default function CategoriesPage() {
 		description?: string
 	}) => {
 		try {
-			const url = editingCategory
-				? `/api/categories/${editingCategory.id}`
-				: '/api/categories'
-			const method = editingCategory ? 'PUT' : 'POST'
-
-			const response = await fetch(url, {
-				method,
-				headers: {
-					'Content-Type': 'application/json',
-				},
-				body: JSON.stringify(categoryData),
-			})
-
-			if (response.ok) {
-				await fetchCategories()
-				setShowForm(false)
-				setEditingCategory(undefined)
-				resetForm()
-				toast.success(
-					editingCategory
-						? locale === 'ru'
-							? 'Категория обновлена'
-							: 'Categoria aggiornata'
-						: locale === 'ru'
-						? 'Категория создана'
-						: 'Categoria creata'
-				)
+			if (editingCategory) {
+				await apiClient.put(`/api/categories/${editingCategory.id}`, categoryData)
 			} else {
-				const error = await response.json()
-				logger.error('Error saving category:', error)
-				toast.error(
-					(locale === 'ru' ? 'Ошибка: ' : 'Errore: ') +
-						(error.error || 'Unknown error')
-				)
+				await apiClient.post('/api/categories', categoryData)
 			}
+			
+			await fetchCategories()
+			setShowForm(false)
+			setEditingCategory(undefined)
+			resetForm()
+			toast.success(
+				editingCategory
+					? locale === 'ru'
+						? 'Категория обновлена'
+						: 'Categoria aggiornata'
+					: locale === 'ru'
+					? 'Категория создана'
+					: 'Categoria creata'
+			)
 		} catch (error) {
 			logger.error('Error saving category:', error)
+			const errorMessage = error instanceof ApiError ? error.message : 'Unknown error'
 			toast.error(
-				locale === 'ru' ? 'Ошибка при сохранении' : 'Errore durante il salvataggio'
+				(locale === 'ru' ? 'Ошибка: ' : 'Errore: ') + errorMessage
 			)
 		}
 	}
@@ -308,24 +291,15 @@ export default function CategoriesPage() {
 
 	const handleToggleActive = async (categoryId: string, isActive: boolean) => {
 		try {
-			const response = await fetch(`/api/categories/${categoryId}`, {
-				method: 'PUT',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ isActive: !isActive }),
-			})
-
-			if (response.ok) {
-				await fetchCategories()
-				toast.success(
-					`Категория ${isActive ? 'деактивирована' : 'активирована'}`
-				)
-			} else {
-				const error = await response.json()
-				toast.error(`Ошибка обновления: ${error.error}`)
-			}
+			await apiClient.put(`/api/categories/${categoryId}`, { isActive: !isActive })
+			await fetchCategories()
+			toast.success(
+				`Категория ${isActive ? 'деактивирована' : 'активирована'}`
+			)
 		} catch (error) {
 			logger.error('Error updating category:', error)
-			toast.error('Ошибка при обновлении категории')
+			const errorMessage = error instanceof ApiError ? error.message : 'Unknown error'
+			toast.error(`Ошибка обновления: ${errorMessage}`)
 		}
 	}
 
@@ -334,28 +308,23 @@ export default function CategoriesPage() {
 
 		setIsDeleting(true)
 		try {
-			const response = await fetch(`/api/categories/${categoryToDelete.id}`, {
-				method: 'DELETE',
-			})
-
-			if (response.ok) {
-				await fetchCategories()
-				toast.success(
-					locale === 'ru' ? 'Категория удалена' : 'Categoria eliminata'
-				)
-				setShowDeleteDialog(false)
-				setCategoryToDelete(null)
-			} else {
-				const error = await response.json()
-				if (error.details) {
-					toast.error(
-						`Нельзя удалить категорию: ${JSON.stringify(error.details)}`
-					)
-				} else {
-					toast.error(`Ошибка удаления: ${error.error}`)
-				}
-			}
+			await apiClient.delete(`/api/categories/${categoryToDelete.id}`)
+			
+			await fetchCategories()
+			toast.success(
+				locale === 'ru' ? 'Категория удалена' : 'Categoria eliminata'
+			)
+			setShowDeleteDialog(false)
+			setCategoryToDelete(null)
 		} catch (error) {
+			const errorMessage = error instanceof ApiError 
+				? (error.details ? JSON.stringify(error.details) : error.message)
+				: 'Unknown error'
+			if (error instanceof ApiError && error.details) {
+				toast.error(`Нельзя удалить категорию: ${JSON.stringify(error.details)}`)
+			} else {
+				toast.error(`Ошибка удаления: ${errorMessage}`)
+			}
 			logger.error('Error deleting category:', error)
 			toast.error('Ошибка при удалении категории')
 		} finally {

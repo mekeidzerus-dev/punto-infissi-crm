@@ -1,7 +1,9 @@
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
+
 import { ApiError, parseJson, success, withApiHandler } from '@/lib/api-handler'
 import {
+
 	buildPartnerCreateData,
 	buildPartnerUpdateData,
 	ensurePartnerId,
@@ -9,6 +11,8 @@ import {
 	partnerUpdateBodySchema,
 } from './helpers'
 
+
+export const dynamic = 'force-dynamic'
 export const GET = withApiHandler(async () => {
 	const { requireAuth } = await import('@/lib/auth-helpers')
 	const { getCurrentOrganizationId } = await import('@/lib/organization-context')

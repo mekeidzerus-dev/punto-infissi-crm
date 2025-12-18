@@ -1,6 +1,9 @@
 import { prisma } from '@/lib/prisma'
 import { success, withApiHandler } from '@/lib/api-handler'
 
+
+
+export const dynamic = 'force-dynamic'
 export const GET = withApiHandler(async () => {
 	const types = await prisma.documentType.findMany({
 		where: { isActive: true },

@@ -9,6 +9,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Building2, Plus, Edit, Trash2, Search, X } from 'lucide-react'
 import { useLanguage } from '@/contexts/LanguageContext'
 import { logger } from '@/lib/logger'
+import { apiClient, ApiError } from '@/lib/api-client'
 import {
 	Dialog,
 	DialogContent,
@@ -75,27 +76,28 @@ export function CategorySuppliersManager({
 			setLoading(true)
 
 			// Загружаем всех поставщиков
-			const suppliersResponse = await fetch('/api/suppliers')
-			const suppliersData = await suppliersResponse.json()
+			const suppliersData = await apiClient.get<Supplier[]>('/api/suppliers')
 			setSuppliers(suppliersData)
 
 			// Загружаем связи категории с поставщиками
-			const supplierCategoriesResponse = await fetch(
+			const supplierCategoriesData = await apiClient.get<SupplierCategory[]>(
 				`/api/supplier-categories?categoryId=${categoryId}`
 			)
-			const supplierCategoriesData = await supplierCategoriesResponse.json()
 			setSupplierCategories(supplierCategoriesData)
 
 			// Определяем доступных поставщиков (тех, кто еще не связан с этой категорией)
 			const linkedSupplierIds = supplierCategoriesData.map(
-				(sc: SupplierCategory) => sc.supplierId
+				(sc) => sc.supplierId
 			)
 			const available = suppliersData.filter(
-				(supplier: Supplier) => !linkedSupplierIds.includes(supplier.id)
+				(supplier) => !linkedSupplierIds.includes(supplier.id)
 			)
 			setAvailableSuppliers(available)
 		} catch (error) {
 			logger.error('Error fetching data:', error)
+			if (error instanceof ApiError && error.status === 401) {
+				return
+			}
 		} finally {
 			setLoading(false)
 		}
@@ -113,41 +115,35 @@ export function CategorySuppliersManager({
 
 			// Добавляем каждого поставщика
 			const promises = supplierIds.map(supplierId =>
-				fetch('/api/supplier-categories', {
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({
-						supplierId,
-						categoryId,
-						parameters: {},
-					}),
+				apiClient.post('/api/supplier-categories', {
+					supplierId,
+					categoryId,
+					parameters: {},
 				})
 			)
 
-			const responses = await Promise.all(promises)
-			const allSuccessful = responses.every(response => response.ok)
+			await Promise.all(promises)
 
-			if (allSuccessful) {
-				// Обновляем данные
-				await fetchData()
+			// Обновляем данные
+			await fetchData()
 
-				// Уведомляем родительский компонент
-				if (onSuppliersChange) {
-					const updatedSupplierIds = [
-						...supplierCategories.map(sc => sc.supplierId),
-						...supplierIds,
-					]
-					onSuppliersChange(updatedSupplierIds)
-				}
-
-				// Очищаем выбор и закрываем модальное окно
-				setSelectedSupplierIds([])
-				setShowAddModal(false)
-			} else {
-				alert(t('errorUpdating'))
+			// Уведомляем родительский компонент
+			if (onSuppliersChange) {
+				const updatedSupplierIds = [
+					...supplierCategories.map(sc => sc.supplierId),
+					...supplierIds,
+				]
+				onSuppliersChange(updatedSupplierIds)
 			}
+
+			// Очищаем выбор и закрываем модальное окно
+			setSelectedSupplierIds([])
+			setShowAddModal(false)
 		} catch (error) {
 			logger.error('Error adding suppliers:', error)
+			if (error instanceof ApiError && error.status === 401) {
+				return
+			}
 			alert(t('errorUpdating'))
 		} finally {
 			setLoading(false)
@@ -181,18 +177,7 @@ export function CategorySuppliersManager({
 	// Удаляем связь поставщик-категория
 	const removeSupplier = async (supplierCategoryId: string) => {
 		try {
-			const response = await fetch(
-				`/api/supplier-categories/${supplierCategoryId}`,
-				{
-					method: 'DELETE',
-				}
-			)
-
-			if (!response.ok) {
-				const errorData = await response.json()
-				alert(errorData.error || t('errorDeleting'))
-				return
-			}
+			await apiClient.delete(`/api/supplier-categories/${supplierCategoryId}`)
 
 			// Обновляем данные
 			await fetchData()
@@ -206,7 +191,13 @@ export function CategorySuppliersManager({
 			}
 		} catch (error) {
 			logger.error('Error removing supplier:', error)
-			alert(t('errorDeleting'))
+			if (error instanceof ApiError && error.status === 401) {
+				return
+			}
+			const errorMessage = error instanceof ApiError 
+				? error.message 
+				: t('errorDeleting')
+			alert(errorMessage)
 		}
 	}
 

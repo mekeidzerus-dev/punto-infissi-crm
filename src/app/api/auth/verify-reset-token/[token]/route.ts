@@ -1,7 +1,10 @@
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
+
 import { ApiError, success, withApiHandler } from '@/lib/api-handler'
 
+
+export const dynamic = 'force-dynamic'
 export const GET = withApiHandler(async (
 	request: NextRequest,
 	{ params }

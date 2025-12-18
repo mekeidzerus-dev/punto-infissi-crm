@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { logger } from '@/lib/logger'
+import { apiClient, ApiError } from '@/lib/api-client'
 import {
 	Select,
 	SelectContent,
@@ -62,9 +63,15 @@ export function GeneralSettings() {
 
 	const loadOrganizationData = async () => {
 		try {
-			const response = await fetch('/api/organization')
-			if (response.ok) {
-				const org = await response.json()
+			const org = await apiClient.get<{
+				faviconUrl?: string
+				logoUrl?: string
+				name?: string
+				phone?: string
+				email?: string
+				address?: string
+				currency?: string
+			}>('/api/organization')
 
 				// Фавикон
 				if (org.faviconUrl) {
@@ -90,29 +97,26 @@ export function GeneralSettings() {
 					address: org.address || '',
 				})
 
-				// Валюта
-				if (org.currency) {
-					setSelectedCurrency(org.currency)
-				}
+			// Валюта
+			if (org.currency) {
+				setSelectedCurrency(org.currency)
 			}
 		} catch (error) {
 			logger.error('Error loading organization data:', error)
+			if (error instanceof ApiError && error.status === 401) {
+				return
+			}
 		}
 	}
 
 	const updateOrganization = async (payload: Record<string, unknown>) => {
 		try {
-			const response = await fetch('/api/organization', {
-				method: 'PUT',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify(payload),
-			})
-			if (!response.ok) {
-				throw new Error('Failed to update organization')
-			}
-			return await response.json()
+			return await apiClient.put('/api/organization', payload)
 		} catch (error) {
 			logger.error('Error updating organization settings:', error)
+			if (error instanceof ApiError && error.status === 401) {
+				throw error
+			}
 			throw error
 		}
 	}
@@ -156,14 +160,9 @@ export function GeneralSettings() {
 		formData.append('file', file)
 
 		try {
-			const response = await fetch('/api/favicon', {
-				method: 'POST',
-				body: formData,
-			})
+			const data = await apiClient.post<{ success: boolean; path?: string; error?: string }>('/api/favicon', formData)
 
-			const data = await response.json()
-
-			if (data.success) {
+			if (data.success && data.path) {
 				setFavicon(data.path)
 				localStorage.setItem('modocrm-favicon-path', data.path)
 				window.dispatchEvent(new Event('favicon-updated'))
@@ -177,11 +176,14 @@ export function GeneralSettings() {
 				}
 				alert('Фавикон загружен и применен!')
 			} else {
-				alert('Ошибка загрузки: ' + data.error)
+				alert('Ошибка загрузки: ' + (data.error || 'Unknown error'))
 				setFaviconPreview('')
 			}
 		} catch (error) {
 			logger.error('Ошибка загрузки фавикона:', error)
+			if (error instanceof ApiError && error.status === 401) {
+				return
+			}
 			alert('Ошибка загрузки файла на сервер')
 		}
 	}
@@ -193,7 +195,7 @@ export function GeneralSettings() {
 		if (!confirmed) return
 
 		try {
-			await fetch('/api/favicon', { method: 'DELETE' })
+			await apiClient.delete('/api/favicon')
 			await updateOrganization({ faviconUrl: null })
 			setFavicon('')
 			setFaviconPreview('')
@@ -202,6 +204,9 @@ export function GeneralSettings() {
 			alert('Фавикон сброшен к стандартному')
 		} catch (error) {
 			logger.error('Ошибка сброса фавикона:', error)
+			if (error instanceof ApiError && error.status === 401) {
+				return
+			}
 			alert('Не удалось сбросить фавикон')
 		}
 	}
@@ -223,14 +228,9 @@ export function GeneralSettings() {
 		formData.append('file', file)
 
 		try {
-			const response = await fetch('/api/logo', {
-				method: 'POST',
-				body: formData,
-			})
+			const data = await apiClient.post<{ success: boolean; path?: string; error?: string }>('/api/logo', formData)
 
-			const data = await response.json()
-
-			if (data.success) {
+			if (data.success && data.path) {
 				setLogo(data.path)
 				localStorage.setItem('modocrm-logo-path', data.path)
 				window.dispatchEvent(new Event('logo-updated'))
@@ -244,11 +244,14 @@ export function GeneralSettings() {
 				}
 				alert('Логотип загружен и применен!')
 			} else {
-				alert('Ошибка загрузки: ' + data.error)
+				alert('Ошибка загрузки: ' + (data.error || 'Unknown error'))
 				setLogoPreview('')
 			}
 		} catch (error) {
 			logger.error('Ошибка загрузки логотипа:', error)
+			if (error instanceof ApiError && error.status === 401) {
+				return
+			}
 			alert('Ошибка загрузки файла на сервер')
 		}
 	}
@@ -260,7 +263,7 @@ export function GeneralSettings() {
 		if (!confirmed) return
 
 		try {
-			await fetch('/api/logo', { method: 'DELETE' })
+			await apiClient.delete('/api/logo')
 			await updateOrganization({ logoUrl: null })
 			setLogo('')
 			setLogoPreview('')
@@ -269,6 +272,9 @@ export function GeneralSettings() {
 			alert('Логотип сброшен к стандартному')
 		} catch (error) {
 			logger.error('Ошибка сброса логотипа:', error)
+			if (error instanceof ApiError && error.status === 401) {
+				return
+			}
 			alert('Не удалось сбросить логотип')
 		}
 	}

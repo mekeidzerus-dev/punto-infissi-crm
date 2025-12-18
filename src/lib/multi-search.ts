@@ -1,3 +1,5 @@
+import { logger } from './logger'
+
 /**
  * Утилита для множественного поиска (поиск по нескольким словам через пробел)
  * Каждое слово сужает результаты поиска (работает как фильтр-воронка)
@@ -63,7 +65,7 @@ export function multiSearch<T extends Record<string, unknown>>(
 ): T[] {
 	// Убеждаемся, что items - массив
 	if (!Array.isArray(items)) {
-		console.warn('multiSearch: items is not an array, returning empty array', items)
+		logger.warn('multiSearch: items is not an array, returning empty array', { items })
 		return []
 	}
 

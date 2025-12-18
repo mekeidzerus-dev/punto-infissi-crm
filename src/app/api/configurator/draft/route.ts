@@ -8,6 +8,7 @@ import {
 	deleteDrafts,
 } from './helpers'
 
+export const dynamic = 'force-dynamic'
 export const GET = withApiHandler(async (request: NextRequest) => {
 	const query = parseDraftQuery(request.nextUrl.searchParams)
 

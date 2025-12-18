@@ -1,14 +1,18 @@
 import { NextRequest } from 'next/server'
 import { ApiError, json, withApiHandler } from '@/lib/api-handler'
+
 import { validateFaviconBuffer } from '@/lib/favicon-validation'
 import {
 	saveFaviconFile,
 	cleanupOldFavicons,
 	optimizeFaviconStorage,
 } from '@/lib/favicon-storage'
+
 import { createRateLimitMiddleware, RATE_LIMITS } from '@/lib/rate-limiter'
 import { logger } from '@/lib/logger'
 
+
+export const dynamic = 'force-dynamic'
 async function ensureRateLimit(
 	request: NextRequest,
 	limit: (typeof RATE_LIMITS)[keyof typeof RATE_LIMITS]

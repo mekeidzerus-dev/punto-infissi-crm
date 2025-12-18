@@ -20,60 +20,52 @@ export default function SignInPage() {
 		e.preventDefault()
 		setIsLoading(true)
 
-		// #region agent log
-		fetch('http://127.0.0.1:7242/ingest/218ca7f0-e3d7-4389-a1b6-4602048211d4', {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({
-				location: 'signin/page.tsx:19',
-				message: 'SignIn form submitted',
-				data: { email },
-				timestamp: Date.now(),
-				sessionId: 'debug-session',
-				runId: 'run1',
-				hypothesisId: 'A',
-			}),
-		}).catch(() => {})
-		// #endregion
-
 		try {
-			// Используем встроенный редирект NextAuth - он правильно обрабатывает сессию
+			console.log('[SignIn] Attempting login for:', email.trim())
+			
 			const result = await signIn('credentials', {
-				email,
+				email: email.trim().toLowerCase(),
 				password,
-				redirect: true,
-				callbackUrl: '/clients',
+				redirect: false,
 			})
 
-			// Если redirect: true, этот код не выполнится, но оставляем для совместимости
+			console.log('[SignIn] Result:', { 
+				ok: result?.ok, 
+				error: result?.error,
+				status: result?.status,
+				url: result?.url 
+			})
+
+			// Проверяем результат
 			if (result?.error) {
+				console.error('[SignIn] Error:', result.error)
 				toast.error(
 					locale === 'ru'
 						? 'Неверный email или пароль'
 						: 'Email o password non validi'
 				)
+			} else if (result?.ok) {
+				// Успешный вход
+				console.log('[SignIn] Success, redirecting to /clients')
+				toast.success(
+					locale === 'ru'
+						? 'Вход выполнен успешно'
+						: 'Accesso completato con successo'
+				)
+				router.push('/clients')
+				router.refresh()
+				return // Не сбрасываем isLoading, так как идет редирект
+			} else {
+				// Неожиданный результат
+				console.warn('[SignIn] Unexpected result:', result)
+				toast.error(
+					locale === 'ru'
+						? 'Ошибка входа. Попробуйте снова.'
+						: 'Errore di accesso. Riprova.'
+				)
 			}
-		} catch (error) {
-			// #region agent log
-			fetch(
-				'http://127.0.0.1:7242/ingest/218ca7f0-e3d7-4389-a1b6-4602048211d4',
-				{
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({
-						location: 'signin/page.tsx:45',
-						message: 'SignIn error caught',
-						data: {
-							error: error instanceof Error ? error.message : String(error),
-						},
-						timestamp: Date.now(),
-						sessionId: 'debug-session',
-						runId: 'run1',
-						hypothesisId: 'A',
-					}),
-				}
-			).catch(() => {})
-			// #endregion
+		} catch (error: any) {
+			console.error('[SignIn] Exception:', error)
 			toast.error(
 				locale === 'ru'
 					? 'Произошла ошибка. Попробуйте снова.'

@@ -12,6 +12,7 @@ import ParameterEditForm from '@/components/parameter-edit-form'
 import { ConfirmDeleteDialog } from '@/components/confirm-delete-dialog'
 import { toast } from 'sonner'
 import { logger } from '@/lib/logger'
+import { apiClient, ApiError } from '@/lib/api-client'
 
 interface ParameterValue {
 	id?: string
@@ -61,15 +62,17 @@ export default function ParametersPage() {
 	const fetchParameters = async () => {
 		setLoading(true)
 		try {
-			const response = await fetch('/api/parameters')
-			if (response.ok) {
-				const data = await response.json()
-				setParameters(data)
-			} else {
-				logger.error('Failed to fetch parameters:', response.status)
-			}
+			const data = await apiClient.get<Parameter[]>('/api/parameters')
+			setParameters(data)
 		} catch (error) {
 			logger.error('Error fetching parameters:', error)
+			if (error instanceof ApiError && error.status === 401) {
+				return
+			}
+			toast.error(
+				locale === 'ru' ? 'Ошибка загрузки параметров' : 'Errore nel caricamento dei parametri',
+				{ duration: 4000 }
+			)
 		} finally {
 			setLoading(false)
 		}
@@ -99,41 +102,22 @@ export default function ParametersPage() {
 
 		setIsDeleting(true)
 		try {
-			const response = await fetch(`/api/parameters/${parameterToDelete.id}`, {
-				method: 'DELETE',
-			})
-
-			if (response.ok) {
-				// Успешное удаление
-				setParameters(prev => prev.filter(p => p.id !== parameterToDelete.id))
-				toast.success(
-					locale === 'ru' ? 'Параметр удален' : 'Parametro eliminato'
-				)
-				setShowDeleteDialog(false)
-				setParameterToDelete(null)
-			} else if (response.status === 404) {
-				// Параметр уже не существует - обновляем список
-				setParameters(prev => prev.filter(p => p.id !== parameterToDelete.id))
-				toast.success(
-					locale === 'ru' ? 'Параметр удален' : 'Parametro eliminato'
-				)
-				setShowDeleteDialog(false)
-				setParameterToDelete(null)
-			} else {
-				// Другие ошибки
-				const errorData = await response.json()
-				toast.error(
-					errorData.error ||
-						(locale === 'ru' ? 'Ошибка удаления' : 'Errore di eliminazione')
-				)
-			}
+			await apiClient.delete(`/api/parameters/${parameterToDelete.id}`)
+			setParameters(prev => prev.filter(p => p.id !== parameterToDelete.id))
+			toast.success(
+				locale === 'ru' ? 'Параметр удален' : 'Parametro eliminato'
+			)
+			setShowDeleteDialog(false)
+			setParameterToDelete(null)
 		} catch (error) {
 			logger.error('Error deleting parameter:', error)
-			toast.error(
-				locale === 'ru'
-					? 'Ошибка при удалении параметра'
-					: "Errore durante l'eliminazione del parametro"
-			)
+			if (error instanceof ApiError && error.status === 401) {
+				return
+			}
+			const errorMessage = error instanceof ApiError 
+				? error.message 
+				: (locale === 'ru' ? 'Ошибка при удалении параметра' : "Errore durante l'eliminazione del parametro")
+			toast.error(errorMessage, { duration: 4000 })
 		} finally {
 			setIsDeleting(false)
 		}
@@ -141,45 +125,36 @@ export default function ParametersPage() {
 
 	const handleSave = async (data: Record<string, unknown>) => {
 		try {
-			const url = editingParameter
-				? `/api/parameters/${editingParameter.id}`
-				: '/api/parameters'
-			const method = editingParameter ? 'PUT' : 'POST'
-
-			const response = await fetch(url, {
-				method,
-				headers: {
-					'Content-Type': 'application/json',
-				},
-				body: JSON.stringify(data),
-			})
-
-			if (response.ok) {
-				// Обновляем список параметров после успешного сохранения
-				await fetchParameters()
-				setShowForm(false)
-				setEditingParameter(null)
-				toast.success(
-					editingParameter
-						? locale === 'ru'
-							? 'Параметр обновлен'
-							: 'Parametro aggiornato'
-						: locale === 'ru'
-						? 'Параметр создан'
-						: 'Parametro creato'
-				)
+			if (editingParameter) {
+				await apiClient.put(`/api/parameters/${editingParameter.id}`, data)
 			} else {
-				toast.error(
-					locale === 'ru' ? 'Ошибка сохранения' : 'Errore di salvataggio'
-				)
+				await apiClient.post('/api/parameters', data)
 			}
+
+			await fetchParameters()
+			setShowForm(false)
+			setEditingParameter(null)
+			toast.success(
+				editingParameter
+					? locale === 'ru'
+						? 'Параметр обновлен'
+						: 'Parametro aggiornato'
+					: locale === 'ru'
+					? 'Параметр создан'
+					: 'Parametro creato',
+				{ duration: 2000 }
+			)
 		} catch (error) {
 			logger.error('Error saving parameter:', error)
-			toast.error(
-				locale === 'ru'
+			if (error instanceof ApiError && error.status === 401) {
+				return
+			}
+			const errorMessage = error instanceof ApiError
+				? error.message
+				: (locale === 'ru'
 					? 'Ошибка при сохранении параметра'
-					: 'Errore durante il salvataggio del parametro'
-			)
+					: 'Errore durante il salvataggio del parametro')
+			toast.error(errorMessage, { duration: 4000 })
 		}
 	}
 

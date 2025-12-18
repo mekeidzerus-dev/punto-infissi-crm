@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { logger } from '@/lib/logger'
+import { apiClient, ApiError } from '@/lib/api-client'
 import {
 	Dialog,
 	DialogContent,
@@ -230,34 +231,9 @@ export function AddCategoryModal({
 			}
 
 			if (editingCategory) {
-				// Редактирование существующей категории
-				const response = await fetch(
-					`/api/product-categories/${editingCategory.id}`,
-					{
-						method: 'PUT',
-						headers: {
-							'Content-Type': 'application/json',
-						},
-						body: JSON.stringify(categoryData),
-					}
-				)
-
-				if (!response.ok) {
-					throw new Error('Failed to update category')
-				}
+				await apiClient.put(`/api/product-categories/${editingCategory.id}`, categoryData)
 			} else {
-				// Создание новой категории
-				const response = await fetch('/api/product-categories', {
-					method: 'POST',
-					headers: {
-						'Content-Type': 'application/json',
-					},
-					body: JSON.stringify(categoryData),
-				})
-
-				if (!response.ok) {
-					throw new Error('Failed to create category')
-				}
+				await apiClient.post('/api/product-categories', categoryData)
 			}
 
 			// Уведомляем родительский компонент
@@ -271,7 +247,13 @@ export function AddCategoryModal({
 			onClose()
 		} catch (error) {
 			logger.error('Error saving category:', error)
-			alert('Ошибка при сохранении категории')
+			if (error instanceof ApiError && error.status === 401) {
+				return
+			}
+			const errorMessage = error instanceof ApiError 
+				? error.message 
+				: 'Ошибка при сохранении категории'
+			alert(errorMessage)
 		}
 	}
 

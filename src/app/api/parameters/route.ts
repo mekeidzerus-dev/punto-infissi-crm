@@ -8,6 +8,8 @@ import {
 	parameterCreateBodySchema,
 } from './helpers'
 
+export const dynamic = 'force-dynamic'
+
 export const GET = withApiHandler(async (request: NextRequest) => {
 	const query = parseParameterQuery(request.nextUrl.searchParams)
 

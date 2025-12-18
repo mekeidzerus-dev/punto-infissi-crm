@@ -1,4 +1,5 @@
 import { prisma } from './prisma'
+import { logger } from './logger'
 
 /**
  * Обновляет время последней активности пользователя
@@ -14,7 +15,7 @@ export async function updateUserActivity(userId: string) {
 		})
 	} catch (error) {
 		// Не прерываем выполнение при ошибке обновления активности
-		console.error('Error updating user activity:', error)
+		logger.error('Error updating user activity', { error })
 	}
 }
 

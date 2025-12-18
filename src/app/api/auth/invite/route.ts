@@ -1,10 +1,13 @@
 import { NextRequest } from 'next/server'
 import { randomBytes } from 'crypto'
+
 import { prisma } from '@/lib/prisma'
 import { ApiError, parseJson, success, withApiHandler } from '@/lib/api-handler'
 import { inviteSchema } from '@/lib/validation/auth'
 import { requireAdmin } from '@/lib/auth-helpers'
 
+
+export const dynamic = 'force-dynamic'
 export const POST = withApiHandler(async (request: NextRequest) => {
 	const user = await requireAdmin()
 	const payload = await parseJson(request, inviteSchema)

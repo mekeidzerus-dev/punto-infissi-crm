@@ -6,6 +6,8 @@ import {
 	ensureStatusIdFromParams,
 } from '../../helpers'
 
+export const dynamic = 'force-dynamic'
+
 export const POST = withApiHandler(async (request: NextRequest, { params }) => {
 	const id = ensureStatusIdFromParams(params)
 	const payload = await parseJson(request, documentStatusSetDefaultBodySchema)

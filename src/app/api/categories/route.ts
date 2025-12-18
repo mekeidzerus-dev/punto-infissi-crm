@@ -8,6 +8,7 @@ import {
 	buildCategoryUpdateData,
 } from './helpers'
 
+export const dynamic = 'force-dynamic'
 export const GET = withApiHandler(async () => {
 	const categories = await prisma.productCategory.findMany({
 		orderBy: { name: 'asc' },

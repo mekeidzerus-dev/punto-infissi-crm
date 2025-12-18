@@ -33,7 +33,8 @@ export async function loginAsUser(
 	page: Page,
 	user: TestUser = TEST_USERS.user
 ): Promise<void> {
-	await page.goto('/auth/signin')
+	const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+	await page.goto(`${baseUrl}/auth/signin`)
 	await page.waitForLoadState('networkidle')
 
 	// Заполняем форму авторизации

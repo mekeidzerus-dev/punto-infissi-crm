@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Building2 } from 'lucide-react'
 import { logger } from '@/lib/logger'
+import { apiClient, ApiError } from '@/lib/api-client'
 import {
 	Card,
 	CardContent,
@@ -58,11 +59,8 @@ export default function SuppliersPage() {
 	const fetchSuppliers = async () => {
 		try {
 			setIsLoading(true)
-			const response = await fetch('/api/suppliers')
-			if (response.ok) {
-				const data = await response.json()
-				setSuppliers(data)
-			}
+			const data = await apiClient.get<any[]>('/api/suppliers')
+			setSuppliers(data)
 		} catch (error) {
 			logger.error('Error fetching suppliers:', error)
 		} finally {
@@ -87,23 +85,19 @@ export default function SuppliersPage() {
 	const handleSaveSupplier = async (formData: any) => {
 		try {
 			if (editingSupplier) {
-				await fetch('/api/suppliers', {
-					method: 'PUT',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({ id: editingSupplier.id, ...formData }),
-				})
+				await apiClient.put('/api/suppliers', { id: editingSupplier.id, ...formData })
 			} else {
-				await fetch('/api/suppliers', {
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify(formData),
-				})
+				await apiClient.post('/api/suppliers', formData)
 			}
 			await fetchSuppliers()
 			setEditingSupplier(null)
 		} catch (error) {
 			logger.error('Error saving supplier:', error)
-			alert(t('errorSaving'))
+			if (error instanceof ApiError) {
+				toast.error(error.message || t('errorSaving'), { duration: 4000 })
+			} else {
+				toast.error(t('errorSaving'), { duration: 4000 })
+			}
 		}
 	}
 
@@ -126,32 +120,20 @@ export default function SuppliersPage() {
 		setDeleteDialog(prev => ({ ...prev, isDeleting: true }))
 
 		try {
-			const response = await fetch(
-				`/api/suppliers?id=${deleteDialog.supplier.id}`,
-				{
-					method: 'DELETE',
-				}
+			await apiClient.delete(`/api/suppliers?id=${deleteDialog.supplier.id}`)
+			
+			toast.success(
+				locale === 'ru' ? 'Поставщик успешно удален' : 'Fornitore eliminato con successo',
+				{ duration: 2000 }
 			)
-
-			if (response.ok) {
-				toast.success(
-					locale === 'ru' ? 'Поставщик успешно удален' : 'Fornitore eliminato con successo',
-					{ duration: 2000 }
-				)
-				await fetchSuppliers()
-				setDeleteDialog({ isOpen: false, supplier: null, isDeleting: false })
-			} else {
-				// Обработка ошибок от API
-				const errorData = await response.json().catch(() => ({}))
-				const errorMessage =
-					errorData.error ||
-					errorData.message ||
-					t('errorDeleting') ||
-					'Не удалось удалить поставщика'
-				toast.error(errorMessage, { duration: 4000 })
-			}
+			await fetchSuppliers()
+			setDeleteDialog({ isOpen: false, supplier: null, isDeleting: false })
 		} catch (error) {
 			logger.error('Error deleting supplier:', error)
+			const errorMessage = error instanceof ApiError 
+				? error.message 
+				: t('errorDeleting') || 'Не удалось удалить поставщика'
+			toast.error(errorMessage, { duration: 4000 })
 			toast.error(
 				t('errorDeleting') || 'Ошибка при удалении поставщика',
 				{ duration: 4000 }

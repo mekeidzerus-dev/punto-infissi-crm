@@ -1,37 +1,31 @@
 'use client'
 
 import { useEffect } from 'react'
+import { useSession } from 'next-auth/react'
+import { usePathname } from 'next/navigation'
 import { logger } from '@/lib/logger'
+import { apiClient, ApiError } from '@/lib/api-client'
 
 const LOGO_STORAGE_KEY = 'modocrm-logo-path'
 
+// Публичные пути, где не нужно загружать логотип из БД
+const PUBLIC_PATHS = [
+	'/auth/signin',
+	'/auth/signup',
+	'/auth/forgot-password',
+	'/auth/reset-password',
+]
+
 export function LogoUpdater() {
+	const { data: session, status } = useSession()
+	const pathname = usePathname()
+
 	useEffect(() => {
-		// Загружаем логотип из БД при первой загрузке
-		const loadLogoFromDB = async () => {
-			try {
-				const response = await fetch('/api/organization')
-				if (response.ok) {
-					const org = await response.json()
-					if (org.logoUrl) {
-						localStorage.setItem(LOGO_STORAGE_KEY, org.logoUrl)
-						logger.info('✅ Loaded logo from database:', org.logoUrl)
-						window.dispatchEvent(new Event('logo-updated'))
-					}
-				}
-			} catch (error) {
-				logger.error('❌ Failed to load logo from database:', error)
-			}
-		}
+		// Проверяем, является ли текущий путь публичным
+		const isPublicPath =
+			pathname && PUBLIC_PATHS.some(path => pathname.startsWith(path))
 
-		// Проверяем, есть ли логотип в localStorage
-		const cachedLogo = localStorage.getItem(LOGO_STORAGE_KEY)
-		if (!cachedLogo) {
-			// Если нет в кэше, загружаем из БД
-			loadLogoFromDB()
-		}
-
-		// Функция для обновления логотипа
+		// Функция для обновления логотипа в DOM
 		const updateLogo = () => {
 			const logoPath = localStorage.getItem(LOGO_STORAGE_KEY)
 
@@ -44,14 +38,8 @@ export function LogoUpdater() {
 				'.default-logo'
 			) as NodeListOf<HTMLElement>
 
-			logger.info('🔍 Поиск элементов логотипа:', {
-				logoElements: logoElements.length,
-				defaultElements: defaultElements.length,
-				logoPath,
-			})
-
 			if (logoElements.length === 0) {
-				logger.info('❌ Элементы логотипа не найдены')
+				// Элементы логотипа не найдены - это нормально на некоторых страницах
 				return
 			}
 
@@ -61,7 +49,6 @@ export function LogoUpdater() {
 					element.src = logoPath
 					element.alt = 'Логотип компании'
 					element.style.display = 'block'
-					logger.info(`✅ Логотип обновлен: ${logoPath}`)
 				})
 				defaultElements.forEach(element => {
 					element.style.display = 'none'
@@ -70,7 +57,6 @@ export function LogoUpdater() {
 				// Скрываем логотип, показываем дефолтный
 				logoElements.forEach(element => {
 					element.style.display = 'none'
-					logger.info('🔄 Логотип сброшен к дефолтному')
 				})
 				defaultElements.forEach(element => {
 					element.style.display = 'block'
@@ -78,10 +64,66 @@ export function LogoUpdater() {
 			}
 		}
 
-		// Обновляем при загрузке
-		updateLogo()
+		// СЛУЧАЙ 1: Публичная страница - очищаем логотип и выходим
+		if (isPublicPath) {
+			localStorage.removeItem(LOGO_STORAGE_KEY)
+			updateLogo()
+			return
+		}
 
-		// Слушаем события обновления логотипа
+		// СЛУЧАЙ 2: Статус loading - ждем, ничего не делаем
+		if (status === 'loading') {
+			return
+		}
+
+		// СЛУЧАЙ 3: Нет сессии или статус unauthenticated - не загружаем из БД
+		if (status === 'unauthenticated' || !session) {
+			// Очищаем логотип, если нет сессии
+			localStorage.removeItem(LOGO_STORAGE_KEY)
+			updateLogo()
+			return
+		}
+
+		// СЛУЧАЙ 4: Есть активная сессия (authenticated) - загружаем логотип из БД
+		if (status === 'authenticated' && session) {
+			const loadLogoFromDB = async () => {
+				try {
+					const org = await apiClient.get<{ logoUrl?: string }>(
+						'/api/organization'
+					)
+					if (org.logoUrl) {
+						localStorage.setItem(LOGO_STORAGE_KEY, org.logoUrl)
+						logger.info('✅ Loaded logo from database', {
+							logoUrl: org.logoUrl,
+						})
+						window.dispatchEvent(new Event('logo-updated'))
+					}
+				} catch (error) {
+					// Тихая обработка ошибок 401 (Unauthorized)
+					// Это может произойти, если сессия истекла во время запроса
+					if (error instanceof ApiError && error.status === 401) {
+						// Очищаем кэш при ошибке авторизации
+						localStorage.removeItem(LOGO_STORAGE_KEY)
+						updateLogo()
+						return
+					}
+					// Логируем только другие ошибки (сетевые, серверные и т.д.)
+					logger.error('❌ Failed to load logo from database:', error)
+				}
+			}
+
+			// Проверяем, есть ли логотип в localStorage
+			const cachedLogo = localStorage.getItem(LOGO_STORAGE_KEY)
+			if (!cachedLogo) {
+				// Если нет в кэше, загружаем из БД
+				loadLogoFromDB()
+			} else {
+				// Если есть в кэше, просто обновляем DOM
+				updateLogo()
+			}
+		}
+
+		// Слушаем события обновления логотипа (от других компонентов)
 		const handleLogoUpdate = () => {
 			updateLogo()
 		}
@@ -92,7 +134,7 @@ export function LogoUpdater() {
 		return () => {
 			window.removeEventListener('logo-updated', handleLogoUpdate)
 		}
-	}, [])
+	}, [session, status, pathname])
 
 	// Этот компонент не рендерит ничего видимого
 	return null

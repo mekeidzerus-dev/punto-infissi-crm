@@ -1,6 +1,9 @@
 import { prisma } from '@/lib/prisma'
 import { success, withApiHandler } from '@/lib/api-handler'
 
+
+
+export const dynamic = 'force-dynamic'
 export const GET = withApiHandler(async () => {
 	const categories = await prisma.productCategory.findMany({
 		where: { isActive: true },

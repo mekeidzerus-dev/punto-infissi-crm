@@ -7,6 +7,8 @@ import {
 	organizationUpdateBodySchema,
 } from './helpers'
 
+export const dynamic = 'force-dynamic'
+
 export const GET = withApiHandler(async () => {
 	const organization = await ensureOrganization()
 

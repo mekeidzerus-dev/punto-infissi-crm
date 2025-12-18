@@ -6,30 +6,9 @@ export default withAuth(
 		const { pathname } = req.nextUrl
 		const token = req.nextauth.token
 
-		// #region agent log
-		if (pathname === '/clients') {
-			const fs = require('fs')
-			const logPath =
-				'/Users/ruslanmekeidze/Desktop/mini-website/MODOCRM/src/app/api/user/profile/.cursor/debug.log'
-			const logEntry =
-				JSON.stringify({
-					location: 'middleware.ts:6',
-					message: 'Middleware check for /clients',
-					data: { pathname, hasToken: !!token },
-					timestamp: Date.now(),
-					sessionId: 'debug-session',
-					runId: 'run1',
-					hypothesisId: 'B',
-				}) + '\n'
-			try {
-				fs.appendFileSync(logPath, logEntry)
-			} catch {}
-		}
-		// #endregion
-
 		// Для API запросов без авторизации возвращаем 401 вместо редиректа
 		if (pathname.startsWith('/api/')) {
-			const publicApiPaths = ['/api/auth', '/api/health']
+			const publicApiPaths = ['/api/auth', '/api/health', '/api/setup-user', '/api/diagnose-auth']
 			const isPublicApi = publicApiPaths.some(path => pathname.startsWith(path))
 
 			if (!isPublicApi && !token) {
@@ -47,31 +26,6 @@ export default withAuth(
 			authorized: ({ token, req }) => {
 				const { pathname } = req.nextUrl
 
-				// #region agent log
-				if (pathname === '/clients') {
-					const fs = require('fs')
-					const logPath =
-						'/Users/ruslanmekeidze/Desktop/mini-website/MODOCRM/src/app/api/user/profile/.cursor/debug.log'
-					const logEntry =
-						JSON.stringify({
-							location: 'middleware.ts:26',
-							message: 'authorized callback for /clients',
-							data: {
-								pathname,
-								hasToken: !!token,
-								tokenType: token ? typeof token : 'null',
-							},
-							timestamp: Date.now(),
-							sessionId: 'debug-session',
-							runId: 'run1',
-							hypothesisId: 'B',
-						}) + '\n'
-					try {
-						fs.appendFileSync(logPath, logEntry)
-					} catch {}
-				}
-				// #endregion
-
 				// Публичные пути
 				const publicPaths = [
 					'/',
@@ -80,7 +34,7 @@ export default withAuth(
 					'/auth/invite',
 					'/auth/forgot-password',
 				]
-				const publicApiPaths = ['/api/auth', '/api/health']
+				const publicApiPaths = ['/api/auth', '/api/health', '/api/setup-user', '/api/diagnose-auth']
 
 				// Разрешаем доступ к публичным путям
 				if (publicPaths.some(path => pathname === path)) {
@@ -103,28 +57,7 @@ export default withAuth(
 				}
 
 				// Для всех остальных путей требуется авторизация
-				const authorized = !!token
-				// #region agent log
-				if (pathname === '/clients') {
-					const fs = require('fs')
-					const logPath =
-						'/Users/ruslanmekeidze/Desktop/mini-website/MODOCRM/src/app/api/user/profile/.cursor/debug.log'
-					const logEntry =
-						JSON.stringify({
-							location: 'middleware.ts:60',
-							message: 'authorized result for /clients',
-							data: { pathname, authorized },
-							timestamp: Date.now(),
-							sessionId: 'debug-session',
-							runId: 'run1',
-							hypothesisId: 'B',
-						}) + '\n'
-					try {
-						fs.appendFileSync(logPath, logEntry)
-					} catch {}
-				}
-				// #endregion
-				return authorized
+				return !!token
 			},
 		},
 		pages: {

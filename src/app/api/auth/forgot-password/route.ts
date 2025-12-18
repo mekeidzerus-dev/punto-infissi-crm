@@ -1,10 +1,13 @@
 import { NextRequest } from 'next/server'
 import { randomBytes } from 'crypto'
+
 import { prisma } from '@/lib/prisma'
 import { ApiError, parseJson, success, withApiHandler } from '@/lib/api-handler'
 import { forgotPasswordSchema } from '@/lib/validation/auth'
 import { rateLimiter, RATE_LIMITS } from '@/lib/rate-limiter'
 
+
+export const dynamic = 'force-dynamic'
 export const POST = withApiHandler(async (request: NextRequest) => {
 	// Rate limiting
 	const forwardedFor = request.headers.get('x-forwarded-for')

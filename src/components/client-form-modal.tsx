@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { PhoneInput } from '@/components/ui/phone-input'
 import { logger } from '@/lib/logger'
+import { apiClient, ApiError } from '@/lib/api-client'
 import {
 	Dialog,
 	DialogContent,
@@ -91,13 +92,13 @@ export function ClientFormModal({
 
 	const fetchSources = async () => {
 		try {
-			const response = await fetch('/api/dictionaries?type=sources')
-			if (response.ok) {
-				const data = await response.json()
-				setSources(data.filter((s: any) => s.isActive))
-			}
+			const data = await apiClient.get<Array<{ id: number; name: string; isActive: boolean }>>('/api/dictionaries?type=sources')
+			setSources(data.filter((s) => s.isActive))
 		} catch (error) {
 			logger.error('Error fetching sources:', error)
+			if (error instanceof ApiError && error.status === 401) {
+				return
+			}
 		}
 	}
 

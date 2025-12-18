@@ -9,6 +9,8 @@ import {
 	proposalCreateBodySchema,
 } from './helpers'
 
+export const dynamic = 'force-dynamic'
+
 function serializeProposal(
 	proposal: Awaited<ReturnType<typeof prisma.proposalDocument.findMany>>[number]
 ) {

@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
+
 import { ApiError, parseJson, success, withApiHandler } from '@/lib/api-handler'
 import {
 	buildDictionaryCreateData,
@@ -8,9 +9,12 @@ import {
 	dictionaryUpdateBodySchema,
 	ensureDictionaryId,
 } from './helpers'
+
 import { dictionaryQuerySchema } from '@/lib/validation/dictionary'
 import { getCurrentOrganizationId } from '@/lib/organization-context'
 
+
+export const dynamic = 'force-dynamic'
 export const GET = withApiHandler(async (request: NextRequest) => {
 	const query = dictionaryQuerySchema.parse({
 		type: request.nextUrl.searchParams.get('type'),

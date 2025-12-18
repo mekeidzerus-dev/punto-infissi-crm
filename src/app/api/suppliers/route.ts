@@ -1,10 +1,12 @@
 import { NextRequest } from 'next/server'
 import type { Prisma } from '@prisma/client'
+
 import { Prisma as PrismaClient } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
 import { ApiError, parseJson, success, withApiHandler } from '@/lib/api-handler'
 import {
+
 	buildSupplierCreateData,
 	buildSupplierUpdateData,
 	ensureSupplierId,
@@ -12,6 +14,8 @@ import {
 	supplierUpdateBodySchema,
 } from './helpers'
 
+
+export const dynamic = 'force-dynamic'
 const supplierListSelect = {
 	id: true,
 	name: true,

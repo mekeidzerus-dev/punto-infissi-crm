@@ -8,6 +8,7 @@ import { Plus, Edit, Trash2, Settings } from 'lucide-react'
 import { useLanguage } from '@/contexts/LanguageContext'
 import { AddCategoryModal } from '@/components/add-category-modal'
 import { logger } from '@/lib/logger'
+import { apiClient, ApiError } from '@/lib/api-client'
 
 // Функция для безопасного рендеринга иконки (SVG из базы)
 const renderIcon = (icon: string) => {
@@ -90,15 +91,13 @@ export function CategorySelection({
 	const loadCategories = async () => {
 		setIsLoading(true)
 		try {
-			const response = await fetch('/api/categories/with-counts')
-			if (response.ok) {
-				const data = await response.json()
-				setCategories(data)
-			} else {
-				logger.error('Failed to load categories')
-			}
+			const data = await apiClient.get<CategoryWithCounts[]>('/api/categories/with-counts')
+			setCategories(data)
 		} catch (error) {
 			logger.error('Error loading categories:', error)
+			if (error instanceof ApiError && error.status === 401) {
+				return
+			}
 		} finally {
 			setIsLoading(false)
 		}
@@ -127,22 +126,18 @@ export function CategorySelection({
 
 		if (window.confirm(t('confirmDeleteCategory'))) {
 			try {
-				const response = await fetch(`/api/product-categories/${categoryId}`, {
-					method: 'DELETE',
-				})
-
-				if (response.ok) {
-					// Обновляем список категорий
-					await loadCategories()
-					// Уведомляем родительский компонент
-					if (onDeleteCategory) {
-						onDeleteCategory(categoryId)
-					}
-				} else {
-					logger.error('Failed to delete category')
+				await apiClient.delete(`/api/product-categories/${categoryId}`)
+				// Обновляем список категорий
+				await loadCategories()
+				// Уведомляем родительский компонент
+				if (onDeleteCategory) {
+					onDeleteCategory(categoryId)
 				}
 			} catch (error) {
 				logger.error('Error deleting category:', error)
+				if (error instanceof ApiError && error.status === 401) {
+					return
+				}
 			}
 		}
 	}

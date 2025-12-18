@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { logger } from '@/lib/logger'
+import { apiClient, ApiError } from '@/lib/api-client'
 import {
 	Dialog,
 	DialogContent,
@@ -46,19 +47,7 @@ export function VATRatesManager() {
 	const fetchVatRates = async () => {
 		try {
 			setIsLoading(true)
-			const response = await fetch('/api/vat-rates')
-			
-			if (!response.ok) {
-				const errorData = await response.json().catch(() => ({}))
-				logger.error('Error fetching VAT rates:', {
-					status: response.status,
-					error: errorData.error || errorData.details || 'Unknown error',
-				})
-				setVatRates([])
-				return
-			}
-			
-			const data = await response.json()
+			const data = await apiClient.get<VATRate[]>('/api/vat-rates')
 			
 			// Убеждаемся, что data - массив
 			if (!Array.isArray(data)) {
@@ -70,6 +59,9 @@ export function VATRatesManager() {
 			setVatRates(data)
 		} catch (error) {
 			logger.error('Error fetching VAT rates:', error)
+			if (error instanceof ApiError && error.status === 401) {
+				return
+			}
 			setVatRates([])
 		} finally {
 			setIsLoading(false)
@@ -89,25 +81,18 @@ export function VATRatesManager() {
 			}
 
 			if (editingRate) {
-				// Update existing rate
-				await fetch(`/api/vat-rates/${editingRate.id}`, {
-					method: 'PUT',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify(payload),
-				})
+				await apiClient.put(`/api/vat-rates/${editingRate.id}`, payload)
 			} else {
-				// Create new rate
-				await fetch('/api/vat-rates', {
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify(payload),
-				})
+				await apiClient.post('/api/vat-rates', payload)
 			}
 
 			await fetchVatRates()
 			handleClose()
 		} catch (error) {
 			logger.error('Error saving VAT rate:', error)
+			if (error instanceof ApiError && error.status === 401) {
+				return
+			}
 		}
 	}
 
@@ -128,25 +113,25 @@ export function VATRatesManager() {
 		}
 
 		try {
-			await fetch(`/api/vat-rates/${rateId}`, {
-				method: 'DELETE',
-			})
+			await apiClient.delete(`/api/vat-rates/${rateId}`)
 			await fetchVatRates()
 		} catch (error) {
 			logger.error('Error deleting VAT rate:', error)
+			if (error instanceof ApiError && error.status === 401) {
+				return
+			}
 		}
 	}
 
 	const handleSetDefault = async (rateId: string) => {
 		try {
-			await fetch(`/api/vat-rates/${rateId}`, {
-				method: 'PUT',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ isDefault: true }),
-			})
+			await apiClient.put(`/api/vat-rates/${rateId}`, { isDefault: true })
 			await fetchVatRates()
 		} catch (error) {
 			logger.error('Error setting default VAT rate:', error)
+			if (error instanceof ApiError && error.status === 401) {
+				return
+			}
 		}
 	}
 

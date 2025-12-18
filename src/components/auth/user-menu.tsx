@@ -43,7 +43,9 @@ export function UserMenu() {
 
 	const roleLabel = session.user.role
 		? roleLabels[session.user.role]?.[locale] || session.user.role
-		: locale === 'ru' ? 'Пользователь' : 'Utente'
+		: locale === 'ru'
+		? 'Пользователь'
+		: 'Utente'
 
 	const handleMenuItemClick = (path: string) => {
 		setOpen(false)
@@ -52,7 +54,31 @@ export function UserMenu() {
 
 	const handleSignOut = async () => {
 		setOpen(false)
-		await signOut({ callbackUrl: '/auth/signin' })
+
+		// Очищаем localStorage перед выходом (чтобы LogoUpdater не пытался загружать данные)
+		try {
+			localStorage.removeItem('modocrm-logo-path')
+		} catch (e) {
+			// Игнорируем ошибки очистки localStorage
+		}
+
+		try {
+			// Выполняем выход через NextAuth
+			await signOut({
+				callbackUrl: '/auth/signin',
+				redirect: true,
+			})
+		} catch (error) {
+			console.error('[SignOut] Error during signOut:', error)
+			// В случае ошибки все равно пытаемся выйти (fallback)
+			try {
+				await signOut({ callbackUrl: '/auth/signin' })
+			} catch (fallbackError) {
+				console.error('[SignOut] Fallback signOut also failed:', fallbackError)
+				// Если и fallback не сработал, делаем редирект вручную
+				router.push('/auth/signin')
+			}
+		}
 	}
 
 	return (
@@ -71,12 +97,12 @@ export function UserMenu() {
 					</div>
 				</button>
 			</DropdownMenuTrigger>
-			<DropdownMenuContent 
-				align='end' 
+			<DropdownMenuContent
+				align='end'
 				side='bottom'
 				className='w-72 z-[9999]'
 				sideOffset={8}
-				onCloseAutoFocus={(e) => e.preventDefault()}
+				onCloseAutoFocus={e => e.preventDefault()}
 			>
 				<DropdownMenuLabel className='px-3 py-2'>
 					<div className='flex flex-col space-y-1'>
@@ -90,7 +116,9 @@ export function UserMenu() {
 								<p className='text-sm font-semibold text-gray-900 truncate'>
 									{session.user.name || 'User'}
 								</p>
-								<p className='text-xs text-gray-500 truncate'>{session.user.email}</p>
+								<p className='text-xs text-gray-500 truncate'>
+									{session.user.email}
+								</p>
 							</div>
 						</div>
 						{session.user.role && (
@@ -102,29 +130,29 @@ export function UserMenu() {
 					</div>
 				</DropdownMenuLabel>
 				<DropdownMenuSeparator />
-				
+
 				{/* Основной функционал профиля */}
-				<DropdownMenuItem 
+				<DropdownMenuItem
 					onClick={() => handleMenuItemClick('/profile')}
 					className='cursor-pointer px-3 py-2'
 				>
 					<User className='h-4 w-4 mr-2' />
 					<span>{locale === 'ru' ? 'Мой профиль' : 'Il mio profilo'}</span>
 				</DropdownMenuItem>
-				
-				<DropdownMenuItem 
+
+				<DropdownMenuItem
 					onClick={() => handleMenuItemClick('/settings')}
 					className='cursor-pointer px-3 py-2'
 				>
 					<Settings className='h-4 w-4 mr-2' />
 					<span>{locale === 'ru' ? 'Настройки' : 'Impostazioni'}</span>
 				</DropdownMenuItem>
-				
+
 				<DropdownMenuSeparator />
-				
+
 				{/* Безопасность и пароль */}
 				{session.user.role === 'admin' && (
-					<DropdownMenuItem 
+					<DropdownMenuItem
 						onClick={() => handleMenuItemClick('/settings?tab=security')}
 						className='cursor-pointer px-3 py-2'
 					>
@@ -132,46 +160,49 @@ export function UserMenu() {
 						<span>{locale === 'ru' ? 'Безопасность' : 'Sicurezza'}</span>
 					</DropdownMenuItem>
 				)}
-				
-				<DropdownMenuItem 
+
+				<DropdownMenuItem
 					onClick={() => handleMenuItemClick('/settings?tab=password')}
 					className='cursor-pointer px-3 py-2'
 				>
 					<Key className='h-4 w-4 mr-2' />
 					<span>{locale === 'ru' ? 'Сменить пароль' : 'Cambia password'}</span>
 				</DropdownMenuItem>
-				
+
 				<DropdownMenuSeparator />
-				
+
 				{/* Уведомления и помощь */}
-				<DropdownMenuItem 
+				<DropdownMenuItem
 					onClick={() => handleMenuItemClick('/settings?tab=notifications')}
 					className='cursor-pointer px-3 py-2'
 				>
 					<Bell className='h-4 w-4 mr-2' />
 					<span>{locale === 'ru' ? 'Уведомления' : 'Notifiche'}</span>
 				</DropdownMenuItem>
-				
-				<DropdownMenuItem 
+
+				<DropdownMenuItem
 					onClick={() => handleMenuItemClick('/help')}
 					className='cursor-pointer px-3 py-2'
 				>
 					<HelpCircle className='h-4 w-4 mr-2' />
-					<span>{locale === 'ru' ? 'Помощь и поддержка' : 'Aiuto e supporto'}</span>
+					<span>
+						{locale === 'ru' ? 'Помощь и поддержка' : 'Aiuto e supporto'}
+					</span>
 				</DropdownMenuItem>
-				
+
 				<DropdownMenuSeparator />
-				
+
 				{/* Выход */}
 				<DropdownMenuItem
 					onClick={handleSignOut}
 					className='text-red-600 focus:text-red-600 cursor-pointer px-3 py-2'
 				>
 					<LogOut className='h-4 w-4 mr-2' />
-					<span className='font-medium'>{locale === 'ru' ? 'Выйти' : 'Esci'}</span>
+					<span className='font-medium'>
+						{locale === 'ru' ? 'Выйти' : 'Esci'}
+					</span>
 				</DropdownMenuItem>
 			</DropdownMenuContent>
 		</DropdownMenu>
 	)
 }
-

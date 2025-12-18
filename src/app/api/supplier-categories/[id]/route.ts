@@ -1,7 +1,10 @@
 import { prisma } from '@/lib/prisma'
 import { ApiError, success, withApiHandler } from '@/lib/api-handler'
+
 import { ensureSupplierCategoryId } from '../helpers'
 
+
+export const dynamic = 'force-dynamic'
 export const GET = withApiHandler(async (_request, { params }) => {
 	const id = ensureSupplierCategoryId(params?.id as string)
 

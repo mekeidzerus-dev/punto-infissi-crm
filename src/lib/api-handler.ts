@@ -2,11 +2,24 @@ import { NextRequest, NextResponse } from 'next/server'
 import { ZodError, type ZodSchema } from 'zod'
 import { Prisma } from '@prisma/client'
 import { logger } from '@/lib/logger'
+import { requireAuth } from './auth-helpers'
+import { getCurrentOrganizationId } from './organization-context'
+import { updateUserActivity } from './activity-tracker'
 
 export type ApiHandlerContext = { params?: Record<string, string | string[]> }
 export type ApiHandler = (
 	request: NextRequest,
 	context: ApiHandlerContext
+) => Promise<NextResponse>
+
+export type AuthApiHandlerContext = ApiHandlerContext & {
+	user: Awaited<ReturnType<typeof requireAuth>>
+	organizationId: string | null
+}
+
+export type AuthApiHandler = (
+	request: NextRequest,
+	context: AuthApiHandlerContext
 ) => Promise<NextResponse>
 
 export class ApiError extends Error {
@@ -118,4 +131,18 @@ export function json(data: unknown, init?: number | ResponseInit) {
 
 export function success(data: unknown, status = 200) {
 	return json(data, status)
+}
+
+/**
+ * Обертка над withApiHandler для автоматической проверки аутентификации
+ * Автоматически проверяет auth, обновляет активность пользователя и предоставляет user и organizationId
+ */
+export function withAuthApiHandler(handler: AuthApiHandler) {
+	return withApiHandler(async (request, context) => {
+		const user = await requireAuth()
+		await updateUserActivity(user.id)
+		const organizationId = await getCurrentOrganizationId() || user.organizationId
+
+		return handler(request, { ...context, user, organizationId })
+	})
 }
